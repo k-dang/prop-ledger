@@ -1,3 +1,5 @@
+trustPolicy: no-downgrade
+
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
