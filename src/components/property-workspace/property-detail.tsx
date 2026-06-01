@@ -1,0 +1,573 @@
+"use client";
+
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  CircleDot,
+  Home,
+  type LucideIcon,
+  MapPin,
+  Plus,
+  Users,
+} from "lucide-react";
+import type { ReactNode } from "react";
+import { z } from "zod";
+
+import {
+  finiteFormNumber,
+  optionalFormString,
+  requiredFormString,
+} from "@/components/property-workspace/form-schemas";
+import { createFormSubmit } from "@/components/property-workspace/form-submit";
+import type {
+  NewOwnerInput,
+  NewOwnershipPeriodInput,
+  NewUnitInput,
+} from "@/components/property-workspace/workspace-types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  getOwnershipHistoryForTaxYear,
+  type PropertyReadiness,
+  type RentalProperty,
+} from "@/lib/property-workspace";
+import { cn } from "@/lib/utils";
+
+const unitFormSchema = z
+  .object({
+    unitLabel: requiredFormString,
+    unitType: requiredFormString,
+  })
+  .transform(
+    (data): NewUnitInput => ({
+      label: data.unitLabel,
+      unitType: data.unitType,
+    }),
+  );
+
+const ownerFormSchema = z
+  .object({
+    ownerName: requiredFormString,
+    ownerEmail: optionalFormString,
+  })
+  .transform(
+    (data): NewOwnerInput => ({
+      name: data.ownerName,
+      email: data.ownerEmail,
+    }),
+  );
+
+// Keys already match NewOwnershipPeriodInput, so no transform is needed.
+const ownershipPeriodFormSchema = z.object({
+  ownerId: requiredFormString,
+  percentage: finiteFormNumber,
+  effectiveFrom: requiredFormString,
+  effectiveTo: optionalFormString,
+});
+
+export function PropertyWorkspaceDetail({
+  property,
+  readiness,
+  taxYear,
+  ownershipError,
+  onAddUnit,
+  onAddOwner,
+  onAddOwnershipPeriod,
+}: {
+  property: RentalProperty;
+  readiness: PropertyReadiness;
+  taxYear: number;
+  ownershipError?: string;
+  onAddUnit: (input: NewUnitInput) => boolean;
+  onAddOwner: (input: NewOwnerInput) => boolean;
+  onAddOwnershipPeriod: (input: NewOwnershipPeriodInput) => boolean;
+}) {
+  return (
+    <>
+      <PropertySummary property={property} readiness={readiness} />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <SetupChecklist readiness={readiness} />
+        <PropertyFacts property={property} />
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <UnitsPanel property={property} onSubmit={onAddUnit} />
+        <OwnersPanel property={property} onSubmit={onAddOwner} />
+      </div>
+      <OwnershipPanel
+        property={property}
+        taxYear={taxYear}
+        error={ownershipError}
+        onSubmit={onAddOwnershipPeriod}
+      />
+    </>
+  );
+}
+
+function PropertySummary({
+  property,
+  readiness,
+}: {
+  property: RentalProperty;
+  readiness: PropertyReadiness;
+}) {
+  return (
+    <Card className="rounded-md">
+      <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
+        <div className="min-w-0">
+          <CardTitle className="truncate text-xl">{property.name}</CardTitle>
+          <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="size-3.5" aria-hidden="true" />
+              {property.address.line1}, {property.address.municipality}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <CalendarDays className="size-3.5" aria-hidden="true" />
+              Acquired {property.acquisitionDate}
+            </span>
+          </CardDescription>
+        </div>
+        <CardAction className="flex flex-wrap items-center justify-end gap-2">
+          <Badge className="rounded-md bg-emerald-700">
+            {readiness.readinessPercent}% ready
+          </Badge>
+          <Badge
+            variant="outline"
+            className="rounded-md border-sky-300 bg-sky-50 text-sky-800"
+          >
+            {readiness.setupGapCount} setup gaps
+          </Badge>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-md border bg-background p-3">
+            <p className="text-muted-foreground text-xs">Units</p>
+            <p className="mt-1 font-semibold text-2xl">
+              {property.units.length}
+            </p>
+          </div>
+          <div className="rounded-md border bg-background p-3">
+            <p className="text-muted-foreground text-xs">Owners</p>
+            <p className="mt-1 font-semibold text-2xl">
+              {property.owners.length}
+            </p>
+          </div>
+          <div className="rounded-md border bg-background p-3">
+            <p className="text-muted-foreground text-xs">Ownership periods</p>
+            <p className="mt-1 font-semibold text-2xl">
+              {property.ownershipPeriods.length}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SetupChecklist({ readiness }: { readiness: PropertyReadiness }) {
+  return (
+    <Card className="rounded-md">
+      <CardHeader>
+        <CardTitle>Setup checklist</CardTitle>
+        <CardDescription>
+          {readiness.taxYear} property readiness
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        {readiness.tasks.map((task) => (
+          <div
+            className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-start gap-3 rounded-md border bg-background p-3"
+            key={task.id}
+          >
+            {task.status === "complete" ? (
+              <CheckCircle2
+                className="mt-0.5 size-5 text-emerald-700"
+                aria-hidden="true"
+              />
+            ) : task.status === "warning" ? (
+              <AlertTriangle
+                className="mt-0.5 size-5 text-red-700"
+                aria-hidden="true"
+              />
+            ) : (
+              <CircleDot
+                className="mt-0.5 size-5 text-amber-700"
+                aria-hidden="true"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="font-medium text-sm">{task.label}</p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                {task.detail}
+              </p>
+            </div>
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-md",
+                task.status === "complete" &&
+                  "border-emerald-300 bg-emerald-50 text-emerald-800",
+                task.status === "missing" &&
+                  "border-amber-300 bg-amber-50 text-amber-800",
+                task.status === "warning" &&
+                  "border-red-300 bg-red-50 text-red-800",
+              )}
+            >
+              {task.status}
+            </Badge>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PropertyFacts({ property }: { property: RentalProperty }) {
+  return (
+    <Card className="rounded-md">
+      <CardHeader>
+        <CardTitle>Property facts</CardTitle>
+        <CardDescription>Details used across annual records.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <p className="text-muted-foreground text-xs">Municipality</p>
+            <p className="mt-1 font-medium text-sm">
+              {property.address.municipality}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Province</p>
+            <p className="mt-1 font-medium text-sm">
+              {property.address.province}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Postal code</p>
+            <p className="mt-1 font-medium text-sm">
+              {property.address.postalCode}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Acquisition date</p>
+            <p className="mt-1 font-medium text-sm">
+              {property.acquisitionDate}
+            </p>
+          </div>
+        </div>
+        <Separator />
+        <div className="flex flex-wrap gap-2">
+          <Badge
+            variant="outline"
+            className={cn(
+              "rounded-md",
+              property.hasPersonalUse
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-emerald-300 bg-emerald-50 text-emerald-800",
+            )}
+          >
+            Personal use: {property.hasPersonalUse ? "yes" : "no"}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn(
+              "rounded-md",
+              property.hasShortTermRental
+                ? "border-sky-300 bg-sky-50 text-sky-800"
+                : "border-emerald-300 bg-emerald-50 text-emerald-800",
+            )}
+          >
+            Short-term rental: {property.hasShortTermRental ? "yes" : "no"}
+          </Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UnitsPanel({
+  property,
+  onSubmit,
+}: {
+  property: RentalProperty;
+  onSubmit: (input: NewUnitInput) => boolean;
+}) {
+  const handleSubmit = createFormSubmit(unitFormSchema, onSubmit);
+
+  return (
+    <Card className="rounded-md">
+      <CardHeader>
+        <CardTitle>Units</CardTitle>
+        <CardDescription>Rental spaces under this property.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <form
+          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+          onSubmit={handleSubmit}
+        >
+          <Field>
+            <FieldLabel htmlFor="unitLabel">Unit label</FieldLabel>
+            <Input id="unitLabel" name="unitLabel" required />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="unitType">Unit type</FieldLabel>
+            <Input
+              id="unitType"
+              name="unitType"
+              required
+              defaultValue="Apartment"
+            />
+          </Field>
+          <div className="flex items-end">
+            <Button type="submit" className="w-full sm:w-auto">
+              <Plus data-icon="inline-start" />
+              Add
+            </Button>
+          </div>
+        </form>
+        {property.units.length === 0 ? (
+          <EmptyState icon={Home}>No units recorded.</EmptyState>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Unit</TableHead>
+                <TableHead>Type</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {property.units.map((unit) => (
+                <TableRow key={unit.id}>
+                  <TableCell>{unit.label}</TableCell>
+                  <TableCell>{unit.unitType}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OwnersPanel({
+  property,
+  onSubmit,
+}: {
+  property: RentalProperty;
+  onSubmit: (input: NewOwnerInput) => boolean;
+}) {
+  const handleSubmit = createFormSubmit(ownerFormSchema, onSubmit);
+
+  return (
+    <Card className="rounded-md">
+      <CardHeader>
+        <CardTitle>Owners</CardTitle>
+        <CardDescription>People sharing the property records.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <form
+          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+          onSubmit={handleSubmit}
+        >
+          <Field>
+            <FieldLabel htmlFor="ownerName">Owner name</FieldLabel>
+            <Input id="ownerName" name="ownerName" required />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="ownerEmail">Email</FieldLabel>
+            <Input id="ownerEmail" name="ownerEmail" type="email" />
+          </Field>
+          <div className="flex items-end">
+            <Button type="submit" className="w-full sm:w-auto">
+              <Plus data-icon="inline-start" />
+              Add
+            </Button>
+          </div>
+        </form>
+        {property.owners.length === 0 ? (
+          <EmptyState icon={Users}>No owners recorded.</EmptyState>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Owner</TableHead>
+                <TableHead>Email</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {property.owners.map((owner) => (
+                <TableRow key={owner.id}>
+                  <TableCell>{owner.name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {owner.email || "Not recorded"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OwnershipPanel({
+  property,
+  taxYear,
+  error,
+  onSubmit,
+}: {
+  property: RentalProperty;
+  taxYear: number;
+  error?: string;
+  onSubmit: (input: NewOwnershipPeriodInput) => boolean;
+}) {
+  const history = getOwnershipHistoryForTaxYear(property, taxYear);
+  const hasOwners = property.owners.length > 0;
+
+  const handleSubmit = createFormSubmit(ownershipPeriodFormSchema, onSubmit);
+
+  return (
+    <Card className="rounded-md">
+      <CardHeader>
+        <CardTitle>Ownership history</CardTitle>
+        <CardDescription>Effective-dated shares for {taxYear}.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <form
+          className="grid gap-3 lg:grid-cols-[1.2fr_0.7fr_0.9fr_0.9fr_auto]"
+          onSubmit={handleSubmit}
+        >
+          <Field>
+            <FieldLabel htmlFor="ownerId">Owner</FieldLabel>
+            <Select name="ownerId" disabled={!hasOwners} defaultValue="">
+              <SelectTrigger id="ownerId" className="w-full">
+                <SelectValue placeholder="Select owner" />
+              </SelectTrigger>
+              <SelectContent>
+                {property.owners.map((owner) => (
+                  <SelectItem key={owner.id} value={owner.id}>
+                    {owner.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="percentage">Share %</FieldLabel>
+            <Input
+              id="percentage"
+              name="percentage"
+              type="number"
+              min="0.01"
+              max="100"
+              step="0.01"
+              required
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="effectiveFrom">Effective from</FieldLabel>
+            <Input
+              id="effectiveFrom"
+              name="effectiveFrom"
+              type="date"
+              required
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="effectiveTo">Effective to</FieldLabel>
+            <Input id="effectiveTo" name="effectiveTo" type="date" />
+          </Field>
+          <div className="flex items-end">
+            <Button
+              type="submit"
+              disabled={!hasOwners}
+              className="w-full lg:w-auto"
+            >
+              <Plus data-icon="inline-start" />
+              Add
+            </Button>
+          </div>
+        </form>
+        {error ? (
+          <Alert variant="destructive">
+            <AlertTriangle
+              className="mt-0.5 size-4 shrink-0"
+              aria-hidden="true"
+            />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {history.length === 0 ? (
+          <EmptyState icon={Users}>
+            No ownership periods for {taxYear}.
+          </EmptyState>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Owner</TableHead>
+                <TableHead>Share</TableHead>
+                <TableHead>Effective dates</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.map((period) => (
+                <TableRow key={period.id}>
+                  <TableCell>{period.ownerName}</TableCell>
+                  <TableCell>{period.percentageLabel}</TableCell>
+                  <TableCell>{period.dateRange}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  children,
+}: {
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/40 p-3 text-muted-foreground text-sm">
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      <span>{children}</span>
+    </div>
+  );
+}
