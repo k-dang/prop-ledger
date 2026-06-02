@@ -6,7 +6,6 @@ import { useState } from "react";
 import { PersistenceErrorAlert } from "@/components/property-workspace/persistence-error-alert";
 import { usePortfolioStore } from "@/components/property-workspace/portfolio-store";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
-import { useTaxYear } from "@/components/property-workspace/tax-year-store";
 import type {
   NewOwnerInput,
   NewOwnershipPeriodInput,
@@ -24,7 +23,6 @@ import {
 
 export function PropertyWorkspace({ propertyId }: { propertyId: string }) {
   const { portfolio, persistenceError, updatePortfolio } = usePortfolioStore();
-  const { taxYear } = useTaxYear();
   const selectedProperty = portfolio.properties.find(
     (property) => property.id === propertyId,
   );
@@ -52,8 +50,7 @@ export function PropertyWorkspace({ propertyId }: { propertyId: string }) {
         ) : (
           <PropertyWorkspaceDetail
             property={selectedProperty}
-            readiness={getPropertyReadiness(selectedProperty, taxYear)}
-            taxYear={taxYear}
+            readiness={getPropertyReadiness(selectedProperty)}
             ownershipError={ownershipError}
             onAddUnit={addUnit}
             onAddOwner={addOwner}

@@ -5,14 +5,11 @@ import type {
   RentalUnit,
 } from "@/lib/property-workspace";
 
-export type PropertyFlagState = Pick<
-  RentalProperty,
-  "hasPersonalUse" | "hasShortTermRental"
->;
+export type PropertyFlagState = Pick<RentalProperty, "hasPersonalUse">;
 
 export type NewPropertyInput = Omit<
   RentalProperty,
-  "id" | "units" | "owners" | "ownershipPeriods"
+  "id" | "units" | "owners" | "ownershipPeriods" | "capitalAssets" | "taxYears"
 >;
 
 export type NewUnitInput = Omit<RentalUnit, "id">;

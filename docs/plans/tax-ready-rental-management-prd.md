@@ -28,7 +28,7 @@ The first release should provide five primary product surfaces:
 2. Transactions Inbox
 3. Rent Ledger
 4. Documents
-5. Year-End Close
+5. Year-End
 
 The platform should feel like a property accounting workspace with an audit-ready document binder. The main interaction pattern is an exception and review queue. The user imports or enters activity, reviews each item, links supporting documents, resolves recordkeeping questions, reconciles accounts, and then generates owner-specific year-end packages.
 
@@ -57,7 +57,7 @@ The product should support these first-release capabilities:
 - Basic loan and financing-cost tracking
 - Reconciliation status tracking
 - Year-end readiness checklist
-- Owner-specific year-end package export
+- Owner-specific year-end package export, captured as immutable snapshots
 - Accountant notes and exception summaries
 - Role-based access for owners and invited accountants
 - Audit trail for material edits
@@ -71,7 +71,7 @@ The first release should avoid building a full resident experience. Tenant porta
 3. As a co-owner, I want to enter the municipal address of a property, so that year-end exports identify the property clearly.
 4. As a co-owner, I want to record the acquisition date of a property, so that tax and capital schedules have the right timeline.
 5. As a co-owner, I want to record whether a property has personal-use portions, so that deductible amounts can be prorated correctly.
-6. As a co-owner, I want to mark whether a property has short-term rental activity, so that later tax and GST/HST rules can be surfaced when applicable.
+6. _(Removed — short-term rental is out of scope. The product covers long-term residential rentals only. See Out of Scope.)_
 7. As a co-owner, I want to add another owner to the property, so that each person's share can be calculated.
 8. As a co-owner, I want ownership percentages to be effective-dated, so that ownership changes are handled accurately by tax year.
 9. As a co-owner, I want to see an ownership history, so that I can understand how each year-end package was allocated.
@@ -129,8 +129,8 @@ The first release should avoid building a full resident experience. Tenant porta
 61. As a co-owner, I want to record refinancing notes, so that personal-use borrowing is not accidentally deducted.
 62. As a co-owner, I want to mark transaction review decisions with notes, so that future reviewers understand why an item was treated a certain way.
 63. As a co-owner, I want an activity log for material edits, so that changes to tax-relevant data can be traced.
-64. As a co-owner, I want to close a tax year, so that prior-year numbers do not change accidentally.
-65. As a co-owner, I want to reopen a closed tax year with a reason, so that corrections are still possible with an audit trail.
+64. As a co-owner, I want each exported year-end package to be an immutable snapshot, so that I can prove what I handed to my accountant even after the underlying records change.
+65. As a co-owner, I want prior-year records to remain editable with every change captured in the audit log, so that corrections are possible without a separate close/reopen ceremony.
 66. As a co-owner, I want a year-end readiness checklist, so that I know exactly what remains before exporting.
 67. As a co-owner, I want the checklist to include uncategorized transactions, so that no transaction is omitted.
 68. As a co-owner, I want the checklist to include missing documents, so that evidence gaps are visible.
@@ -177,7 +177,7 @@ The first release should avoid building a full resident experience. Tenant porta
 - Treat the product as a greenfield system because the current workspace contains research documentation but no existing application code.
 - Make the first release a web application optimized for desktop review workflows. Mobile responsiveness is required, but mobile-native capture and polish are not MVP-critical.
 - Use a review-first interaction model. Imported or manually entered activity enters a queue until it is categorized, supported, reconciled, and cleared for year-end use.
-- Use five primary navigation surfaces: Dashboard, Transactions Inbox, Rent Ledger, Documents, and Year-End Close.
+- Use five primary navigation surfaces: Dashboard, Transactions Inbox, Rent Ledger, Documents, and Year-End.
 - Keep property setup, ownership setup, and tax-year setup as first-class onboarding steps because later reports and exports depend on them.
 - Model ownership shares as effective-dated records rather than fixed percentages on the property.
 - Model lease/rent charges separately from payment receipts so that accrual reporting is possible.
@@ -192,8 +192,10 @@ The first release should avoid building a full resident experience. Tenant porta
 - Implement a year-end package generator as a deep domain module that consumes reviewed ledger, rent, document, capital, ownership, and reconciliation data and produces traceable package sections.
 - Implement a reconciliation module that tracks import source, match state, statement period, and unresolved exceptions.
 - Implement a document vault module that preserves file metadata, link state, read access, exportability, and immutable identifiers.
-- Implement an audit log module for material changes to tax-relevant facts, including ownership shares, transactions, allocations, capital assets, CCA selections, document links, close/reopen events, and exports.
-- Implement year-end close as a workflow state, not just a report. A tax year can be open, needs review, ready to close, closed, or reopened with reason.
+- Implement an audit log module for material changes to tax-relevant facts, including ownership shares, transactions, allocations, capital assets, CCA selections, document links, prior-year record edits, and exports.
+- Treat a Tax Year as a record-keeping boundary, not a computation context, and as a thin overlay that selects dated records (rent, ledger, ownership) by date rather than owning them.
+- Do not implement a year-end close or lock state machine. Property Tax Years stay permanently editable; year-end readiness is derived live from open exceptions rather than stored as workflow states, and prior-year edits are captured by the audit log. Point-in-time defensibility comes from immutable year-end package snapshots taken at export, not from freezing live records. A soft per-year "filed" lock may be added later if accidental edits prove painful. See `docs/adr/0001-no-tax-year-close-state-machine.md`.
+- Model accountant-entered CCA values per `(Property, Tax Year)`. A year's opening UCC is never computed; it is inherited from the prior year's confirmed closing, entered during onboarding, or flagged unknown/accountant-needed, and downstream openings are re-flagged if an earlier confirmed closing changes.
 - Use accountant access as a first-release collaboration feature, but defer full workflow approvals unless needed after user validation.
 - Prefer CSV import before live bank feed integration in MVP to reduce vendor dependency and accelerate validation.
 - Treat bank feeds as a near-term extension using the same bank transaction and reconciliation model as CSV import.
@@ -219,7 +221,7 @@ The first release should avoid building a full resident experience. Tenant porta
 - The capital and CCA-support module should be tested for opening UCC capture, unknown UCC states, prior-claim capture, accountant-entered closing values, additions, dispositions, and export warnings without validating tax formulas.
 - The prepaid expense allocator should be tested with single-year and multi-year service periods.
 - The personal-use allocator should be tested with full rental, partial rental, and fully personal cases.
-- The year-end close workflow should be tested for readiness checks, close prevention when blocking issues exist, package generation, closed-year edit restrictions, and reopen-with-reason behavior.
+- Year-end readiness should be tested for live derivation of blocking and warning conditions, recomputation after edits, and the guarantee that no record becomes uneditable as a result of readiness state. Year-end package snapshots should be tested for immutability after subsequent record edits.
 - The year-end package generator should be tested with golden-output fixtures for representative properties and tax years.
 - The audit log should be tested for material edit events and export events.
 - Access-control tests should cover owner, co-owner, accountant, and unauthorized access paths.
@@ -243,7 +245,8 @@ The first release should avoid building a full resident experience. Tenant porta
 - OCR receipt extraction.
 - AI categorization.
 - E-signature workflow.
-- Short-term rental compliance engine beyond basic property flags.
+- Short-term rental entirely. The product covers long-term residential rentals only; there is no STR flag or behavior in the model.
+- Tax-year close/lock state machine. Property Tax Years stay editable; point-in-time defensibility comes from immutable year-end package snapshots (see ADR-0001).
 - Full GST/HST filing workflow.
 - Multi-province tax support.
 - Corporate landlord workflows.
@@ -254,14 +257,14 @@ The first release should avoid building a full resident experience. Tenant porta
 
 The strongest product stance is that the MVP succeeds when a two-owner Ontario rental property can produce a defensible year-end support package without spreadsheet reconstruction. That package should include property-level totals, owner-specific worksheets, T776-ready income and expense summaries, rent ledger support, capital and CCA-support records, document index, reconciliation status, missing-record warnings, and accountant notes.
 
-The UI should stay dense, calm, and exception-driven. It should not imitate a marketing landing page or a lightweight landlord dashboard. The app's main screens should help users complete review work quickly: categorize, attach, reconcile, decide, close, and export.
+The UI should stay dense, calm, and exception-driven. It should not imitate a marketing landing page or a lightweight landlord dashboard. The app's main screens should help users complete review work quickly: categorize, attach, reconcile, decide, and export.
 
 The first implementation plan should likely break this PRD into tracer-bullet phases:
 
 1. Property, owner, lease, manual ledger, and documents.
 2. Transactions Inbox with CSV import, categorization, document linking, and exception counts.
 3. Capital register, owner-share worksheets, and CCA-support records.
-4. Year-End Close and package export.
+4. Year-End readiness and immutable package export.
 5. Accountant access, audit logging, and security hardening.
 
 The research report contains strong domain grounding but its citations are research-session references rather than durable source URLs. Before this PRD is used for external review, legal review, or investor materials, those citations should be replaced with durable CRA, OPC, PCI, Ontario, and vendor URLs.

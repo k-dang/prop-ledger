@@ -1,13 +1,16 @@
+import type { CapitalAsset, PropertyTaxYear } from "./property-tax-year";
+
 export type RentalProperty = {
   id: string;
   name: string;
   address: PropertyAddress;
   acquisitionDate: string;
   hasPersonalUse: boolean;
-  hasShortTermRental: boolean;
   units: RentalUnit[];
   owners: PropertyOwner[];
   ownershipPeriods: OwnershipPeriod[];
+  capitalAssets: CapitalAsset[];
+  taxYears: PropertyTaxYear[];
 };
 
 export type PropertyAddress = {
@@ -60,7 +63,6 @@ export type SetupTask = {
 export type PropertyReadiness = {
   propertyId: string;
   propertyName: string;
-  taxYear: number;
   readinessPercent: number;
   completedCount: number;
   totalCount: number;
@@ -149,40 +151,22 @@ export function validateOwnershipPeriods(
   return dedupeOwnershipIssues(issues);
 }
 
-export function getOwnershipPeriodsForTaxYear(
-  property: RentalProperty,
-  taxYear: number,
-) {
-  const yearStart = `${taxYear}-01-01`;
-  const yearEnd = `${taxYear}-12-31`;
+export function getSortedOwnershipPeriods(property: RentalProperty) {
+  return property.ownershipPeriods.toSorted((a, b) => {
+    if (a.effectiveFrom !== b.effectiveFrom) {
+      return a.effectiveFrom.localeCompare(b.effectiveFrom);
+    }
 
-  return property.ownershipPeriods
-    .filter((period) =>
-      rangesOverlap(
-        period.effectiveFrom,
-        period.effectiveTo,
-        yearStart,
-        yearEnd,
-      ),
-    )
-    .toSorted((a, b) => {
-      if (a.effectiveFrom !== b.effectiveFrom) {
-        return a.effectiveFrom.localeCompare(b.effectiveFrom);
-      }
-
-      return a.ownerId.localeCompare(b.ownerId);
-    });
+    return a.ownerId.localeCompare(b.ownerId);
+  });
 }
 
-export function getOwnershipHistoryForTaxYear(
-  property: RentalProperty,
-  taxYear: number,
-) {
+export function getOwnershipHistory(property: RentalProperty) {
   const ownersById = new Map(
     property.owners.map((owner) => [owner.id, owner.name]),
   );
 
-  return getOwnershipPeriodsForTaxYear(property, taxYear).map((period) => {
+  return getSortedOwnershipPeriods(property).map((period) => {
     return {
       ...period,
       ownerName: ownersById.get(period.ownerId) ?? "Unknown owner",
@@ -205,11 +189,10 @@ export function getOwnershipTotalOnDate(
 
 export function getPropertyReadiness(
   property: RentalProperty,
-  taxYear: number,
 ): PropertyReadiness {
-  const ownershipPeriods = getOwnershipPeriodsForTaxYear(property, taxYear);
+  const ownershipPeriods = getSortedOwnershipPeriods(property);
   const ownershipIssues = validateOwnershipPeriods(ownershipPeriods);
-  const ownershipCoverageDate = getOwnershipCoverageDate(property, taxYear);
+  const ownershipCoverageDate = property.acquisitionDate;
   const ownershipTotalAtCoverageDate = getOwnershipTotalOnDate(
     ownershipPeriods,
     ownershipCoverageDate,
@@ -267,7 +250,6 @@ export function getPropertyReadiness(
         ownershipIssues,
         ownershipTotalAtCoverageDate,
         ownershipCoverageDate,
-        taxYear,
       ),
     },
   ];
@@ -279,7 +261,6 @@ export function getPropertyReadiness(
   return {
     propertyId: property.id,
     propertyName: property.name,
-    taxYear,
     readinessPercent: Math.round((completedCount / tasks.length) * 100),
     completedCount,
     totalCount: tasks.length,
@@ -294,14 +275,13 @@ function getOwnershipReadinessDetail(
   issues: OwnershipValidationIssue[],
   totalAtCoverageDate: number,
   coverageDate: string,
-  taxYear: number,
 ) {
   if (issues.length > 0) {
     return issues[0]?.message ?? "Review ownership shares.";
   }
 
   if (periodCount === 0) {
-    return `Add ownership shares for ${taxYear}.`;
+    return "Add ownership shares.";
   }
 
   if (totalAtCoverageDate !== 100) {
@@ -311,30 +291,11 @@ function getOwnershipReadinessDetail(
   return `Shares total 100% on ${formatDisplayDate(coverageDate)}.`;
 }
 
-function getOwnershipCoverageDate(property: RentalProperty, taxYear: number) {
-  const yearStart = `${taxYear}-01-01`;
-
-  return property.acquisitionDate > yearStart
-    ? property.acquisitionDate
-    : yearStart;
-}
-
 function isOwnershipActiveOnDate(period: OwnershipPeriod, date: string) {
   return (
     period.effectiveFrom <= date &&
     (period.effectiveTo === undefined || period.effectiveTo >= date)
   );
-}
-
-function rangesOverlap(
-  leftStart: string,
-  leftEnd: string | undefined,
-  rightStart: string,
-  rightEnd: string,
-) {
-  const normalizedLeftEnd = leftEnd ?? "9999-12-31";
-
-  return leftStart <= rightEnd && rightStart <= normalizedLeftEnd;
 }
 
 function getPeriodBoundaries(periods: OwnershipPeriod[]) {

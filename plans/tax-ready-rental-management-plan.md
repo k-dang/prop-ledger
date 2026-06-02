@@ -10,7 +10,7 @@ Durable decisions that apply across all phases:
 - **Primary routes**: Use five first-release product surfaces: `/dashboard`, `/transactions`, `/rent-ledger`, `/documents`, and `/year-end`. Property-specific detail should live under `/properties/[propertyId]`.
 - **Review-first workflow**: Imported and manually entered records should remain visible as review work until category, evidence, allocation, capital, and reconciliation questions are resolved.
 - **Schema shape**: Model property setup, rent accruals, bank transactions, ledger entries, documents, capital assets, ownership allocations, reconciliation, and year-end close as separate durable concepts rather than one flat transaction table.
-- **Key models**: Property, Unit, Owner, OwnershipPeriod, Lease, RentEvent, BankTransaction, LedgerEntry, TransactionSplit, Document, DocumentLink, CapitalAsset, Loan, ReconciliationStatus, TaxYearClose, YearEndPackage, AccountantNote.
+- **Key models**: Property, Unit, Owner, OwnershipPeriod, Lease, RentEvent, BankTransaction, LedgerEntry, TransactionSplit, Document, DocumentLink, CapitalAsset, Loan, ReconciliationStatus, PropertyTaxYear, YearEndPackage, AccountantNote.
 - **Ownership allocation**: Store owner shares as effective-dated records and validate that active periods do not exceed 100 percent ownership.
 - **Rent accounting**: Store rent charges separately from payments so income can be reviewed on an accrual basis and arrears are visible.
 - **Transaction accounting**: Store imported bank transactions separately from reviewed ledger entries so import, matching, duplicate detection, and reconciliation status can be audited later.
@@ -18,7 +18,10 @@ Durable decisions that apply across all phases:
 - **Expense categories**: Use a CRA T776-shaped category set as the default rental expense taxonomy, while keeping tax judgment and final deduction decisions outside the product.
 - **Allocations**: Represent category splits, mortgage splits, prepaid expense periods, personal-use portions, and owner-share allocations as structured allocation records.
 - **Capital support**: Model capital assets separately from expense transactions, including land/building split, CCA class, opening UCC if known, additions, dispositions, proceeds, prior claims if known, accountant-entered closing values, and missing-history flags.
-- **Year-end close**: Treat close as workflow state. A tax year can be open, needs review, ready to close, closed, or reopened with a reason.
+- **Tax year model**: Treat a Tax Year as a record-keeping boundary, not a computation context, and as a thin overlay that *selects* dated records (rent, ledger, ownership) rather than owning them. The per-`(Property, Tax Year)` unit (`PropertyTaxYear`) holds only the accountant-entered CCA values and is the unit for readiness aggregation; the portfolio-wide tax year is a cross-property view.
+- **No close state machine**: Property Tax Years stay permanently editable. Readiness is derived live from open exceptions rather than stored as a workflow state, and prior-year edits are captured by the audit log. Point-in-time defensibility comes from immutable `YearEndPackage` snapshots taken at export, not from locking live records. A soft per-year "filed" lock can be added later if accidental edits to filed years prove painful. See `docs/adr/0001-no-tax-year-close-state-machine.md`.
+- **CCA carryforward**: A Property Tax Year's opening CCA/UCC value is never computed. It has one of three provenances — *inherited* (the prior year's confirmed closing), *entered* (manual onboarding), or *unknown* (accountant-needed flag) — tracks the prior confirmed closing live, and re-flags downstream openings if it changes.
+- **Scope**: Long-term residential rentals only. Short-term rental is out of scope (no STR flag or behavior in the model).
 - **Export stance**: Generate accountant-ready and T776-ready support packages. Do not calculate final tax outcomes, optimize CCA, estimate deductions, or file tax returns.
 - **Deferred from this plan**: Accountant invitation/access, role-based permissions, MFA, audit logging, access/export event logs, configurable retention guidance, Canada-hosting procurement work, OCR, bank feeds, online rent collection, e-signatures, and maintenance ticketing.
 
@@ -30,11 +33,11 @@ Durable decisions that apply across all phases:
 
 ### What to build
 
-Create the first usable property accounting workspace. A co-owner can set up a property, add units, enter address and acquisition details, mark personal-use and short-term-rental facts, add owners, define effective-dated ownership shares, and see a dashboard that makes setup gaps obvious.
+Create the first usable property accounting workspace. A co-owner can set up a property, add units, enter address and acquisition details, mark personal-use facts, add owners, define effective-dated ownership shares, and see a dashboard that makes setup gaps obvious.
 
 ### Acceptance criteria
 
-- [ ] A user can create a property with municipal address, acquisition date, personal-use indicator, and short-term-rental indicator.
+- [ ] A user can create a property with municipal address, acquisition date, and personal-use indicator.
 - [ ] A user can add one or more units under a property.
 - [ ] A user can add owners to a property and create effective-dated ownership periods.
 - [ ] Ownership periods reject active allocations above 100 percent.
@@ -137,24 +140,22 @@ Add a capital review and CCA-support workflow. A co-owner can classify an item a
 
 ---
 
-## Phase 6: Year-End Readiness and Close Workflow
+## Phase 6: Year-End Readiness
 
-**User stories**: 64-73, 85-86
+**User stories**: 66-73, 85-86
 
 ### What to build
 
-Turn the records collected in prior phases into a year-end readiness workflow. A co-owner can select a property and tax year, review a checklist of blocking and warning conditions, resolve exceptions from the relevant product surface, close the tax year when ready, and reopen it with a reason if corrections are needed.
+Turn the records collected in prior phases into a year-end readiness view. A co-owner can select a property and tax year and see a derived checklist of blocking and warning conditions, then resolve those exceptions from the relevant product surface. There is no close step: Property Tax Years remain permanently editable, and readiness is a live, derived view of what still stands between the records and a clean export. Defensibility is handled by the immutable export snapshot in Phase 7, not by locking the year.
 
 ### Acceptance criteria
 
-- [ ] A readiness checklist exists for each property and tax year.
+- [ ] A readiness checklist is derived live for each property and tax year (not stored as a workflow state).
 - [ ] The checklist includes uncategorized transactions, missing documents, unreconciled bank activity, unresolved capital/current items, ownership allocation warnings, personal-use warnings, and capital/CCA-support warnings.
 - [ ] Dashboard counts show missing receipts, uncategorized transactions, unreconciled items, and capital review items by property.
-- [ ] A tax year cannot be closed while configured blocking issues remain.
-- [ ] Closing a tax year changes workflow state and prevents ordinary edits to closed-year records.
-- [ ] A closed tax year can be reopened only with a reason.
-- [ ] Reopened years remain visibly distinct from never-closed years.
-- [ ] Tests cover readiness checks, close prevention, successful close, closed-year edit restrictions, reopen with reason, and dashboard exception counts.
+- [ ] Readiness updates immediately as exceptions are resolved or new records are added; no record becomes uneditable as a result of readiness state.
+- [ ] Edits to records in any tax year — including prior years — are captured by the audit log.
+- [ ] Tests cover readiness derivation, blocking-versus-warning classification, live recomputation after edits, and dashboard exception counts.
 
 ---
 
@@ -164,7 +165,7 @@ Turn the records collected in prior phases into a year-end readiness workflow. A
 
 ### What to build
 
-Generate the year-end handoff package. A co-owner can create property-level and owner-specific packages containing T776-ready income and expense summaries, owner-share worksheets, rent ledger summaries, expense detail exports, capital and CCA-support schedules, source document indexes, reconciliation status reports, accountant notes, and unresolved exception summaries.
+Generate the year-end handoff package. A co-owner can create property-level and owner-specific packages containing T776-ready income and expense summaries, owner-share worksheets, rent ledger summaries, expense detail exports, capital and CCA-support schedules, source document indexes, reconciliation status reports, accountant notes, and unresolved exception summaries. Each generated package is captured as an immutable snapshot at export time — this snapshot is the point-in-time, defensible record of what was filed, while the underlying live records remain editable.
 
 ### Acceptance criteria
 
@@ -175,6 +176,7 @@ Generate the year-end handoff package. A co-owner can create property-level and 
 - [ ] Each owner package is separate and limited to that owner-specific allocation view.
 - [ ] A full-property package remains available for the property-level audit trail.
 - [ ] Package totals trace back to source records, allocations, and linked documents.
+- [ ] Each generated package is persisted as an immutable snapshot; later edits to live records do not alter previously exported snapshots.
 - [ ] Tenant personal information is minimized in accounting exports unless needed to support the record.
 - [ ] The package can be exported as shareable files.
-- [ ] Tests include golden-output fixtures for representative property-level and owner-specific packages.
+- [ ] Tests include golden-output fixtures for representative property-level and owner-specific packages, and verify snapshot immutability after subsequent record edits.

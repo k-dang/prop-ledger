@@ -31,7 +31,6 @@ import { Input } from "@/components/ui/input";
 
 const DEFAULT_FLAGS: PropertyFlagState = {
   hasPersonalUse: false,
-  hasShortTermRental: false,
 };
 
 const propertyFormSchema = z.object({
@@ -63,7 +62,6 @@ export function PropertyForm({
       },
       acquisitionDate: data.acquisitionDate,
       hasPersonalUse: flags.hasPersonalUse,
-      hasShortTermRental: flags.hasShortTermRental,
     });
 
     if (isSaved) {
@@ -163,18 +161,6 @@ export function PropertyForm({
               />
               <FieldLabel htmlFor="personal-use" className="font-normal">
                 Personal-use portion
-              </FieldLabel>
-            </Field>
-            <Field orientation="horizontal">
-              <Checkbox
-                id="short-term-rental"
-                checked={flags.hasShortTermRental}
-                onCheckedChange={(checked) =>
-                  setFlags({ ...flags, hasShortTermRental: checked })
-                }
-              />
-              <FieldLabel htmlFor="short-term-rental" className="font-normal">
-                Short-term rental activity
               </FieldLabel>
             </Field>
           </div>

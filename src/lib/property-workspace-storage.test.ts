@@ -18,7 +18,6 @@ describe("stored portfolio parsing", () => {
             },
             acquisitionDate: "2026-01-01",
             hasPersonalUse: true,
-            hasShortTermRental: false,
             units: [{ id: "unit-1", label: "Upper", unitType: "Apartment" }],
             owners: [
               { id: "owner-1", name: "Avery Chen" },

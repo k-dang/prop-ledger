@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   canAddOwnershipPeriod,
-  getOwnershipHistoryForTaxYear,
+  getOwnershipHistory,
   getOwnershipTotalOnDate,
   getPropertyReadiness,
   type RentalProperty,
@@ -20,13 +20,14 @@ const baseProperty: RentalProperty = {
   },
   acquisitionDate: "2021-04-15",
   hasPersonalUse: false,
-  hasShortTermRental: false,
   units: [{ id: "unit-1", label: "Upper", unitType: "Apartment" }],
   owners: [
     { id: "owner-1", name: "Avery Chen" },
     { id: "owner-2", name: "Jordan Patel" },
   ],
   ownershipPeriods: [],
+  capitalAssets: [],
+  taxYears: [],
 };
 
 describe("ownership period validation", () => {
@@ -98,7 +99,7 @@ describe("ownership period validation", () => {
       ],
     };
 
-    const history = getOwnershipHistoryForTaxYear(property, 2025);
+    const history = getOwnershipHistory(property);
 
     expect(history).toHaveLength(2);
     expect(history.map((period) => period.ownerName)).toEqual([
@@ -117,15 +118,12 @@ describe("ownership period validation", () => {
 
 describe("property setup readiness", () => {
   it("surfaces setup gaps for units, owners, and ownership", () => {
-    const readiness = getPropertyReadiness(
-      {
-        ...baseProperty,
-        units: [],
-        owners: [],
-        ownershipPeriods: [],
-      },
-      2026,
-    );
+    const readiness = getPropertyReadiness({
+      ...baseProperty,
+      units: [],
+      owners: [],
+      ownershipPeriods: [],
+    });
 
     expect(readiness.readinessPercent).toBe(25);
     expect(readiness.tasks).toEqual(
@@ -138,21 +136,18 @@ describe("property setup readiness", () => {
   });
 
   it("uses acquisition date for mid-year ownership readiness", () => {
-    const readiness = getPropertyReadiness(
-      {
-        ...baseProperty,
-        acquisitionDate: "2026-07-01",
-        ownershipPeriods: [
-          {
-            id: "period-1",
-            ownerId: "owner-1",
-            percentage: 100,
-            effectiveFrom: "2026-07-01",
-          },
-        ],
-      },
-      2026,
-    );
+    const readiness = getPropertyReadiness({
+      ...baseProperty,
+      acquisitionDate: "2026-07-01",
+      ownershipPeriods: [
+        {
+          id: "period-1",
+          ownerId: "owner-1",
+          percentage: 100,
+          effectiveFrom: "2026-07-01",
+        },
+      ],
+    });
 
     expect(readiness.readinessPercent).toBe(100);
     expect(readiness.tasks).toEqual(

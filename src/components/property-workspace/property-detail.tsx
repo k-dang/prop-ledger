@@ -55,7 +55,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  getOwnershipHistoryForTaxYear,
+  getOwnershipHistory,
   type PropertyReadiness,
   type RentalProperty,
 } from "@/lib/property-workspace";
@@ -96,7 +96,6 @@ const ownershipPeriodFormSchema = z.object({
 export function PropertyWorkspaceDetail({
   property,
   readiness,
-  taxYear,
   ownershipError,
   onAddUnit,
   onAddOwner,
@@ -104,7 +103,6 @@ export function PropertyWorkspaceDetail({
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
-  taxYear: number;
   ownershipError?: string;
   onAddUnit: (input: NewUnitInput) => boolean;
   onAddOwner: (input: NewOwnerInput) => boolean;
@@ -123,7 +121,6 @@ export function PropertyWorkspaceDetail({
       </div>
       <OwnershipPanel
         property={property}
-        taxYear={taxYear}
         error={ownershipError}
         onSubmit={onAddOwnershipPeriod}
       />
@@ -197,9 +194,7 @@ function SetupChecklist({ readiness }: { readiness: PropertyReadiness }) {
     <Card className="rounded-md">
       <CardHeader>
         <CardTitle>Setup checklist</CardTitle>
-        <CardDescription>
-          {readiness.taxYear} property readiness
-        </CardDescription>
+        <CardDescription>Property readiness</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-2">
         {readiness.tasks.map((task) => (
@@ -296,17 +291,6 @@ function PropertyFacts({ property }: { property: RentalProperty }) {
             )}
           >
             Personal use: {property.hasPersonalUse ? "yes" : "no"}
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn(
-              "rounded-md",
-              property.hasShortTermRental
-                ? "border-sky-300 bg-sky-50 text-sky-800"
-                : "border-emerald-300 bg-emerald-50 text-emerald-800",
-            )}
-          >
-            Short-term rental: {property.hasShortTermRental ? "yes" : "no"}
           </Badge>
         </div>
       </CardContent>
@@ -443,16 +427,14 @@ function OwnersPanel({
 
 function OwnershipPanel({
   property,
-  taxYear,
   error,
   onSubmit,
 }: {
   property: RentalProperty;
-  taxYear: number;
   error?: string;
   onSubmit: (input: NewOwnershipPeriodInput) => boolean;
 }) {
-  const history = getOwnershipHistoryForTaxYear(property, taxYear);
+  const history = getOwnershipHistory(property);
   const hasOwners = property.owners.length > 0;
 
   const handleSubmit = createFormSubmit(ownershipPeriodFormSchema, onSubmit);
@@ -461,7 +443,7 @@ function OwnershipPanel({
     <Card className="rounded-md">
       <CardHeader>
         <CardTitle>Ownership history</CardTitle>
-        <CardDescription>Effective-dated shares for {taxYear}.</CardDescription>
+        <CardDescription>Effective-dated shares.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <form
@@ -529,9 +511,7 @@ function OwnershipPanel({
           </Alert>
         ) : null}
         {history.length === 0 ? (
-          <EmptyState icon={Users}>
-            No ownership periods for {taxYear}.
-          </EmptyState>
+          <EmptyState icon={Users}>No ownership periods recorded.</EmptyState>
         ) : (
           <Table>
             <TableHeader>

@@ -4,7 +4,6 @@ import { Home, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 import { usePortfolioStore } from "@/components/property-workspace/portfolio-store";
-import { useTaxYear } from "@/components/property-workspace/tax-year-store";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -14,8 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   createEmptyPortfolio,
   type PropertyReadiness,
@@ -24,12 +21,9 @@ import { cn } from "@/lib/utils";
 
 export function PortfolioPanel({
   properties,
-  taxYear,
 }: {
   properties: PropertyReadiness[];
-  taxYear: number;
 }) {
-  const { setTaxYear } = useTaxYear();
   const { portfolio, replacePortfolio } = usePortfolioStore();
 
   function handleReset() {
@@ -43,22 +37,8 @@ export function PortfolioPanel({
   return (
     <Card className="flex flex-col rounded-md" size="sm">
       <CardHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="tax-year" className="text-muted-foreground">
-            Tax year
-          </Label>
-          <Input
-            id="tax-year"
-            type="number"
-            min="2000"
-            max="2100"
-            value={taxYear}
-            onChange={(event) => setTaxYear(Number(event.target.value))}
-            className="w-28"
-          />
-        </div>
         <CardTitle>Dashboard</CardTitle>
-        <CardDescription>{taxYear} setup readiness</CardDescription>
+        <CardDescription>Setup readiness</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         {properties.length === 0 ? (

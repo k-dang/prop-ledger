@@ -4,7 +4,6 @@ import { PersistenceErrorAlert } from "@/components/property-workspace/persisten
 import { PortfolioPanel } from "@/components/property-workspace/portfolio-panel";
 import { usePortfolioStore } from "@/components/property-workspace/portfolio-store";
 import { PropertyForm } from "@/components/property-workspace/property-form";
-import { useTaxYear } from "@/components/property-workspace/tax-year-store";
 import type { NewPropertyInput } from "@/components/property-workspace/workspace-types";
 import {
   createClientId,
@@ -14,9 +13,8 @@ import {
 
 export function Dashboard() {
   const { portfolio, persistenceError, updatePortfolio } = usePortfolioStore();
-  const { taxYear } = useTaxYear();
   const propertyReadiness = portfolio.properties.map((property) =>
-    getPropertyReadiness(property, taxYear),
+    getPropertyReadiness(property),
   );
 
   function handleCreateProperty(input: NewPropertyInput) {
@@ -26,6 +24,8 @@ export function Dashboard() {
       units: [],
       owners: [],
       ownershipPeriods: [],
+      capitalAssets: [],
+      taxYears: [],
     };
 
     return updatePortfolio((currentPortfolio) => ({
@@ -42,7 +42,7 @@ export function Dashboard() {
           <PropertyForm onSubmit={handleCreateProperty} />
         </aside>
 
-        <PortfolioPanel properties={propertyReadiness} taxYear={taxYear} />
+        <PortfolioPanel properties={propertyReadiness} />
       </div>
     </>
   );
