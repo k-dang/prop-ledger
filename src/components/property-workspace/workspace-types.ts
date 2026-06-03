@@ -1,19 +1,22 @@
 import type {
-  OwnershipPeriod,
-  PropertyOwner,
-  RentalProperty,
-  RentalUnit,
-} from "@/lib/property-workspace";
+  NewOwner,
+  NewOwnershipPeriod,
+  NewProperty,
+  NewUnit,
+} from "@/db/schema";
+import type { RentalProperty } from "@/lib/property-workspace";
 
 export type PropertyFlagState = Pick<RentalProperty, "hasPersonalUse">;
 
-export type NewPropertyInput = Omit<
-  RentalProperty,
-  "id" | "units" | "owners" | "ownershipPeriods" | "capitalAssets" | "taxYears"
+// Inputs are the insert shapes minus the columns the database fills in: the
+// generated `id`/`createdAt` and the `propertyId` supplied by the action.
+export type NewPropertyInput = Omit<NewProperty, "id" | "createdAt">;
+
+export type NewUnitInput = Omit<NewUnit, "id" | "propertyId">;
+
+export type NewOwnerInput = Omit<NewOwner, "id" | "propertyId">;
+
+export type NewOwnershipPeriodInput = Omit<
+  NewOwnershipPeriod,
+  "id" | "propertyId"
 >;
-
-export type NewUnitInput = Omit<RentalUnit, "id">;
-
-export type NewOwnerInput = Omit<PropertyOwner, "id">;
-
-export type NewOwnershipPeriodInput = Omit<OwnershipPeriod, "id">;

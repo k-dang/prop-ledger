@@ -1,44 +1,21 @@
+import type { Owner, OwnershipPeriod, Property, Unit } from "@/db/schema";
 import type { CapitalAsset, PropertyTaxYear } from "./property-tax-year";
 
-export type RentalProperty = {
-  id: string;
-  name: string;
-  address: PropertyAddress;
-  acquisitionDate: string;
-  hasPersonalUse: boolean;
-  units: RentalUnit[];
-  owners: PropertyOwner[];
+export type { OwnershipPeriod };
+export type RentalUnit = Unit;
+export type PropertyOwner = Owner;
+
+/**
+ * A rental property loaded as an aggregate: the property row plus its related
+ * collections. The address lives flat on the row (`line1`, `municipality`, …) and
+ * optional columns read back as `null`, matching the database schema.
+ */
+export type RentalProperty = Property & {
+  units: Unit[];
+  owners: Owner[];
   ownershipPeriods: OwnershipPeriod[];
   capitalAssets: CapitalAsset[];
   taxYears: PropertyTaxYear[];
-};
-
-export type PropertyAddress = {
-  line1: string;
-  line2?: string;
-  municipality: string;
-  province: string;
-  postalCode: string;
-};
-
-export type RentalUnit = {
-  id: string;
-  label: string;
-  unitType: string;
-};
-
-export type PropertyOwner = {
-  id: string;
-  name: string;
-  email?: string;
-};
-
-export type OwnershipPeriod = {
-  id: string;
-  ownerId: string;
-  percentage: number;
-  effectiveFrom: string;
-  effectiveTo?: string;
 };
 
 export type Portfolio = {
@@ -71,18 +48,6 @@ export type PropertyReadiness = {
   tasks: SetupTask[];
 };
 
-export function createEmptyPortfolio(): Portfolio {
-  return { properties: [] };
-}
-
-export function createClientId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-
-  return `${prefix}-${Date.now().toString(36)}`;
-}
-
 export function canAddOwnershipPeriod(
   existingPeriods: OwnershipPeriod[],
   nextPeriod: OwnershipPeriod,
@@ -110,7 +75,7 @@ export function validateOwnershipPeriods(
     }
 
     if (
-      period.effectiveTo !== undefined &&
+      period.effectiveTo !== null &&
       period.effectiveTo < period.effectiveFrom
     ) {
       issues.push({
@@ -125,7 +90,7 @@ export function validateOwnershipPeriods(
     (period) =>
       period.percentage > 0 &&
       period.percentage <= 100 &&
-      (period.effectiveTo === undefined ||
+      (period.effectiveTo === null ||
         period.effectiveTo >= period.effectiveFrom),
   );
 
@@ -199,10 +164,10 @@ export function getPropertyReadiness(
   );
   const hasPropertyDetails =
     property.name.trim().length > 0 &&
-    property.address.line1.trim().length > 0 &&
-    property.address.municipality.trim().length > 0 &&
-    property.address.province.trim().length > 0 &&
-    property.address.postalCode.trim().length > 0 &&
+    property.line1.trim().length > 0 &&
+    property.municipality.trim().length > 0 &&
+    property.province.trim().length > 0 &&
+    property.postalCode.trim().length > 0 &&
     property.acquisitionDate.trim().length > 0;
   const hasOwnershipSetup =
     ownershipPeriods.length > 0 &&
@@ -294,7 +259,7 @@ function getOwnershipReadinessDetail(
 function isOwnershipActiveOnDate(period: OwnershipPeriod, date: string) {
   return (
     period.effectiveFrom <= date &&
-    (period.effectiveTo === undefined || period.effectiveTo >= date)
+    (period.effectiveTo === null || period.effectiveTo >= date)
   );
 }
 
@@ -304,7 +269,7 @@ function getPeriodBoundaries(periods: OwnershipPeriod[]) {
       periods.flatMap((period) => {
         const boundaries = [period.effectiveFrom];
 
-        if (period.effectiveTo !== undefined) {
+        if (period.effectiveTo !== null) {
           boundaries.push(addIsoDays(period.effectiveTo, 1));
         }
 
@@ -321,8 +286,8 @@ function addIsoDays(date: string, days: number) {
   return parsed.toISOString().slice(0, 10);
 }
 
-function formatDateRange(start: string, end: string | undefined) {
-  return end === undefined ? `${start} onward` : `${start} to ${end}`;
+function formatDateRange(start: string, end: string | null) {
+  return end === null ? `${start} onward` : `${start} to ${end}`;
 }
 
 function formatDisplayDate(date: string) {

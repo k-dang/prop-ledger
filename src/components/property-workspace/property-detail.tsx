@@ -104,9 +104,11 @@ export function PropertyWorkspaceDetail({
   property: RentalProperty;
   readiness: PropertyReadiness;
   ownershipError?: string;
-  onAddUnit: (input: NewUnitInput) => boolean;
-  onAddOwner: (input: NewOwnerInput) => boolean;
-  onAddOwnershipPeriod: (input: NewOwnershipPeriodInput) => boolean;
+  onAddUnit: (input: NewUnitInput) => boolean | Promise<boolean>;
+  onAddOwner: (input: NewOwnerInput) => boolean | Promise<boolean>;
+  onAddOwnershipPeriod: (
+    input: NewOwnershipPeriodInput,
+  ) => boolean | Promise<boolean>;
 }) {
   return (
     <>
@@ -143,7 +145,7 @@ function PropertySummary({
           <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3.5" aria-hidden="true" />
-              {property.address.line1}, {property.address.municipality}
+              {property.line1}, {property.municipality}
             </span>
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="size-3.5" aria-hidden="true" />
@@ -256,21 +258,15 @@ function PropertyFacts({ property }: { property: RentalProperty }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <p className="text-muted-foreground text-xs">Municipality</p>
-            <p className="mt-1 font-medium text-sm">
-              {property.address.municipality}
-            </p>
+            <p className="mt-1 font-medium text-sm">{property.municipality}</p>
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Province</p>
-            <p className="mt-1 font-medium text-sm">
-              {property.address.province}
-            </p>
+            <p className="mt-1 font-medium text-sm">{property.province}</p>
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Postal code</p>
-            <p className="mt-1 font-medium text-sm">
-              {property.address.postalCode}
-            </p>
+            <p className="mt-1 font-medium text-sm">{property.postalCode}</p>
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Acquisition date</p>
@@ -303,7 +299,7 @@ function UnitsPanel({
   onSubmit,
 }: {
   property: RentalProperty;
-  onSubmit: (input: NewUnitInput) => boolean;
+  onSubmit: (input: NewUnitInput) => boolean | Promise<boolean>;
 }) {
   const handleSubmit = createFormSubmit(unitFormSchema, onSubmit);
 
@@ -368,7 +364,7 @@ function OwnersPanel({
   onSubmit,
 }: {
   property: RentalProperty;
-  onSubmit: (input: NewOwnerInput) => boolean;
+  onSubmit: (input: NewOwnerInput) => boolean | Promise<boolean>;
 }) {
   const handleSubmit = createFormSubmit(ownerFormSchema, onSubmit);
 
@@ -432,7 +428,7 @@ function OwnershipPanel({
 }: {
   property: RentalProperty;
   error?: string;
-  onSubmit: (input: NewOwnershipPeriodInput) => boolean;
+  onSubmit: (input: NewOwnershipPeriodInput) => boolean | Promise<boolean>;
 }) {
   const history = getOwnershipHistory(property);
   const hasOwners = property.owners.length > 0;

@@ -5,25 +5,55 @@ import {
   getOwnershipHistory,
   getOwnershipTotalOnDate,
   getPropertyReadiness,
+  type OwnershipPeriod,
   type RentalProperty,
   validateOwnershipPeriods,
 } from "./property-workspace";
 
+// Ownership periods are full schema rows now; this fills the columns the
+// validation logic doesn't read (`propertyId`) and the open-ended default.
+function makePeriod(
+  period: Pick<
+    OwnershipPeriod,
+    "id" | "ownerId" | "percentage" | "effectiveFrom"
+  > &
+    Partial<OwnershipPeriod>,
+): OwnershipPeriod {
+  return { propertyId: "property-1", effectiveTo: null, ...period };
+}
+
 const baseProperty: RentalProperty = {
   id: "property-1",
   name: "King Street Duplex",
-  address: {
-    line1: "100 King Street W",
-    municipality: "Hamilton",
-    province: "ON",
-    postalCode: "L8P 1A1",
-  },
+  line1: "100 King Street W",
+  line2: null,
+  municipality: "Hamilton",
+  province: "ON",
+  postalCode: "L8P 1A1",
   acquisitionDate: "2021-04-15",
   hasPersonalUse: false,
-  units: [{ id: "unit-1", label: "Upper", unitType: "Apartment" }],
+  createdAt: new Date("2021-04-15T00:00:00.000Z"),
+  units: [
+    {
+      id: "unit-1",
+      propertyId: "property-1",
+      label: "Upper",
+      unitType: "Apartment",
+    },
+  ],
   owners: [
-    { id: "owner-1", name: "Avery Chen" },
-    { id: "owner-2", name: "Jordan Patel" },
+    {
+      id: "owner-1",
+      propertyId: "property-1",
+      name: "Avery Chen",
+      email: null,
+    },
+    {
+      id: "owner-2",
+      propertyId: "property-1",
+      name: "Jordan Patel",
+      email: null,
+    },
   ],
   ownershipPeriods: [],
   capitalAssets: [],
@@ -33,18 +63,18 @@ const baseProperty: RentalProperty = {
 describe("ownership period validation", () => {
   it("accepts valid active ownership allocations at 100 percent", () => {
     const periods = [
-      {
+      makePeriod({
         id: "period-1",
         ownerId: "owner-1",
         percentage: 50,
         effectiveFrom: "2026-01-01",
-      },
-      {
+      }),
+      makePeriod({
         id: "period-2",
         ownerId: "owner-2",
         percentage: 50,
         effectiveFrom: "2026-01-01",
-      },
+      }),
     ];
 
     expect(validateOwnershipPeriods(periods)).toEqual([]);
@@ -53,18 +83,18 @@ describe("ownership period validation", () => {
 
   it("rejects overlapping active allocations above 100 percent", () => {
     const periods = [
-      {
+      makePeriod({
         id: "period-1",
         ownerId: "owner-1",
         percentage: 60,
         effectiveFrom: "2026-01-01",
-      },
-      {
+      }),
+      makePeriod({
         id: "period-2",
         ownerId: "owner-2",
         percentage: 50,
         effectiveFrom: "2026-03-01",
-      },
+      }),
     ];
 
     const result = canAddOwnershipPeriod([periods[0]], periods[1]);
@@ -83,19 +113,19 @@ describe("ownership period validation", () => {
     const property: RentalProperty = {
       ...baseProperty,
       ownershipPeriods: [
-        {
+        makePeriod({
           id: "period-1",
           ownerId: "owner-1",
           percentage: 100,
           effectiveFrom: "2025-01-01",
           effectiveTo: "2025-06-30",
-        },
-        {
+        }),
+        makePeriod({
           id: "period-2",
           ownerId: "owner-2",
           percentage: 100,
           effectiveFrom: "2025-07-01",
-        },
+        }),
       ],
     };
 
@@ -140,12 +170,12 @@ describe("property setup readiness", () => {
       ...baseProperty,
       acquisitionDate: "2026-07-01",
       ownershipPeriods: [
-        {
+        makePeriod({
           id: "period-1",
           ownerId: "owner-1",
           percentage: 100,
           effectiveFrom: "2026-07-01",
-        },
+        }),
       ],
     });
 

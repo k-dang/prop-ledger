@@ -2,8 +2,9 @@
 
 import { Home, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useTransition } from "react";
 
-import { usePortfolioStore } from "@/components/property-workspace/portfolio-store";
+import { resetPortfolio } from "@/lib/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -13,25 +14,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  createEmptyPortfolio,
-  type PropertyReadiness,
-} from "@/lib/property-workspace";
+import type { PropertyReadiness } from "@/lib/property-workspace";
 import { cn } from "@/lib/utils";
 
 export function PortfolioPanel({
   properties,
+  hasProperties,
 }: {
   properties: PropertyReadiness[];
+  hasProperties: boolean;
 }) {
-  const { portfolio, replacePortfolio } = usePortfolioStore();
+  const [isResetting, startReset] = useTransition();
 
   function handleReset() {
-    if (!window.confirm("Clear all property setup data from this browser?")) {
+    if (!window.confirm("Clear all property setup data?")) {
       return;
     }
 
-    replacePortfolio(createEmptyPortfolio());
+    startReset(async () => {
+      await resetPortfolio();
+    });
   }
 
   return (
@@ -88,7 +90,7 @@ export function PortfolioPanel({
           type="button"
           variant="outline"
           onClick={handleReset}
-          disabled={portfolio.properties.length === 0}
+          disabled={!hasProperties || isResetting}
           className="mt-2"
         >
           <Trash2 data-icon="inline-start" />

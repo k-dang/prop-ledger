@@ -3,83 +3,72 @@
  *
  * A Tax Year is a record-keeping boundary, not a computation context: this module
  * never derives a UCC chain. It only carries accountant-entered values forward by
- * provenance and flags what is missing. See docs/adr/0001-no-tax-year-close-state-machine.md
- * and CONTEXT.md.
+ * provenance and flags what is missing. The persisted shapes live in the database
+ * schema; this module re-exports them and adds the carryforward logic. See
+ * docs/adr/0001-no-tax-year-close-state-machine.md and CONTEXT.md.
  */
+import type {
+  CcaClassRecord,
+  NewCcaClassRecord,
+  NewPropertyTaxYear,
+  PropertyTaxYearRow,
+} from "@/db/schema";
+
+export type { CapitalAsset, CcaClassRecord } from "@/db/schema";
 
 /**
- * A durable capital asset recorded against a property. Described once and carried
- * across years; CCA is pooled by class. Land cost is tracked but never depreciable.
+ * A Property Tax Year as loaded from the database: the tax-year row plus the
+ * accountant-entered CCA class records it holds. CCA is pooled by class; every
+ * figure on a record is an entered value, not a calculated one.
  */
-export type CapitalAsset = {
-  id: string;
-  description: string;
-  ccaClass: number;
-  placedInServiceDate: string;
-  buildingCost: number;
-  landCost: number;
-  disposition?: CapitalAssetDisposition;
+export type PropertyTaxYear = PropertyTaxYearRow & {
+  cca: CcaClassRecord[];
 };
 
-export type CapitalAssetDisposition = {
-  date: string;
-  proceeds: number;
+/**
+ * An unsaved Property Tax Year (and its CCA records) drafted in memory during
+ * carryforward, before the database assigns identity. Optional CCA columns are
+ * left off until an accountant enters them.
+ */
+export type CcaClassRecordDraft = Omit<NewCcaClassRecord, "propertyTaxYearId">;
+export type PropertyTaxYearDraft = Omit<NewPropertyTaxYear, "id"> & {
+  cca: CcaClassRecordDraft[];
 };
 
 /**
  * Provenance of a per-class opening UCC. The app never computes a UCC chain; an
  * opening value is either inherited from the prior year's confirmed closing, entered
- * during onboarding of an existing property, or flagged as accountant-needed.
+ * during onboarding of an existing property, or flagged as accountant-needed. The
+ * value is stored flat on a CCA class record as `openingUccProvenance` plus a
+ * nullable `openingUccAmount`.
  */
-export type OpeningUcc =
-  | { provenance: "inherited"; amount: number }
-  | { provenance: "entered"; amount: number }
-  | { provenance: "unknown" };
+export type OpeningUccProvenance = "inherited" | "entered" | "unknown";
 
-/**
- * Accountant-entered CCA values for one CRA class within a Property Tax Year. Every
- * figure here is a recorded value, not a calculated one.
- */
-export type CcaClassRecord = {
-  ccaClass: number;
-  openingUcc: OpeningUcc;
-  additions?: number;
-  dispositions?: number;
-  ccaClaimed?: number;
-  closingUcc?: number;
+type OpeningUcc = {
+  openingUccProvenance: OpeningUccProvenance;
+  openingUccAmount: number | null;
 };
 
-/**
- * The per-(Property, Tax Year) record: the home for accountant-entered CCA values.
- * It carries no close or lock state and is lazily materialized — it exists only once
- * it has CCA values to hold.
- */
-export type PropertyTaxYear = {
-  propertyId: string;
-  year: number;
-  cca: CcaClassRecord[];
-};
-
-/** Lazily materialize an empty Property Tax Year. */
+/** Lazily materialize an empty (unsaved) Property Tax Year. */
 export function createPropertyTaxYear(
   propertyId: string,
   year: number,
-): PropertyTaxYear {
+): PropertyTaxYearDraft {
   return { propertyId, year, cca: [] };
 }
 
 /** Derive a class opening UCC from the prior year's confirmed closing value. */
 export function inheritOpeningUcc(
-  priorClosingUcc: number | undefined,
+  priorClosingUcc: number | null | undefined,
 ): OpeningUcc {
-  return priorClosingUcc === undefined
-    ? { provenance: "unknown" }
-    : { provenance: "inherited", amount: priorClosingUcc };
+  return priorClosingUcc == null
+    ? { openingUccProvenance: "unknown", openingUccAmount: null }
+    : { openingUccProvenance: "inherited", openingUccAmount: priorClosingUcc };
 }
 
 /** An opening UCC entered manually while onboarding an existing property. */
 export function enterOpeningUcc(amount: number): OpeningUcc {
-  return { provenance: "entered", amount };
+  return { openingUccProvenance: "entered", openingUccAmount: amount };
 }
 
 /**
@@ -88,15 +77,15 @@ export function enterOpeningUcc(amount: number): OpeningUcc {
  * accountant inputs reset. No values are computed.
  */
 export function seedNextPropertyTaxYear(
-  prior: PropertyTaxYear,
+  prior: PropertyTaxYear | PropertyTaxYearDraft,
   year: number,
-): PropertyTaxYear {
+): PropertyTaxYearDraft {
   return {
     propertyId: prior.propertyId,
     year,
     cca: prior.cca.map((record) => ({
       ccaClass: record.ccaClass,
-      openingUcc: inheritOpeningUcc(record.closingUcc),
+      ...inheritOpeningUcc(record.closingUcc),
     })),
   };
 }
@@ -108,9 +97,9 @@ export function seedNextPropertyTaxYear(
  */
 export function reflagInheritedOpening(
   opening: OpeningUcc,
-  priorClosingUcc: number | undefined,
+  priorClosingUcc: number | null | undefined,
 ): OpeningUcc {
-  return opening.provenance === "inherited"
+  return opening.openingUccProvenance === "inherited"
     ? inheritOpeningUcc(priorClosingUcc)
     : opening;
 }

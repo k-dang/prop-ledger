@@ -46,20 +46,18 @@ const propertyFormSchema = z.object({
 export function PropertyForm({
   onSubmit,
 }: {
-  onSubmit: (input: NewPropertyInput) => boolean;
+  onSubmit: (input: NewPropertyInput) => boolean | Promise<boolean>;
 }) {
   const [flags, setFlags] = useState<PropertyFlagState>(DEFAULT_FLAGS);
 
-  const handleSubmit = createFormSubmit(propertyFormSchema, (data) => {
-    const isSaved = onSubmit({
+  const handleSubmit = createFormSubmit(propertyFormSchema, async (data) => {
+    const isSaved = await onSubmit({
       name: data.propertyName,
-      address: {
-        line1: data.addressLine1,
-        line2: data.addressLine2,
-        municipality: data.municipality,
-        province: data.province ?? DEFAULT_PROVINCE,
-        postalCode: data.postalCode,
-      },
+      line1: data.addressLine1,
+      line2: data.addressLine2,
+      municipality: data.municipality,
+      province: data.province ?? DEFAULT_PROVINCE,
+      postalCode: data.postalCode,
       acquisitionDate: data.acquisitionDate,
       hasPersonalUse: flags.hasPersonalUse,
     });

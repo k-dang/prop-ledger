@@ -1,48 +1,47 @@
 "use client";
 
+import { useState } from "react";
+
+import { createProperty } from "@/lib/actions";
 import { PersistenceErrorAlert } from "@/components/property-workspace/persistence-error-alert";
 import { PortfolioPanel } from "@/components/property-workspace/portfolio-panel";
-import { usePortfolioStore } from "@/components/property-workspace/portfolio-store";
 import { PropertyForm } from "@/components/property-workspace/property-form";
 import type { NewPropertyInput } from "@/components/property-workspace/workspace-types";
-import {
-  createClientId,
-  getPropertyReadiness,
-  type RentalProperty,
-} from "@/lib/property-workspace";
+import type { PropertyReadiness } from "@/lib/property-workspace";
 
-export function Dashboard() {
-  const { portfolio, persistenceError, updatePortfolio } = usePortfolioStore();
-  const propertyReadiness = portfolio.properties.map((property) =>
-    getPropertyReadiness(property),
-  );
+const SAVE_ERROR_MESSAGE =
+  "Unable to save the property. Please try again in a moment.";
 
-  function handleCreateProperty(input: NewPropertyInput) {
-    const property: RentalProperty = {
-      id: createClientId("property"),
-      ...input,
-      units: [],
-      owners: [],
-      ownershipPeriods: [],
-      capitalAssets: [],
-      taxYears: [],
-    };
+export function Dashboard({
+  readiness,
+  hasProperties,
+}: {
+  readiness: PropertyReadiness[];
+  hasProperties: boolean;
+}) {
+  const [saveError, setSaveError] = useState<string>();
 
-    return updatePortfolio((currentPortfolio) => ({
-      properties: [...currentPortfolio.properties, property],
-    }));
+  async function handleCreateProperty(input: NewPropertyInput) {
+    try {
+      const saved = await createProperty(input);
+      setSaveError(saved ? undefined : SAVE_ERROR_MESSAGE);
+      return saved;
+    } catch {
+      setSaveError(SAVE_ERROR_MESSAGE);
+      return false;
+    }
   }
 
   return (
     <>
-      <PersistenceErrorAlert error={persistenceError} />
+      <PersistenceErrorAlert error={saveError} />
 
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="flex flex-col gap-4">
           <PropertyForm onSubmit={handleCreateProperty} />
         </aside>
 
-        <PortfolioPanel properties={propertyReadiness} />
+        <PortfolioPanel properties={readiness} hasProperties={hasProperties} />
       </div>
     </>
   );

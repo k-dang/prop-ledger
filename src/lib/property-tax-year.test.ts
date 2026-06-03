@@ -4,7 +4,7 @@ import {
   createPropertyTaxYear,
   enterOpeningUcc,
   inheritOpeningUcc,
-  type PropertyTaxYear,
+  type PropertyTaxYearDraft,
   reflagInheritedOpening,
   seedNextPropertyTaxYear,
 } from "./property-tax-year";
@@ -20,26 +20,34 @@ describe("property tax year carryforward", () => {
 
   it("inherits a confirmed prior closing as the next opening", () => {
     expect(inheritOpeningUcc(12000)).toEqual({
-      provenance: "inherited",
-      amount: 12000,
+      openingUccProvenance: "inherited",
+      openingUccAmount: 12000,
     });
   });
 
   it("flags an opening unknown when the prior closing is absent", () => {
-    expect(inheritOpeningUcc(undefined)).toEqual({ provenance: "unknown" });
+    expect(inheritOpeningUcc(undefined)).toEqual({
+      openingUccProvenance: "unknown",
+      openingUccAmount: null,
+    });
   });
 
   it("seeds the next year, inheriting confirmed closings and flagging the rest", () => {
-    const prior: PropertyTaxYear = {
+    const prior: PropertyTaxYearDraft = {
       propertyId: "property-1",
       year: 2026,
       cca: [
         {
           ccaClass: 1,
-          openingUcc: { provenance: "entered", amount: 200000 },
+          openingUccProvenance: "entered",
+          openingUccAmount: 200000,
           closingUcc: 196000,
         },
-        { ccaClass: 8, openingUcc: { provenance: "unknown" } },
+        {
+          ccaClass: 8,
+          openingUccProvenance: "unknown",
+          openingUccAmount: null,
+        },
       ],
     };
 
@@ -49,9 +57,14 @@ describe("property tax year carryforward", () => {
       cca: [
         {
           ccaClass: 1,
-          openingUcc: { provenance: "inherited", amount: 196000 },
+          openingUccProvenance: "inherited",
+          openingUccAmount: 196000,
         },
-        { ccaClass: 8, openingUcc: { provenance: "unknown" } },
+        {
+          ccaClass: 8,
+          openingUccProvenance: "unknown",
+          openingUccAmount: null,
+        },
       ],
     });
   });
@@ -60,11 +73,12 @@ describe("property tax year carryforward", () => {
     const inherited = inheritOpeningUcc(196000);
 
     expect(reflagInheritedOpening(inherited, 190000)).toEqual({
-      provenance: "inherited",
-      amount: 190000,
+      openingUccProvenance: "inherited",
+      openingUccAmount: 190000,
     });
     expect(reflagInheritedOpening(inherited, undefined)).toEqual({
-      provenance: "unknown",
+      openingUccProvenance: "unknown",
+      openingUccAmount: null,
     });
   });
 
