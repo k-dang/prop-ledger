@@ -13,10 +13,6 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
-import type {
-  NewPropertyInput,
-  PropertyFlagState,
-} from "@/components/property-workspace/workspace-types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +24,10 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import type {
+  NewPropertyInput,
+  PropertyFlagState,
+} from "@/lib/property-workspace";
 
 const DEFAULT_FLAGS: PropertyFlagState = {
   hasPersonalUse: false,

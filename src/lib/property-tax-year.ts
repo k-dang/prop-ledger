@@ -14,7 +14,11 @@ import type {
   PropertyTaxYearRow,
 } from "@/db/schema";
 
-export type { CapitalAsset, CcaClassRecord } from "@/db/schema";
+export type {
+  CapitalAsset,
+  CcaClassRecord,
+  OpeningUccProvenance,
+} from "@/db/schema";
 
 /**
  * A Property Tax Year as loaded from the database: the tax-year row plus the
@@ -36,18 +40,14 @@ export type PropertyTaxYearDraft = Omit<NewPropertyTaxYear, "id"> & {
 };
 
 /**
- * Provenance of a per-class opening UCC. The app never computes a UCC chain; an
- * opening value is either inherited from the prior year's confirmed closing, entered
- * during onboarding of an existing property, or flagged as accountant-needed. The
- * value is stored flat on a CCA class record as `openingUccProvenance` plus a
- * nullable `openingUccAmount`.
+ * The two opening-UCC fields a CCA class record carries, named as a unit so the
+ * carryforward helpers can pass them around together. See `OpeningUccProvenance`
+ * in the schema for what each provenance means.
  */
-export type OpeningUccProvenance = "inherited" | "entered" | "unknown";
-
-type OpeningUcc = {
-  openingUccProvenance: OpeningUccProvenance;
-  openingUccAmount: number | null;
-};
+type OpeningUcc = Pick<
+  CcaClassRecord,
+  "openingUccProvenance" | "openingUccAmount"
+>;
 
 /** Lazily materialize an empty (unsaved) Property Tax Year. */
 export function createPropertyTaxYear(

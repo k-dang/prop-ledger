@@ -20,11 +20,6 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
-import type {
-  NewOwnerInput,
-  NewOwnershipPeriodInput,
-  NewUnitInput,
-} from "@/components/property-workspace/workspace-types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +51,9 @@ import {
 } from "@/components/ui/table";
 import {
   getOwnershipHistory,
+  type NewOwnerInput,
+  type NewOwnershipPeriodInput,
+  type NewUnitInput,
   type PropertyReadiness,
   type RentalProperty,
 } from "@/lib/property-workspace";
@@ -96,6 +94,8 @@ const ownershipPeriodFormSchema = z.object({
 export function PropertyWorkspaceDetail({
   property,
   readiness,
+  unitError,
+  ownerError,
   ownershipError,
   onAddUnit,
   onAddOwner,
@@ -103,6 +103,8 @@ export function PropertyWorkspaceDetail({
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
+  unitError?: string;
+  ownerError?: string;
   ownershipError?: string;
   onAddUnit: (input: NewUnitInput) => boolean | Promise<boolean>;
   onAddOwner: (input: NewOwnerInput) => boolean | Promise<boolean>;
@@ -118,8 +120,16 @@ export function PropertyWorkspaceDetail({
         <PropertyFacts property={property} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
-        <UnitsPanel property={property} onSubmit={onAddUnit} />
-        <OwnersPanel property={property} onSubmit={onAddOwner} />
+        <UnitsPanel
+          property={property}
+          error={unitError}
+          onSubmit={onAddUnit}
+        />
+        <OwnersPanel
+          property={property}
+          error={ownerError}
+          onSubmit={onAddOwner}
+        />
       </div>
       <OwnershipPanel
         property={property}
@@ -296,9 +306,11 @@ function PropertyFacts({ property }: { property: RentalProperty }) {
 
 function UnitsPanel({
   property,
+  error,
   onSubmit,
 }: {
   property: RentalProperty;
+  error?: string;
   onSubmit: (input: NewUnitInput) => boolean | Promise<boolean>;
 }) {
   const handleSubmit = createFormSubmit(unitFormSchema, onSubmit);
@@ -334,6 +346,7 @@ function UnitsPanel({
             </Button>
           </div>
         </form>
+        <FormError message={error} />
         {property.units.length === 0 ? (
           <EmptyState icon={Home}>No units recorded.</EmptyState>
         ) : (
@@ -361,9 +374,11 @@ function UnitsPanel({
 
 function OwnersPanel({
   property,
+  error,
   onSubmit,
 }: {
   property: RentalProperty;
+  error?: string;
   onSubmit: (input: NewOwnerInput) => boolean | Promise<boolean>;
 }) {
   const handleSubmit = createFormSubmit(ownerFormSchema, onSubmit);
@@ -394,6 +409,7 @@ function OwnersPanel({
             </Button>
           </div>
         </form>
+        <FormError message={error} />
         {property.owners.length === 0 ? (
           <EmptyState icon={Users}>No owners recorded.</EmptyState>
         ) : (
@@ -497,15 +513,7 @@ function OwnershipPanel({
             </Button>
           </div>
         </form>
-        {error ? (
-          <Alert variant="destructive">
-            <AlertTriangle
-              className="mt-0.5 size-4 shrink-0"
-              aria-hidden="true"
-            />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
+        <FormError message={error} />
         {history.length === 0 ? (
           <EmptyState icon={Users}>No ownership periods recorded.</EmptyState>
         ) : (
@@ -530,6 +538,19 @@ function OwnershipPanel({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function FormError({ message }: { message?: string }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <Alert variant="destructive">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
   );
 }
 

@@ -92,15 +92,17 @@ export const propertyTaxYears = pgTable("property_tax_years", {
   year: integer("year").notNull(),
 });
 
+export type OpeningUccProvenance = "inherited" | "entered" | "unknown";
+
 export const ccaClassRecords = pgTable("cca_class_records", {
   id: uuid("id").primaryKey().defaultRandom(),
   propertyTaxYearId: uuid("property_tax_year_id")
     .notNull()
     .references(() => propertyTaxYears.id, { onDelete: "cascade" }),
   ccaClass: integer("cca_class").notNull(),
-  // Discriminated union OpeningUcc: provenance is one of
-  // "inherited" | "entered" | "unknown"; amount is null when "unknown".
-  openingUccProvenance: text("opening_ucc_provenance").notNull(),
+  openingUccProvenance: text("opening_ucc_provenance")
+    .$type<OpeningUccProvenance>()
+    .notNull(),
   openingUccAmount: doublePrecision("opening_ucc_amount"),
   additions: doublePrecision("additions"),
   dispositions: doublePrecision("dispositions"),

@@ -2,88 +2,111 @@
 
 import { eq } from "drizzle-orm";
 import { refresh } from "next/cache";
-import type {
-  NewOwnerInput,
-  NewOwnershipPeriodInput,
-  NewPropertyInput,
-  NewUnitInput,
-} from "@/components/property-workspace/workspace-types";
+
 import { db } from "@/db/index";
 import { owners, ownershipPeriods, properties, units } from "@/db/schema";
 import {
   canAddOwnershipPeriod,
   formatPercent,
+  type NewOwnerInput,
+  type NewOwnershipPeriodInput,
+  type NewPropertyInput,
+  type NewUnitInput,
   type OwnershipValidationIssue,
 } from "@/lib/property-workspace";
 
 export type ActionResult = { ok: boolean; error?: string };
 
+const SAVE_FAILED_MESSAGE =
+  "Something went wrong saving your changes. Please try again.";
+
+/**
+ * Runs a mutation that reports its own outcome. Infrastructure failures are
+ * caught and returned as data — never thrown across the action boundary — and the
+ * current route re-renders only when the mutation actually changed something.
+ */
+async function runAction(
+  mutate: () => Promise<ActionResult>,
+): Promise<ActionResult> {
+  try {
+    const result = await mutate();
+
+    if (result.ok) {
+      refresh();
+    }
+
+    return result;
+  } catch {
+    return { ok: false, error: SAVE_FAILED_MESSAGE };
+  }
+}
+
 export async function createProperty(
   input: NewPropertyInput,
-): Promise<boolean> {
-  // `input` already matches the insert shape, so it writes straight through.
-  await db.insert(properties).values(input);
-
-  // Pages are force-dynamic, so re-rendering the current route is enough to
-  // reflect the write — no path cache to invalidate.
-  refresh();
-  return true;
+): Promise<ActionResult> {
+  return runAction(async () => {
+    // `input` already matches the insert shape, so it writes straight through.
+    await db.insert(properties).values(input);
+    return { ok: true };
+  });
 }
 
 export async function addUnit(
   propertyId: string,
   input: NewUnitInput,
-): Promise<boolean> {
-  await db.insert(units).values({ propertyId, ...input });
-
-  refresh();
-  return true;
+): Promise<ActionResult> {
+  return runAction(async () => {
+    await db.insert(units).values({ propertyId, ...input });
+    return { ok: true };
+  });
 }
 
 export async function addOwner(
   propertyId: string,
   input: NewOwnerInput,
-): Promise<boolean> {
-  await db.insert(owners).values({ propertyId, ...input });
-
-  refresh();
-  return true;
+): Promise<ActionResult> {
+  return runAction(async () => {
+    await db.insert(owners).values({ propertyId, ...input });
+    return { ok: true };
+  });
 }
 
 export async function addOwnershipPeriod(
   propertyId: string,
   input: NewOwnershipPeriodInput,
 ): Promise<ActionResult> {
-  const existing = await db
-    .select()
-    .from(ownershipPeriods)
-    .where(eq(ownershipPeriods.propertyId, propertyId));
+  return runAction(async () => {
+    const existing = await db
+      .select()
+      .from(ownershipPeriods)
+      .where(eq(ownershipPeriods.propertyId, propertyId));
 
-  const nextPeriod = {
-    id: crypto.randomUUID(),
-    propertyId,
-    ownerId: input.ownerId,
-    percentage: input.percentage,
-    effectiveFrom: input.effectiveFrom,
-    effectiveTo: input.effectiveTo ?? null,
-  };
+    const nextPeriod = {
+      id: crypto.randomUUID(),
+      propertyId,
+      ownerId: input.ownerId,
+      percentage: input.percentage,
+      effectiveFrom: input.effectiveFrom,
+      effectiveTo: input.effectiveTo ?? null,
+    };
 
-  const validation = canAddOwnershipPeriod(existing, nextPeriod);
+    const validation = canAddOwnershipPeriod(existing, nextPeriod);
 
-  if (!validation.ok) {
-    return { ok: false, error: formatOwnershipIssue(validation.issues[0]) };
-  }
+    if (!validation.ok) {
+      return { ok: false, error: formatOwnershipIssue(validation.issues[0]) };
+    }
 
-  await db.insert(ownershipPeriods).values(nextPeriod);
-
-  refresh();
-  return { ok: true };
+    await db.insert(ownershipPeriods).values(nextPeriod);
+    return { ok: true };
+  });
 }
 
-export async function resetPortfolio(): Promise<void> {
-  // Cascading foreign keys clear units, owners, ownership periods, etc.
-  await db.delete(properties);
-  refresh();
+export async function resetPortfolio(): Promise<ActionResult> {
+  return runAction(async () => {
+    // Cascading foreign keys clear units, owners, ownership periods, etc.
+    await db.delete(properties);
+    return { ok: true };
+  });
 }
 
 function formatOwnershipIssue(issue: OwnershipValidationIssue | undefined) {

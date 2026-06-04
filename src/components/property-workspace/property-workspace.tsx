@@ -2,16 +2,13 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
-
-import { addOwner, addOwnershipPeriod, addUnit } from "@/lib/actions";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
-import type {
-  NewOwnerInput,
-  NewOwnershipPeriodInput,
-  NewUnitInput,
-} from "@/components/property-workspace/workspace-types";
+import { addOwner, addOwnershipPeriod, addUnit } from "@/lib/actions";
 import {
   getPropertyReadiness,
+  type NewOwnerInput,
+  type NewOwnershipPeriodInput,
+  type NewUnitInput,
   type RentalProperty,
 } from "@/lib/property-workspace";
 
@@ -22,6 +19,8 @@ export function PropertyWorkspace({
   propertyId: string;
   property: RentalProperty | undefined;
 }) {
+  const [unitError, setUnitError] = useState<string>();
+  const [ownerError, setOwnerError] = useState<string>();
   const [ownershipError, setOwnershipError] = useState<string>();
 
   if (property === undefined) {
@@ -30,12 +29,16 @@ export function PropertyWorkspace({
 
   const selectedId = property.id;
 
-  function handleAddUnit(input: NewUnitInput) {
-    return addUnit(selectedId, input);
+  async function handleAddUnit(input: NewUnitInput) {
+    const result = await addUnit(selectedId, input);
+    setUnitError(result.ok ? undefined : result.error);
+    return result.ok;
   }
 
-  function handleAddOwner(input: NewOwnerInput) {
-    return addOwner(selectedId, input);
+  async function handleAddOwner(input: NewOwnerInput) {
+    const result = await addOwner(selectedId, input);
+    setOwnerError(result.ok ? undefined : result.error);
+    return result.ok;
   }
 
   async function handleAddOwnershipPeriod(input: NewOwnershipPeriodInput) {
@@ -49,6 +52,8 @@ export function PropertyWorkspace({
       <PropertyWorkspaceDetail
         property={property}
         readiness={getPropertyReadiness(property)}
+        unitError={unitError}
+        ownerError={ownerError}
         ownershipError={ownershipError}
         onAddUnit={handleAddUnit}
         onAddOwner={handleAddOwner}

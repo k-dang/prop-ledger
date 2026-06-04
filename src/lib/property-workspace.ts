@@ -1,9 +1,35 @@
-import type { Owner, OwnershipPeriod, Property, Unit } from "@/db/schema";
+import type {
+  NewOwner,
+  NewOwnershipPeriod,
+  NewProperty,
+  NewUnit,
+  Owner,
+  OwnershipPeriod,
+  Property,
+  Unit,
+} from "@/db/schema";
 import type { CapitalAsset, PropertyTaxYear } from "./property-tax-year";
 
 export type { OwnershipPeriod };
 export type RentalUnit = Unit;
 export type PropertyOwner = Owner;
+
+/**
+ * Form inputs for the create/add server actions: the insert shapes minus the
+ * columns the database fills in (`id`, `createdAt`) and the `propertyId` the
+ * action supplies from context. Components build these; `src/lib/actions.ts`
+ * writes them straight through.
+ */
+export type NewPropertyInput = Omit<NewProperty, "id" | "createdAt">;
+export type NewUnitInput = Omit<NewUnit, "id" | "propertyId">;
+export type NewOwnerInput = Omit<NewOwner, "id" | "propertyId">;
+export type NewOwnershipPeriodInput = Omit<
+  NewOwnershipPeriod,
+  "id" | "propertyId"
+>;
+
+/** The boolean property flags surfaced in the create-property form. */
+export type PropertyFlagState = Pick<Property, "hasPersonalUse">;
 
 /**
  * A rental property loaded as an aggregate: the property row plus its related
@@ -113,7 +139,7 @@ export function validateOwnershipPeriods(
     }
   }
 
-  return dedupeOwnershipIssues(issues);
+  return issues;
 }
 
 export function getSortedOwnershipPeriods(property: RentalProperty) {
@@ -317,24 +343,4 @@ function roundShareTotal(total: number) {
 
 export function formatPercent(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(2);
-}
-
-function dedupeOwnershipIssues(issues: OwnershipValidationIssue[]) {
-  const seen = new Set<string>();
-
-  return issues.filter((issue) => {
-    const key = [
-      issue.code,
-      issue.date,
-      issue.totalPercentage,
-      ...issue.periodIds.toSorted(),
-    ].join(":");
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
 }
