@@ -13,14 +13,13 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { z } from "zod";
-
+import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
   finiteFormNumber,
   optionalFormString,
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -346,7 +345,7 @@ function UnitsPanel({
             </Button>
           </div>
         </form>
-        <FormError message={error} />
+        <FormErrorAlert message={error} />
         {property.units.length === 0 ? (
           <EmptyState icon={Home}>No units recorded.</EmptyState>
         ) : (
@@ -409,7 +408,7 @@ function OwnersPanel({
             </Button>
           </div>
         </form>
-        <FormError message={error} />
+        <FormErrorAlert message={error} />
         {property.owners.length === 0 ? (
           <EmptyState icon={Users}>No owners recorded.</EmptyState>
         ) : (
@@ -513,7 +512,7 @@ function OwnershipPanel({
             </Button>
           </div>
         </form>
-        <FormError message={error} />
+        <FormErrorAlert message={error} />
         {history.length === 0 ? (
           <EmptyState icon={Users}>No ownership periods recorded.</EmptyState>
         ) : (
@@ -538,19 +537,6 @@ function OwnershipPanel({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function FormError({ message }: { message?: string }) {
-  if (!message) {
-    return null;
-  }
-
-  return (
-    <Alert variant="destructive">
-      <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      <AlertDescription>{message}</AlertDescription>
-    </Alert>
   );
 }
 

@@ -7,6 +7,7 @@ import { db } from "@/db/index";
 import { owners, ownershipPeriods, properties, units } from "@/db/schema";
 import {
   canAddOwnershipPeriod,
+  formatDisplayDate,
   formatPercent,
   type NewOwnerInput,
   type NewOwnershipPeriodInput,
@@ -23,7 +24,7 @@ const SAVE_FAILED_MESSAGE =
 /**
  * Runs a mutation that reports its own outcome. Infrastructure failures are
  * caught and returned as data — never thrown across the action boundary — and the
- * current route re-renders only when the mutation actually changed something.
+ * current route re-renders after any successful mutation.
  */
 async function runAction(
   mutate: () => Promise<ActionResult>,
@@ -36,7 +37,10 @@ async function runAction(
     }
 
     return result;
-  } catch {
+  } catch (error) {
+    // The cause never reaches the client, so log it here or it is lost — a
+    // constraint violation and a dropped connection look identical otherwise.
+    console.error("Property workspace mutation failed", error);
     return { ok: false, error: SAVE_FAILED_MESSAGE };
   }
 }
@@ -114,8 +118,8 @@ function formatOwnershipIssue(issue: OwnershipValidationIssue | undefined) {
     return "Review ownership shares.";
   }
 
-  if (issue.code === "OVER_ALLOCATED") {
-    return `${issue.message} ${formatPercent(issue.totalPercentage ?? 0)}% is active on ${issue.date}.`;
+  if (issue.code === "OVER_ALLOCATED" && issue.date !== undefined) {
+    return `${issue.message} ${formatPercent(issue.totalPercentage ?? 0)}% is active on ${formatDisplayDate(issue.date)}.`;
   }
 
   return issue.message;

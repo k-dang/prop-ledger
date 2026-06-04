@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PersistenceErrorAlert } from "@/components/property-workspace/persistence-error-alert";
+import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import { PortfolioPanel } from "@/components/property-workspace/portfolio-panel";
 import { PropertyForm } from "@/components/property-workspace/property-form";
 import { createProperty } from "@/lib/actions";
@@ -30,7 +30,7 @@ export function Dashboard({
 
   return (
     <>
-      <PersistenceErrorAlert error={saveError} />
+      <FormErrorAlert message={saveError} />
 
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="flex flex-col gap-4">

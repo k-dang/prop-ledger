@@ -70,7 +70,6 @@ export type PropertyReadiness = {
   completedCount: number;
   totalCount: number;
   setupGapCount: number;
-  ownershipIssues: OwnershipValidationIssue[];
   tasks: SetupTask[];
 };
 
@@ -256,7 +255,6 @@ export function getPropertyReadiness(
     completedCount,
     totalCount: tasks.length,
     setupGapCount,
-    ownershipIssues,
     tasks,
   };
 }
@@ -316,7 +314,7 @@ function formatDateRange(start: string, end: string | null) {
   return end === null ? `${start} onward` : `${start} to ${end}`;
 }
 
-function formatDisplayDate(date: string) {
+export function formatDisplayDate(date: string) {
   const [, month, day] = date.split("-");
   const monthName =
     [
