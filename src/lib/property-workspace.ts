@@ -141,7 +141,7 @@ export function validateOwnershipPeriods(
   return issues;
 }
 
-export function getSortedOwnershipPeriods(property: RentalProperty) {
+function getSortedOwnershipPeriods(property: RentalProperty) {
   return property.ownershipPeriods.toSorted((a, b) => {
     if (a.effectiveFrom !== b.effectiveFrom) {
       return a.effectiveFrom.localeCompare(b.effectiveFrom);

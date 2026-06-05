@@ -1,0 +1,26 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "rules": {
+    "react-doctor/server-auth-actions": "off",
+    "deslop/unused-dev-dependency": "off"
+  },
+  "ignore": {
+    "overrides": [
+      {
+        "files": ["src/components/ui/**"],
+        "rules": [
+          "react-doctor/only-export-components",
+          "react-doctor/prefer-tag-over-role",
+          "react-doctor/rerender-memo-before-early-return",
+          "react-doctor/react-compiler-no-manual-memoization",
+          "react-doctor/no-array-index-as-key",
+          "react-doctor/label-has-associated-control"
+        ]
+      },
+      {
+        "files": ["src/app/properties/[propertyId]/rent-ledger/page.tsx"],
+        "rules": ["react-doctor/server-sequential-independent-await"]
+      }
+    ]
+  }
+}

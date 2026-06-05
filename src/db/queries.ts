@@ -1,8 +1,8 @@
 import "server-only";
 
 import { eq } from "drizzle-orm";
-
 import type { Portfolio, RentalProperty } from "@/lib/property-workspace";
+import type { RentLedger } from "@/lib/rent-ledger";
 
 import { db } from "./index";
 import { properties } from "./schema";
@@ -34,4 +34,38 @@ export async function getProperty(
     where: eq(properties.id, id),
     with: withProperty,
   });
+}
+
+/**
+ * Load the rent ledger for one property as the `RentLedger` aggregate. Leases
+ * hang off units in the schema, so they are hydrated through `units` and then
+ * flattened — the ledger reasons about a property's leases as one list. Rent
+ * events and documents (with their links) come back as their inferred row types,
+ * so no mapping layer is needed.
+ */
+export async function getPropertyRentLedger(
+  propertyId: string,
+): Promise<RentLedger | undefined> {
+  const row = await db.query.properties.findFirst({
+    where: eq(properties.id, propertyId),
+    with: {
+      units: { with: { leases: true } },
+      rentEvents: true,
+      documents: { with: { links: true } },
+    },
+  });
+
+  if (row === undefined) {
+    return undefined;
+  }
+
+  const { units, rentEvents, documents, ...property } = row;
+
+  return {
+    property,
+    units,
+    leases: units.flatMap((unit) => unit.leases),
+    rentEvents,
+    documents,
+  };
 }

@@ -37,14 +37,14 @@ Create the first usable property accounting workspace. A co-owner can set up a p
 
 ### Acceptance criteria
 
-- [ ] A user can create a property with municipal address, acquisition date, and personal-use indicator.
-- [ ] A user can add one or more units under a property.
-- [ ] A user can add owners to a property and create effective-dated ownership periods.
-- [ ] Ownership periods reject active allocations above 100 percent.
-- [ ] Ownership history is visible by property and tax year.
-- [ ] Dashboard empty states guide the user toward property, unit, owner, and lease setup without using unnecessary tax jargon.
-- [ ] Dashboard shows year-end readiness at a property level, even if most counts are initially setup-oriented.
-- [ ] Tests cover valid ownership, invalid over-allocation, ownership changes by tax year, and property setup empty states.
+- [x] A user can create a property with municipal address, acquisition date, and personal-use indicator.
+- [x] A user can add one or more units under a property.
+- [x] A user can add owners to a property and create effective-dated ownership periods.
+- [x] Ownership periods reject active allocations above 100 percent.
+- [x] Ownership history is visible by property as an effective-dated record. (A dedicated tax-year ownership view was dropped: the effective-dated history already makes ownership for any year readable, and the portfolio-wide tax-year surface lands in later phases.)
+- [x] Dashboard empty states guide the user toward property, unit, owner, and lease setup without using unnecessary tax jargon.
+- [x] Dashboard shows year-end readiness at a property level, even if most counts are initially setup-oriented.
+- [x] Tests cover valid ownership, invalid over-allocation, ownership changes by tax year, and property setup empty states.
 
 ---
 
@@ -58,14 +58,14 @@ Add a complete rent-ledger path for one property. A co-owner can create leases f
 
 ### Acceptance criteria
 
-- [ ] A user can create a lease with unit, tenant reference, start date, optional end date, rent amount, and frequency.
-- [ ] Rent charges are generated or entered separately from payments.
-- [ ] Payments can be recorded against rent charges without erasing the original accrual record.
-- [ ] Credits, write-offs, and other rental income are visible in the rent ledger.
-- [ ] Arrears are shown by tenant and unit.
-- [ ] Lease documents can be linked to the lease and surfaced from the rent ledger.
-- [ ] A rent ledger summary can be generated for a property and tax year.
-- [ ] Tests cover rent schedules, partial periods, payments, arrears, credits, write-offs, other rental income, and lease document links.
+- [x] A user can create a lease with unit, tenant reference, start date, optional end date, rent amount, and frequency.
+- [x] Rent charges are generated or entered separately from payments. (`generateLeaseCharges` materializes the accrual schedule as `charge` events; manual `charge` entry is also available, both independent of `payment` events.)
+- [x] Payments can be recorded against rent charges without erasing the original accrual record. (Payments are separate `rent_events` rows; charges are never mutated.)
+- [x] Credits, write-offs, and other rental income are visible in the rent ledger.
+- [x] Arrears are shown by tenant and unit. (Cumulative balance per lease, surfaced in the Arrears panel and per-lease badges.)
+- [x] Lease documents can be linked to the lease and surfaced from the rent ledger. (Document + polymorphic DocumentLink; real file upload is deferred to Phase 3, so Phase 2 records document metadata + an optional link.)
+- [x] A rent ledger summary can be generated for a property and tax year. (Year-scoped gross rent, other income, payments, credits, write-offs, and arrears at year end.)
+- [x] Tests cover rent schedules, partial periods, payments, arrears, credits, write-offs, other rental income, and lease document links.
 
 ---
 

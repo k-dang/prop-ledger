@@ -84,6 +84,53 @@ export const capitalAssets = pgTable("capital_assets", {
   dispositionProceeds: doublePrecision("disposition_proceeds"),
 });
 
+export const RENT_FREQUENCIES = ["monthly", "biweekly", "weekly"] as const;
+export type RentFrequency = (typeof RENT_FREQUENCIES)[number];
+
+export const leases = pgTable("leases", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  unitId: uuid("unit_id")
+    .notNull()
+    .references(() => units.id, { onDelete: "cascade" }),
+  tenantName: text("tenant_name").notNull(),
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  endDate: date("end_date", { mode: "string" }),
+  rentAmount: doublePrecision("rent_amount").notNull(),
+  rentFrequency: text("rent_frequency").$type<RentFrequency>().notNull(),
+});
+
+/**
+ * Every entry in the rent ledger. `charge` accrues earned rent; `payment`,
+ * `credit`, and `writeoff` reduce a tenant's outstanding balance; `other_income`
+ * is rental income (laundry, parking, fees) that does not affect arrears. Charges
+ * and payments are deliberately separate rows so accrual income is never confused
+ * with cash received. `leaseId` is null only for property-level other income.
+ */
+export const RENT_EVENT_TYPES = [
+  "charge",
+  "payment",
+  "credit",
+  "writeoff",
+  "other_income",
+] as const;
+export type RentEventType = (typeof RENT_EVENT_TYPES)[number];
+
+export const rentEvents = pgTable("rent_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  propertyId: uuid("property_id")
+    .notNull()
+    .references(() => properties.id, { onDelete: "cascade" }),
+  leaseId: uuid("lease_id").references(() => leases.id, {
+    onDelete: "cascade",
+  }),
+  type: text("type").$type<RentEventType>().notNull(),
+  date: date("date", { mode: "string" }).notNull(),
+  amount: doublePrecision("amount").notNull(),
+  periodStart: date("period_start", { mode: "string" }),
+  periodEnd: date("period_end", { mode: "string" }),
+  memo: text("memo"),
+});
+
 export const propertyTaxYears = pgTable("property_tax_years", {
   id: uuid("id").primaryKey().defaultRandom(),
   propertyId: uuid("property_id")
@@ -110,18 +157,99 @@ export const ccaClassRecords = pgTable("cca_class_records", {
   closingUcc: doublePrecision("closing_ucc"),
 });
 
+/**
+ * Reusable evidence records. A document is uploaded once and linked to the
+ * records it supports through `documentLinks`, so the same lease agreement or
+ * receipt can back several ledger rows. Phase 2 only links leases; later phases
+ * add richer metadata and more link targets. Real file upload lands in Phase 3 —
+ * for now `storageUrl` holds an optional pointer to where the file lives.
+ */
+export const documents = pgTable("documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  propertyId: uuid("property_id")
+    .notNull()
+    .references(() => properties.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  documentType: text("document_type").notNull(),
+  storageUrl: text("storage_url"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
+ * The link side of the document evidence model. `targetType`/`targetId` is a
+ * polymorphic reference (no DB-level FK) so one table covers every kind of record
+ * a document can support; application code enforces the target exists.
+ */
+export const DOCUMENT_LINK_TARGETS = [
+  "lease",
+  "transaction",
+  "rent_event",
+  "loan",
+  "capital_asset",
+  "year_end_package",
+] as const;
+export type DocumentLinkTarget = (typeof DOCUMENT_LINK_TARGETS)[number];
+
+export const documentLinks = pgTable("document_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  targetType: text("target_type").$type<DocumentLinkTarget>().notNull(),
+  targetId: uuid("target_id").notNull(),
+});
+
 export const propertiesRelations = relations(properties, ({ many }) => ({
   units: many(units),
   owners: many(owners),
   ownershipPeriods: many(ownershipPeriods),
   capitalAssets: many(capitalAssets),
   taxYears: many(propertyTaxYears),
+  rentEvents: many(rentEvents),
+  documents: many(documents),
 }));
 
-export const unitsRelations = relations(units, ({ one }) => ({
+export const unitsRelations = relations(units, ({ one, many }) => ({
   property: one(properties, {
     fields: [units.propertyId],
     references: [properties.id],
+  }),
+  leases: many(leases),
+}));
+
+export const leasesRelations = relations(leases, ({ one, many }) => ({
+  unit: one(units, {
+    fields: [leases.unitId],
+    references: [units.id],
+  }),
+  rentEvents: many(rentEvents),
+}));
+
+export const rentEventsRelations = relations(rentEvents, ({ one }) => ({
+  property: one(properties, {
+    fields: [rentEvents.propertyId],
+    references: [properties.id],
+  }),
+  lease: one(leases, {
+    fields: [rentEvents.leaseId],
+    references: [leases.id],
+  }),
+}));
+
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+  property: one(properties, {
+    fields: [documents.propertyId],
+    references: [properties.id],
+  }),
+  links: many(documentLinks),
+}));
+
+export const documentLinksRelations = relations(documentLinks, ({ one }) => ({
+  document: one(documents, {
+    fields: [documentLinks.documentId],
+    references: [documents.id],
   }),
 }));
 
@@ -187,6 +315,10 @@ export type OwnershipPeriod = typeof ownershipPeriods.$inferSelect;
 export type CapitalAsset = typeof capitalAssets.$inferSelect;
 export type PropertyTaxYearRow = typeof propertyTaxYears.$inferSelect;
 export type CcaClassRecord = typeof ccaClassRecords.$inferSelect;
+export type Lease = typeof leases.$inferSelect;
+export type RentEvent = typeof rentEvents.$inferSelect;
+export type Document = typeof documents.$inferSelect;
+export type DocumentLink = typeof documentLinks.$inferSelect;
 
 export type NewProperty = typeof properties.$inferInsert;
 export type NewUnit = typeof units.$inferInsert;
@@ -194,3 +326,7 @@ export type NewOwner = typeof owners.$inferInsert;
 export type NewOwnershipPeriod = typeof ownershipPeriods.$inferInsert;
 export type NewCcaClassRecord = typeof ccaClassRecords.$inferInsert;
 export type NewPropertyTaxYear = typeof propertyTaxYears.$inferInsert;
+export type NewLease = typeof leases.$inferInsert;
+export type NewRentEvent = typeof rentEvents.$inferInsert;
+export type NewDocument = typeof documents.$inferInsert;
+export type NewDocumentLink = typeof documentLinks.$inferInsert;

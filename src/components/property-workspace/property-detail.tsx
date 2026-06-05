@@ -9,8 +9,10 @@ import {
   type LucideIcon,
   MapPin,
   Plus,
+  Receipt,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -21,7 +23,7 @@ import {
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -172,6 +174,13 @@ function PropertySummary({
           >
             {readiness.setupGapCount} setup gaps
           </Badge>
+          <Link
+            href={`/properties/${property.id}/rent-ledger`}
+            className={cn(buttonVariants({ variant: "outline" }), "rounded-md")}
+          >
+            <Receipt data-icon="inline-start" />
+            Rent ledger
+          </Link>
         </CardAction>
       </CardHeader>
       <CardContent>
