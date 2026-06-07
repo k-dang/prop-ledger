@@ -15,6 +15,20 @@
       "when": 1780634444188,
       "tag": "0001_chief_master_mold",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780698777263,
+      "tag": "0002_petite_joshua_kane",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780808265740,
+      "tag": "0003_split_ledger_categories",
+      "breakpoints": true
     }
   ]
 }

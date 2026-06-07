@@ -238,6 +238,9 @@ describe("lease document links", () => {
       fileName: "lease-agreement.pdf",
       documentType: "lease",
       storageUrl: null,
+      vendor: null,
+      documentDate: null,
+      amount: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       links: [
         {
@@ -254,6 +257,9 @@ describe("lease document links", () => {
       fileName: "receipt.pdf",
       documentType: "receipt",
       storageUrl: null,
+      vendor: null,
+      documentDate: null,
+      amount: null,
       createdAt: new Date("2026-02-01T00:00:00.000Z"),
       links: [
         {

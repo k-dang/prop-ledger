@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { z } from "zod";
+import { EvidenceBinderPanel } from "@/components/evidence-binder/evidence-workspace";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
   finiteFormNumber,
@@ -34,13 +35,6 @@ import {
 } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -50,10 +44,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
   getOwnershipHistory,
-  type NewOwnerInput,
-  type NewOwnershipPeriodInput,
+  type NewOwnerWithOwnershipInput,
   type NewUnitInput,
   type PropertyReadiness,
   type RentalProperty,
@@ -76,42 +70,49 @@ const ownerFormSchema = z
   .object({
     ownerName: requiredFormString,
     ownerEmail: optionalFormString,
+    percentage: finiteFormNumber,
+    effectiveFrom: requiredFormString,
+    effectiveTo: optionalFormString,
   })
   .transform(
-    (data): NewOwnerInput => ({
+    (data): NewOwnerWithOwnershipInput => ({
       name: data.ownerName,
       email: data.ownerEmail,
+      percentage: data.percentage,
+      effectiveFrom: data.effectiveFrom,
+      effectiveTo: data.effectiveTo,
     }),
   );
-
-// Keys already match NewOwnershipPeriodInput, so no transform is needed.
-const ownershipPeriodFormSchema = z.object({
-  ownerId: requiredFormString,
-  percentage: finiteFormNumber,
-  effectiveFrom: requiredFormString,
-  effectiveTo: optionalFormString,
-});
 
 export function PropertyWorkspaceDetail({
   property,
   readiness,
   unitError,
   ownerError,
-  ownershipError,
+  transactionError,
+  documentError,
   onAddUnit,
   onAddOwner,
-  onAddOwnershipPeriod,
+  onCreateManualTransaction,
+  onUploadTransactionEvidence,
+  onDeleteEvidenceDocument,
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
   unitError?: string;
   ownerError?: string;
-  ownershipError?: string;
+  transactionError?: string;
+  documentError?: string;
   onAddUnit: (input: NewUnitInput) => boolean | Promise<boolean>;
-  onAddOwner: (input: NewOwnerInput) => boolean | Promise<boolean>;
-  onAddOwnershipPeriod: (
-    input: NewOwnershipPeriodInput,
+  onAddOwner: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
+  onCreateManualTransaction: (
+    input: NewManualTransactionInput,
   ) => boolean | Promise<boolean>;
+  onUploadTransactionEvidence: (
+    transactionId: string,
+    formData: FormData,
+  ) => boolean | Promise<boolean>;
+  onDeleteEvidenceDocument: (documentId: string) => boolean | Promise<boolean>;
 }) {
   return (
     <>
@@ -132,10 +133,14 @@ export function PropertyWorkspaceDetail({
           onSubmit={onAddOwner}
         />
       </div>
-      <OwnershipPanel
+      <OwnershipPanel property={property} />
+      <EvidenceBinderPanel
         property={property}
-        error={ownershipError}
-        onSubmit={onAddOwnershipPeriod}
+        transactionError={transactionError}
+        documentError={documentError}
+        onCreateManualTransaction={onCreateManualTransaction}
+        onUploadTransactionEvidence={onUploadTransactionEvidence}
+        onDeleteEvidenceDocument={onDeleteEvidenceDocument}
       />
     </>
   );
@@ -387,7 +392,7 @@ function OwnersPanel({
 }: {
   property: RentalProperty;
   error?: string;
-  onSubmit: (input: NewOwnerInput) => boolean | Promise<boolean>;
+  onSubmit: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
 }) {
   const handleSubmit = createFormSubmit(ownerFormSchema, onSubmit);
 
@@ -399,7 +404,7 @@ function OwnersPanel({
       </CardHeader>
       <CardContent className="grid gap-4">
         <form
-          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+          className="grid gap-3 lg:grid-cols-[1fr_1fr_0.7fr_0.9fr_0.9fr_auto]"
           onSubmit={handleSubmit}
         >
           <Field>
@@ -409,6 +414,32 @@ function OwnersPanel({
           <Field>
             <FieldLabel htmlFor="ownerEmail">Email</FieldLabel>
             <Input id="ownerEmail" name="ownerEmail" type="email" />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="ownerPercentage">Share %</FieldLabel>
+            <Input
+              id="ownerPercentage"
+              name="percentage"
+              type="number"
+              min="0.01"
+              max="100"
+              step="0.01"
+              required
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="ownerEffectiveFrom">Effective from</FieldLabel>
+            <Input
+              id="ownerEffectiveFrom"
+              name="effectiveFrom"
+              type="date"
+              defaultValue={property.acquisitionDate}
+              required
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="ownerEffectiveTo">Effective to</FieldLabel>
+            <Input id="ownerEffectiveTo" name="effectiveTo" type="date" />
           </Field>
           <div className="flex items-end">
             <Button type="submit" className="w-full sm:w-auto">
@@ -445,19 +476,8 @@ function OwnersPanel({
   );
 }
 
-function OwnershipPanel({
-  property,
-  error,
-  onSubmit,
-}: {
-  property: RentalProperty;
-  error?: string;
-  onSubmit: (input: NewOwnershipPeriodInput) => boolean | Promise<boolean>;
-}) {
+function OwnershipPanel({ property }: { property: RentalProperty }) {
   const history = getOwnershipHistory(property);
-  const hasOwners = property.owners.length > 0;
-
-  const handleSubmit = createFormSubmit(ownershipPeriodFormSchema, onSubmit);
 
   return (
     <Card className="rounded-md">
@@ -466,62 +486,6 @@ function OwnershipPanel({
         <CardDescription>Effective-dated shares.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <form
-          className="grid gap-3 lg:grid-cols-[1.2fr_0.7fr_0.9fr_0.9fr_auto]"
-          onSubmit={handleSubmit}
-        >
-          <Field>
-            <FieldLabel htmlFor="ownerId">Owner</FieldLabel>
-            <Select name="ownerId" disabled={!hasOwners} defaultValue="">
-              <SelectTrigger id="ownerId" className="w-full">
-                <SelectValue placeholder="Select owner" />
-              </SelectTrigger>
-              <SelectContent>
-                {property.owners.map((owner) => (
-                  <SelectItem key={owner.id} value={owner.id}>
-                    {owner.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="percentage">Share %</FieldLabel>
-            <Input
-              id="percentage"
-              name="percentage"
-              type="number"
-              min="0.01"
-              max="100"
-              step="0.01"
-              required
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="effectiveFrom">Effective from</FieldLabel>
-            <Input
-              id="effectiveFrom"
-              name="effectiveFrom"
-              type="date"
-              required
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="effectiveTo">Effective to</FieldLabel>
-            <Input id="effectiveTo" name="effectiveTo" type="date" />
-          </Field>
-          <div className="flex items-end">
-            <Button
-              type="submit"
-              disabled={!hasOwners}
-              className="w-full lg:w-auto"
-            >
-              <Plus data-icon="inline-start" />
-              Add
-            </Button>
-          </div>
-        </form>
-        <FormErrorAlert message={error} />
         {history.length === 0 ? (
           <EmptyState icon={Users}>No ownership periods recorded.</EmptyState>
         ) : (

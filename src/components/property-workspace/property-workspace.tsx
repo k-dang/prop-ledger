@@ -3,11 +3,16 @@
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
-import { addOwner, addOwnershipPeriod, addUnit } from "@/lib/actions";
+import { addOwnerWithOwnership, addUnit } from "@/lib/actions";
+import {
+  createManualTransaction,
+  deleteEvidenceDocument,
+  uploadTransactionEvidence,
+} from "@/lib/evidence-actions";
+import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
   getPropertyReadiness,
-  type NewOwnerInput,
-  type NewOwnershipPeriodInput,
+  type NewOwnerWithOwnershipInput,
   type NewUnitInput,
   type RentalProperty,
 } from "@/lib/property-workspace";
@@ -21,7 +26,8 @@ export function PropertyWorkspace({
 }) {
   const [unitError, setUnitError] = useState<string>();
   const [ownerError, setOwnerError] = useState<string>();
-  const [ownershipError, setOwnershipError] = useState<string>();
+  const [transactionError, setTransactionError] = useState<string>();
+  const [documentError, setDocumentError] = useState<string>();
 
   if (property === undefined) {
     return <PropertyNotFound propertyId={propertyId} />;
@@ -35,15 +41,36 @@ export function PropertyWorkspace({
     return result.ok;
   }
 
-  async function handleAddOwner(input: NewOwnerInput) {
-    const result = await addOwner(selectedId, input);
+  async function handleAddOwner(input: NewOwnerWithOwnershipInput) {
+    const result = await addOwnerWithOwnership(selectedId, input);
     setOwnerError(result.ok ? undefined : result.error);
     return result.ok;
   }
 
-  async function handleAddOwnershipPeriod(input: NewOwnershipPeriodInput) {
-    const result = await addOwnershipPeriod(selectedId, input);
-    setOwnershipError(result.ok ? undefined : result.error);
+  async function handleCreateManualTransaction(
+    input: NewManualTransactionInput,
+  ) {
+    const result = await createManualTransaction(selectedId, input);
+    setTransactionError(result.ok ? undefined : result.error);
+    return result.ok;
+  }
+
+  async function handleUploadTransactionEvidence(
+    transactionId: string,
+    formData: FormData,
+  ) {
+    const result = await uploadTransactionEvidence(
+      selectedId,
+      transactionId,
+      formData,
+    );
+    setDocumentError(result.ok ? undefined : result.error);
+    return result.ok;
+  }
+
+  async function handleDeleteEvidenceDocument(documentId: string) {
+    const result = await deleteEvidenceDocument(selectedId, documentId);
+    setDocumentError(result.ok ? undefined : result.error);
     return result.ok;
   }
 
@@ -54,10 +81,13 @@ export function PropertyWorkspace({
         readiness={getPropertyReadiness(property)}
         unitError={unitError}
         ownerError={ownerError}
-        ownershipError={ownershipError}
+        transactionError={transactionError}
+        documentError={documentError}
         onAddUnit={handleAddUnit}
         onAddOwner={handleAddOwner}
-        onAddOwnershipPeriod={handleAddOwnershipPeriod}
+        onCreateManualTransaction={handleCreateManualTransaction}
+        onUploadTransactionEvidence={handleUploadTransactionEvidence}
+        onDeleteEvidenceDocument={handleDeleteEvidenceDocument}
       />
     </section>
   );

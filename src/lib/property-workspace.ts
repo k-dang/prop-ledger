@@ -8,6 +8,7 @@ import type {
   Property,
   Unit,
 } from "@/db/schema";
+import type { DocumentWithLinks, LedgerEntry } from "./evidence-binder";
 import type { CapitalAsset, PropertyTaxYear } from "./property-tax-year";
 
 export type { OwnershipPeriod };
@@ -27,6 +28,8 @@ export type NewOwnershipPeriodInput = Omit<
   NewOwnershipPeriod,
   "id" | "propertyId"
 >;
+export type NewOwnerWithOwnershipInput = NewOwnerInput &
+  Pick<NewOwnershipPeriodInput, "percentage" | "effectiveFrom" | "effectiveTo">;
 
 /** The boolean property flags surfaced in the create-property form. */
 export type PropertyFlagState = Pick<Property, "hasPersonalUse">;
@@ -42,6 +45,8 @@ export type RentalProperty = Property & {
   ownershipPeriods: OwnershipPeriod[];
   capitalAssets: CapitalAsset[];
   taxYears: PropertyTaxYear[];
+  ledgerEntries: LedgerEntry[];
+  documents: DocumentWithLinks[];
 };
 
 export type Portfolio = {

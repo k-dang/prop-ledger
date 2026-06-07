@@ -131,6 +131,54 @@ export const rentEvents = pgTable("rent_events", {
   memo: text("memo"),
 });
 
+export const T776_CATEGORIES = [
+  "advertising",
+  "insurance",
+  "interest_and_bank_charges",
+  "office_expenses",
+  "professional_fees",
+  "repairs_and_maintenance",
+  "salaries_wages_and_benefits",
+  "property_taxes",
+  "travel",
+  "utilities",
+  "other_expenses",
+] as const;
+export type T776Category = (typeof T776_CATEGORIES)[number];
+
+export const RENTAL_INCOME_CATEGORIES = [
+  "rent",
+  "other_income",
+  "laundry",
+  "parking",
+  "fees",
+  "recoveries",
+] as const;
+export type RentalIncomeCategory = (typeof RENTAL_INCOME_CATEGORIES)[number];
+
+export const LEDGER_ENTRY_TYPES = ["expense", "income"] as const;
+export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[number];
+
+export const ledgerEntries = pgTable("ledger_entries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  propertyId: uuid("property_id")
+    .notNull()
+    .references(() => properties.id, { onDelete: "cascade" }),
+  type: text("type").$type<LedgerEntryType>().notNull(),
+  date: date("date", { mode: "string" }).notNull(),
+  vendor: text("vendor").notNull(),
+  memo: text("memo"),
+  amount: doublePrecision("amount").notNull(),
+  expenseCategory: text("expense_category").$type<T776Category>(),
+  incomeCategory: text("income_category").$type<RentalIncomeCategory>(),
+  isPersonal: boolean("is_personal").notNull().default(false),
+  isReconciled: boolean("is_reconciled").notNull().default(false),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const propertyTaxYears = pgTable("property_tax_years", {
   id: uuid("id").primaryKey().defaultRandom(),
   propertyId: uuid("property_id")
@@ -160,9 +208,8 @@ export const ccaClassRecords = pgTable("cca_class_records", {
 /**
  * Reusable evidence records. A document is uploaded once and linked to the
  * records it supports through `documentLinks`, so the same lease agreement or
- * receipt can back several ledger rows. Phase 2 only links leases; later phases
- * add richer metadata and more link targets. Real file upload lands in Phase 3 —
- * for now `storageUrl` holds an optional pointer to where the file lives.
+ * receipt can back several ledger rows. `storageUrl` points at the local upload
+ * path in Phase 3 and can later move to object storage without changing links.
  */
 export const documents = pgTable("documents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -172,6 +219,9 @@ export const documents = pgTable("documents", {
   fileName: text("file_name").notNull(),
   documentType: text("document_type").notNull(),
   storageUrl: text("storage_url"),
+  vendor: text("vendor"),
+  documentDate: date("document_date", { mode: "string" }),
+  amount: doublePrecision("amount"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -208,6 +258,7 @@ export const propertiesRelations = relations(properties, ({ many }) => ({
   capitalAssets: many(capitalAssets),
   taxYears: many(propertyTaxYears),
   rentEvents: many(rentEvents),
+  ledgerEntries: many(ledgerEntries),
   documents: many(documents),
 }));
 
@@ -235,6 +286,13 @@ export const rentEventsRelations = relations(rentEvents, ({ one }) => ({
   lease: one(leases, {
     fields: [rentEvents.leaseId],
     references: [leases.id],
+  }),
+}));
+
+export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
+  property: one(properties, {
+    fields: [ledgerEntries.propertyId],
+    references: [properties.id],
   }),
 }));
 
@@ -317,6 +375,7 @@ export type PropertyTaxYearRow = typeof propertyTaxYears.$inferSelect;
 export type CcaClassRecord = typeof ccaClassRecords.$inferSelect;
 export type Lease = typeof leases.$inferSelect;
 export type RentEvent = typeof rentEvents.$inferSelect;
+export type LedgerEntry = typeof ledgerEntries.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type DocumentLink = typeof documentLinks.$inferSelect;
 
@@ -328,5 +387,6 @@ export type NewCcaClassRecord = typeof ccaClassRecords.$inferInsert;
 export type NewPropertyTaxYear = typeof propertyTaxYears.$inferInsert;
 export type NewLease = typeof leases.$inferInsert;
 export type NewRentEvent = typeof rentEvents.$inferInsert;
+export type NewLedgerEntry = typeof ledgerEntries.$inferInsert;
 export type NewDocument = typeof documents.$inferInsert;
 export type NewDocumentLink = typeof documentLinks.$inferInsert;

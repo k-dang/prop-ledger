@@ -8,14 +8,15 @@ Durable decisions that apply across all phases:
 
 - **Application shape**: Build on the existing Next App Router application. Use Server Components by default, with Client Components reserved for dense tables, forms, filters, upload controls, and other interactive workflows.
 - **Primary routes**: Use five first-release product surfaces: `/dashboard`, `/transactions`, `/rent-ledger`, `/documents`, and `/year-end`. Property-specific detail should live under `/properties/[propertyId]`.
-- **Review-first workflow**: Imported and manually entered records should remain visible as review work until category, evidence, allocation, capital, and reconciliation questions are resolved.
+- **Review-first workflow**: Imported records should remain visible as review work until category, evidence, allocation, capital, and reconciliation questions are resolved. Manual ledger entries are rental-relevant records the user is deliberately adding, so Phase 3 only reviews their category and attached evidence.
 - **Schema shape**: Model property setup, rent accruals, bank transactions, ledger entries, documents, capital assets, ownership allocations, reconciliation, and year-end close as separate durable concepts rather than one flat transaction table.
 - **Key models**: Property, Unit, Owner, OwnershipPeriod, Lease, RentEvent, BankTransaction, LedgerEntry, TransactionSplit, Document, DocumentLink, CapitalAsset, Loan, ReconciliationStatus, PropertyTaxYear, YearEndPackage, AccountantNote.
 - **Ownership allocation**: Store owner shares as effective-dated records and validate that active periods do not exceed 100 percent ownership.
 - **Rent accounting**: Store rent charges separately from payments so income can be reviewed on an accrual basis and arrears are visible.
 - **Transaction accounting**: Store imported bank transactions separately from reviewed ledger entries so import, matching, duplicate detection, and reconciliation status can be audited later.
-- **Documents**: Treat documents as reusable evidence records with stable identifiers and many-to-many links to transactions, rent events, leases, loans, capital assets, and year-end packages.
-- **Expense categories**: Use a CRA T776-shaped category set as the default rental expense taxonomy, while keeping tax judgment and final deduction decisions outside the product.
+- **Non-rental imports**: Do not promote personal or otherwise non-rental imported rows into `LedgerEntry` records. Phase 4 should let users exclude imported `BankTransaction` rows with an exclusion reason before they affect the rental ledger, exception counts, or year-end package. Keep the rental ledger for rental-relevant records only.
+- **Documents**: Treat documents as reusable evidence records with stable identifiers and many-to-many links to transactions, rent events, leases, loans, capital assets, and year-end packages. In Phase 3, evidence is attached directly from the transaction row; unsupported or mistaken uploads are deleted rather than detached into a separate holding workflow.
+- **Transaction categories**: Use a CRA T776-shaped category set for rental expenses and a separate rental-income category set for income records. Do not force income through expense categories.
 - **Allocations**: Represent category splits, mortgage splits, prepaid expense periods, personal-use portions, and owner-share allocations as structured allocation records.
 - **Capital support**: Model capital assets separately from expense transactions, including land/building split, CCA class, opening UCC if known, additions, dispositions, proceeds, prior claims if known, accountant-entered closing values, and missing-history flags.
 - **Tax year model**: Treat a Tax Year as a record-keeping boundary, not a computation context, and as a thin overlay that *selects* dated records (rent, ledger, ownership) rather than owning them. The per-`(Property, Tax Year)` unit (`PropertyTaxYear`) holds only the accountant-entered CCA values and is the unit for readiness aggregation; the portfolio-wide tax year is a cross-property view.
@@ -33,13 +34,13 @@ Durable decisions that apply across all phases:
 
 ### What to build
 
-Create the first usable property accounting workspace. A co-owner can set up a property, add units, enter address and acquisition details, mark personal-use facts, add owners, define effective-dated ownership shares, and see a dashboard that makes setup gaps obvious.
+Create the first usable property accounting workspace. A co-owner can set up a property, add units, enter address and acquisition details, mark personal-use facts, add owners together with their initial effective-dated ownership shares, and see a dashboard that makes setup gaps obvious.
 
 ### Acceptance criteria
 
 - [x] A user can create a property with municipal address, acquisition date, and personal-use indicator.
 - [x] A user can add one or more units under a property.
-- [x] A user can add owners to a property and create effective-dated ownership periods.
+- [x] A user can add an owner only together with their initial effective-dated ownership share.
 - [x] Ownership periods reject active allocations above 100 percent.
 - [x] Ownership history is visible by property as an effective-dated record. (A dedicated tax-year ownership view was dropped: the effective-dated history already makes ownership for any year readable, and the portfolio-wide tax-year surface lands in later phases.)
 - [x] Dashboard empty states guide the user toward property, unit, owner, and lease setup without using unnecessary tax jargon.
@@ -75,19 +76,19 @@ Add a complete rent-ledger path for one property. A co-owner can create leases f
 
 ### What to build
 
-Create the manual transaction and document workflow. A co-owner can enter expenses or income manually, assign T776-aligned categories, flag personal items, upload PDF or image evidence, tag documents, link documents to transactions and rent records, and see exception counts for missing categories, missing receipts, and unreconciled records.
+Create the manual transaction and document workflow. A co-owner can enter rental-relevant expenses or income manually, assign type-appropriate categories, add review notes, attach PDF or image evidence directly to transactions, and see exception counts for missing categories and missing receipts. Manual entries are treated as source-supported by the user who entered them; bank reconciliation belongs to the Phase 4 import/reconciliation workflow.
 
 ### Acceptance criteria
 
 - [ ] A user can manually enter a transaction with date, vendor, memo, amount, and property.
-- [ ] A user can categorize expenses using T776-aligned categories.
-- [ ] A user can flag a transaction as personal so it is excluded from rental expense summaries.
+- [ ] A user can categorize expenses using T776-aligned categories and categorize income using rental-income categories.
+- [ ] Manual transaction entry is limited to rental-relevant records; personal/non-rental activity is excluded during Phase 4 import review before it becomes a ledger entry.
 - [ ] A user can add review notes explaining treatment decisions.
-- [ ] A user can upload PDF and image documents with vendor, date, amount, document type, and property metadata.
-- [ ] A user can link documents to expense transactions, rent events, leases, loans, and property records as applicable.
-- [ ] Unlinked documents, uncategorized transactions, missing receipts, and unreconciled manual entries are visible as exceptions.
+- [ ] A user can upload PDF and image evidence directly from a transaction row; vendor, date, amount, document type, and property metadata are captured from the transaction context.
+- [ ] A user can see source documents from a document index and delete mistaken uploads; Phase 3 does not support a separate manual document record or detach workflow.
+- [ ] Uncategorized transactions and missing receipts are visible as manual-entry exceptions.
 - [ ] Documents remain readable and included in a source document index.
-- [ ] Tests cover manual transaction entry, category assignment, personal exclusion, document upload metadata, document linking, link removal, and unlinked document reporting.
+- [ ] Tests cover manual transaction entry, category assignment, rental expense summaries, document upload metadata, transaction evidence attachment, document deletion, and source document reporting.
 
 ---
 
@@ -97,13 +98,14 @@ Create the manual transaction and document workflow. A co-owner can enter expens
 
 ### What to build
 
-Build the Transactions Inbox as an exception-driven review queue. A co-owner can import CSV bank transactions, review imported records before they affect tax output, clean transaction fields, detect likely duplicates, split transactions across categories, split mortgage payments, apply personal-use percentages, mark prepaid expenses with service periods, and filter the queue by property, tax year, issue type, and category.
+Build the Transactions Inbox as an exception-driven review queue. A co-owner can import CSV bank transactions, review imported records before they affect tax output, exclude non-rental rows before they become ledger entries, clean transaction fields, detect likely duplicates, split transactions across categories, split mortgage payments, apply personal-use percentages to mixed-use rental records, mark prepaid expenses with service periods, and filter the queue by property, tax year, issue type, and category.
 
 ### Acceptance criteria
 
 - [ ] A user can import bank transactions from CSV.
 - [ ] Imported transactions land in a review queue and do not affect year-end output until reviewed.
 - [ ] A user can edit date, vendor, memo, amount, and property for an imported transaction.
+- [ ] A user can exclude personal or otherwise non-rental imported rows without creating ledger entries.
 - [ ] Duplicate transaction warnings appear for likely duplicate CSV rows.
 - [ ] A user can split one transaction across multiple categories.
 - [ ] A user can split a mortgage payment into principal, interest, and fees.

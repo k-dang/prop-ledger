@@ -16,6 +16,8 @@ const withProperty = {
   ownershipPeriods: true,
   capitalAssets: true,
   taxYears: { with: { cca: true } },
+  ledgerEntries: true,
+  documents: { with: { links: true } },
 } as const;
 
 export async function getPortfolio(): Promise<Portfolio> {
@@ -52,6 +54,7 @@ export async function getPropertyRentLedger(
       units: { with: { leases: true } },
       rentEvents: true,
       documents: { with: { links: true } },
+      ledgerEntries: true,
     },
   });
 

@@ -30,7 +30,7 @@ The first release should provide five primary product surfaces:
 4. Documents
 5. Year-End
 
-The platform should feel like a property accounting workspace with an audit-ready document binder. The main interaction pattern is an exception and review queue. The user imports or enters activity, reviews each item, links supporting documents, resolves recordkeeping questions, reconciles accounts, and then generates owner-specific year-end packages.
+The platform should feel like a property accounting workspace with an audit-ready document binder. The main interaction pattern is an exception and review queue. The user imports activity into a review queue, enters rental-relevant manual records when needed, attaches supporting documents from the records they support, resolves recordkeeping questions, reconciles accounts, and then generates owner-specific year-end packages.
 
 The MVP includes everything required to track and organize the records needed for each owner's year-end tax submission. It does not calculate final tax outcomes, estimate deductions, choose CCA claims, provide tax advice, or include everything required to run a polished resident experience.
 
@@ -43,9 +43,9 @@ The product should support these first-release capabilities:
 - Manual transaction entry
 - CSV import for bank transactions
 - Transaction review queue
-- T776-shaped expense categorization
+- T776-shaped expense categorization and separate rental-income categorization
 - Receipt and document upload
-- Linking documents to transactions, rent events, leases, loans, and capital assets
+- Attaching documents to transactions, rent events, leases, loans, and capital assets
 - Current expense versus capital item review
 - Capital asset register
 - Land/building split capture
@@ -72,7 +72,7 @@ The first release should avoid building a full resident experience. Tenant porta
 4. As a co-owner, I want to record the acquisition date of a property, so that tax and capital schedules have the right timeline.
 5. As a co-owner, I want to record whether a property has personal-use portions, so that deductible amounts can be prorated correctly.
 6. _(Removed — short-term rental is out of scope. The product covers long-term residential rentals only. See Out of Scope.)_
-7. As a co-owner, I want to add another owner to the property, so that each person's share can be calculated.
+7. As a co-owner, I want to add another owner together with their initial ownership share, so that owner records are never missing allocation facts.
 8. As a co-owner, I want ownership percentages to be effective-dated, so that ownership changes are handled accurately by tax year.
 9. As a co-owner, I want to see an ownership history, so that I can understand how each year-end package was allocated.
 10. As a co-owner, I want the app to prevent owner shares from exceeding 100 percent for an active period, so that tax allocations are internally consistent.
@@ -92,16 +92,16 @@ The first release should avoid building a full resident experience. Tenant porta
 24. As a co-owner, I want imported transactions to land in a review queue, so that nothing affects tax output without review.
 25. As a co-owner, I want to manually enter transactions, so that cash, corrections, and unsupported imports can still be tracked.
 26. As a co-owner, I want to edit transaction date, vendor, memo, amount, and property, so that imported records can be cleaned up.
-27. As a co-owner, I want to categorize an expense using T776-aligned categories, so that year-end summaries map to tax reporting.
+27. As a co-owner, I want expense and income records to use separate category lists, so that year-end summaries map cleanly to tax reporting.
 28. As a co-owner, I want to split one transaction across multiple categories, so that mixed expenses can be represented accurately.
 29. As a co-owner, I want to split a mortgage payment into principal, interest, and fees, so that only deductible portions flow to expenses.
-30. As a co-owner, I want to flag a transaction as personal, so that it is excluded from deductible rental expenses.
+30. As a co-owner, I want to exclude a personal or otherwise non-rental imported row before it becomes a ledger entry, so that the rental ledger only contains rental-relevant activity.
 31. As a co-owner, I want to apply a personal-use percentage to a transaction, so that only the rental portion is deducted.
 32. As a co-owner, I want to mark an expense as prepaid, so that the deduction can be allocated across the benefit period.
 33. As a co-owner, I want to enter the service period for a prepaid expense, so that annual insurance or similar costs are spread correctly.
 34. As a co-owner, I want the app to show transactions missing categories, so that I can finish review before year end.
 35. As a co-owner, I want the app to show transactions missing receipts, so that I can gather support before tax season.
-36. As a co-owner, I want the app to show transactions not reconciled to bank activity, so that unsupported entries are visible.
+36. As a co-owner, I want imported activity to keep reconciliation state before ledger promotion, so that unsupported bank rows are visible without making reconciliation a manual-entry checkbox.
 37. As a co-owner, I want duplicate transaction warnings, so that imported CSV files do not overstate income or expenses.
 38. As a co-owner, I want to upload PDF and image documents, so that receipts and statements are stored with the books.
 39. As a co-owner, I want to tag documents with vendor, date, amount, document type, and property, so that they can be found later.
@@ -110,7 +110,7 @@ The first release should avoid building a full resident experience. Tenant porta
 42. As a co-owner, I want to link a property tax bill to a property tax expense, so that the yearly expense is easy to verify.
 43. As a co-owner, I want to link lease documents to units and tenants, so that the rent ledger has contractual support.
 44. As a co-owner, I want documents to remain readable and exportable, so that I can provide them during accountant review or audit.
-45. As a co-owner, I want to see unlinked documents, so that uploaded evidence does not sit disconnected from tax records.
+45. As a co-owner, I want mistaken document uploads to be deletable from the source document index, so that cleanup is explicit and evidence does not sit in a detached holding area.
 46. As a co-owner, I want to classify an item as a current expense or capital item, so that repairs and improvements are handled deliberately.
 47. As a co-owner, I want a guided capital review question set, so that I know when an expense likely belongs in the capital register.
 48. As a co-owner, I want to create a capital asset from a transaction, so that improvement costs are tracked over time.
@@ -176,16 +176,16 @@ The first release should avoid building a full resident experience. Tenant porta
 
 - Treat the product as a greenfield system because the current workspace contains research documentation but no existing application code.
 - Make the first release a web application optimized for desktop review workflows. Mobile responsiveness is required, but mobile-native capture and polish are not MVP-critical.
-- Use a review-first interaction model. Imported or manually entered activity enters a queue until it is categorized, supported, reconciled, and cleared for year-end use.
+- Use a review-first interaction model for imported activity. Manual ledger entries are rental-relevant records added intentionally and are reviewed for category and evidence, while reconciliation belongs to imported bank activity.
 - Use five primary navigation surfaces: Dashboard, Transactions Inbox, Rent Ledger, Documents, and Year-End.
 - Keep property setup, ownership setup, and tax-year setup as first-class onboarding steps because later reports and exports depend on them.
 - Model ownership shares as effective-dated records rather than fixed percentages on the property.
 - Model lease/rent charges separately from payment receipts so that accrual reporting is possible.
 - Model bank transactions separately from ledger entries so that imports, matching, and reconciliation can be audited.
-- Model ledger entries as the source of operating income and expense categorization.
+- Model ledger entries as rental-relevant operating income and expense records. Personal or otherwise non-rental imports are excluded before ledger promotion rather than represented as first-class ledger rows.
 - Model capital assets separately from ledger entries so that repairs, improvements, land, building, UCC history, and CCA-relevant support records are not forced into a flat transaction table.
-- Model documents as reusable evidence records that can link to transactions, leases, loans, rent events, capital assets, and year-end packages.
-- Use a CRA/T776-shaped category set as the default chart of rental expense categories.
+- Model documents as reusable evidence records that can attach to transactions, leases, loans, rent events, capital assets, and year-end packages. Mistaken source documents are deleted rather than detached into a separate holding workflow.
+- Use a CRA/T776-shaped category set as the default chart of rental expense categories and a separate rental-income category set for income records.
 - Support category splits, personal-use splits, owner-share allocation, and prepaid expense allocation as explicit allocation records rather than free-form notes.
 - Implement a capital and CCA-support module as a deep domain module with a stable interface for storing classifications, opening UCC values when provided, additions, dispositions, proceeds, prior claims when provided, accountant-entered closing values, support documents, and missing-history flags.
 - Implement an ownership allocation module as a deep domain module with a stable interface for storing effective-dated owner shares and producing owner-share worksheets for review.
@@ -216,7 +216,7 @@ The first release should avoid building a full resident experience. Tenant porta
 - The rent ledger should be tested with rent schedules, partial periods, payments, arrears, credits, write-offs, and other rental income.
 - The transaction review module should be tested with manual entries, CSV imports, category assignment, splits, personal portions, prepaid allocations, and unresolved-review states.
 - The reconciliation module should be tested with matched transactions, unmatched bank items, duplicate imports, statement period status, and exception counts.
-- The document module should be tested for upload metadata, link creation, link removal, unlinked document reporting, and export index generation.
+- The document module should be tested for upload metadata, attachment creation, document deletion, and export index generation.
 - The capital asset module should be tested for asset creation from transactions, land/building split, class assignment, additions, dispositions, support documents, missing-history flags, and continuity across tax years.
 - The capital and CCA-support module should be tested for opening UCC capture, unknown UCC states, prior-claim capture, accountant-entered closing values, additions, dispositions, and export warnings without validating tax formulas.
 - The prepaid expense allocator should be tested with single-year and multi-year service periods.

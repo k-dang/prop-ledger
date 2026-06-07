@@ -58,6 +58,8 @@ const baseProperty: RentalProperty = {
   ownershipPeriods: [],
   capitalAssets: [],
   taxYears: [],
+  ledgerEntries: [],
+  documents: [],
 };
 
 describe("ownership period validation", () => {
