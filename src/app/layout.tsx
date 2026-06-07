@@ -1,7 +1,9 @@
 import { Building2 } from "lucide-react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
+import { AppNavigation } from "@/components/app-navigation";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -66,6 +68,9 @@ function WorkspaceHeader() {
           </h1>
         </div>
       </div>
+      <Suspense fallback={<div className="h-11 w-full lg:w-80" />}>
+        <AppNavigation />
+      </Suspense>
     </header>
   );
 }

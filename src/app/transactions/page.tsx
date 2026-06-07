@@ -61,7 +61,7 @@ async function TransactionsContent() {
     <section className="grid gap-4">
       <Card className="rounded-md">
         <CardHeader>
-          <CardTitle>Transactions Inbox</CardTitle>
+          <CardTitle>Transactions</CardTitle>
           <CardDescription>
             Rental records that need category or evidence review.
           </CardDescription>
