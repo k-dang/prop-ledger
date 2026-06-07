@@ -80,15 +80,15 @@ Create the manual transaction and document workflow. A co-owner can enter rental
 
 ### Acceptance criteria
 
-- [ ] A user can manually enter a transaction with date, vendor, memo, amount, and property.
-- [ ] A user can categorize expenses using T776-aligned categories and categorize income using rental-income categories.
-- [ ] Manual transaction entry is limited to rental-relevant records; personal/non-rental activity is excluded during Phase 4 import review before it becomes a ledger entry.
-- [ ] A user can add review notes explaining treatment decisions.
-- [ ] A user can upload PDF and image evidence directly from a transaction row; vendor, date, amount, document type, and property metadata are captured from the transaction context.
-- [ ] A user can see source documents from a document index and delete mistaken uploads; Phase 3 does not support a separate manual document record or detach workflow.
-- [ ] Uncategorized transactions and missing receipts are visible as manual-entry exceptions.
-- [ ] Documents remain readable and included in a source document index.
-- [ ] Tests cover manual transaction entry, category assignment, rental expense summaries, document upload metadata, transaction evidence attachment, document deletion, and source document reporting.
+- [x] A user can manually enter a transaction with date, vendor, memo, amount, and property.
+- [x] A user can categorize expenses using T776-aligned categories and categorize income using rental-income categories.
+- [x] Manual transaction entry is limited to rental-relevant records; personal/non-rental activity is excluded during Phase 4 import review before it becomes a ledger entry.
+- [x] A user can add review notes explaining treatment decisions.
+- [x] A user can upload PDF and image evidence directly from a transaction row; vendor, date, amount, document type, and property metadata are captured from the transaction context.
+- [x] A user can see source documents from a document index and delete mistaken uploads; Phase 3 does not support a separate manual document record or detach workflow.
+- [x] Uncategorized transactions and missing receipts are visible as manual-entry exceptions.
+- [x] Documents remain readable and included in a source document index.
+- [x] Tests cover manual transaction entry, category assignment, rental expense summaries, document upload metadata, transaction evidence attachment, document deletion, and source document reporting.
 
 ---
 
