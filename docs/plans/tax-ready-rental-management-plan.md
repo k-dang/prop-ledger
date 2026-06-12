@@ -10,12 +10,12 @@ Durable decisions that apply across all phases:
 - **Primary routes**: Use five first-release product surfaces: `/dashboard`, `/transactions`, `/rent-ledger`, `/documents`, and `/year-end`. Property-specific detail should live under `/properties/[propertyId]`.
 - **Review-first workflow**: Manual ledger entries are rental-relevant records the user is deliberately adding. The MVP reviews their category, attached evidence, allocation, and capital questions; imported bank activity and reconciliation are deferred.
 - **Schema shape**: Model property setup, rent accruals, ledger entries, documents, capital assets, ownership allocations, and year-end close as separate durable concepts rather than one flat transaction table.
-- **Key models**: Property, Unit, Owner, OwnershipPeriod, Lease, RentEvent, BankTransaction, LedgerEntry, TransactionSplit, Document, DocumentLink, CapitalAsset, Loan, ReconciliationStatus, PropertyTaxYear, YearEndPackage, AccountantNote.
+- **Key models**: Property, Unit, Owner, OwnershipPeriod, Lease, RentEvent, BankTransaction, LedgerEntry, TransactionSplit, Document, DocumentLink, CapitalAsset, MortgagePayment, ReconciliationStatus, PropertyTaxYear, YearEndPackage, AccountantNote.
 - **Ownership allocation**: Store owner shares as effective-dated records and validate that active periods do not exceed 100 percent ownership.
 - **Rent accounting**: Store rent charges separately from payments so income can be reviewed on an accrual basis and arrears are visible.
 - **Transaction accounting**: MVP transaction records are manual, rental-relevant ledger entries. CSV bank imports, bank feeds, duplicate detection, and reconciliation are out of scope.
 - **Non-rental activity**: Keep the rental ledger for rental-relevant records only. Personal or otherwise non-rental activity is out of scope for manual entry and should not be represented as ledger rows.
-- **Documents**: Treat documents as reusable evidence records with stable identifiers and many-to-many links to transactions, rent events, leases, loans, capital assets, and year-end packages. In Phase 3, evidence is attached directly from the transaction row; unsupported or mistaken uploads are deleted rather than detached into a separate holding workflow.
+- **Documents**: Treat documents as reusable evidence records with stable identifiers and many-to-many links to transactions, rent events, leases, mortgage payments, capital assets, and year-end packages. In Phase 3, evidence is attached directly from the transaction row; unsupported or mistaken uploads are deleted rather than detached into a separate holding workflow.
 - **Transaction categories**: Use a CRA T776-shaped category set for rental expenses and a separate rental-income category set for income records. Do not force income through expense categories.
 - **Allocations**: Represent category splits, mortgage splits, prepaid expense periods, personal-use portions, and owner-share allocations as structured allocation records.
 - **Capital support**: Model capital assets separately from expense transactions, including land/building split, CCA class, opening UCC if known, additions, dispositions, proceeds, prior claims if known, accountant-entered closing values, and missing-history flags.
@@ -103,14 +103,14 @@ Extend manual transactions with allocation review. A co-owner can split rental-r
 
 ### Acceptance criteria
 
-- [ ] A user can split one manual transaction across multiple categories.
-- [ ] A user can split a mortgage payment into principal, interest, and fees.
-- [ ] A user can track mortgage financing costs and refinancing notes separately from ordinary expenses.
-- [ ] A user can apply personal-use percentages to transactions.
-- [ ] A user can mark an expense as prepaid and enter the service period.
-- [ ] The inbox supports filtering by property, tax year, issue type, and category.
-- [ ] The inbox supports efficient keyboard-friendly review of common categorization actions.
-- [ ] Tests cover category splits, mortgage splits, prepaid allocation, personal-use allocation, filtering, and exception counts.
+- [x] A user can split one manual transaction across multiple categories.
+- [x] A user can split a mortgage payment into principal, interest, and fees.
+- [x] A user can record individual mortgage payments with lender/payee, principal, interest, fees, and notes.
+- [~] A user can apply personal-use percentages to transactions. Dropped from MVP scope while the product targets fully rental properties.
+- [x] A user can mark an expense as prepaid and enter the service period.
+- [x] The inbox supports filtering by property, tax year, issue type, and category.
+- [x] The inbox supports efficient keyboard-friendly review of common categorization actions.
+- [x] Tests cover category splits, mortgage splits, prepaid allocation, filtering, and exception counts.
 
 ---
 

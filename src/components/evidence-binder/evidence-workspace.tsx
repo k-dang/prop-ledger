@@ -4,6 +4,10 @@ import { FileText, type LucideIcon, Plus, Receipt, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { z } from "zod";
+import {
+  MortgagePaymentsPanel,
+  TransactionAllocationControls,
+} from "@/components/evidence-binder/allocation-controls";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
   finiteFormNumber,
@@ -140,7 +144,7 @@ export function EvidenceBinderPanel({
             </Link>
           </CardAction>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
+        <CardContent className="grid gap-3 sm:grid-cols-3">
           <ExceptionTile
             label="Uncategorized"
             value={exceptions.uncategorizedTransactions}
@@ -148,6 +152,10 @@ export function EvidenceBinderPanel({
           <ExceptionTile
             label="Missing receipts"
             value={exceptions.missingReceipts}
+          />
+          <ExceptionTile
+            label="Split mismatches"
+            value={exceptions.splitMismatches}
           />
         </CardContent>
       </Card>
@@ -166,6 +174,10 @@ export function EvidenceBinderPanel({
           onDeleteDocument={onDeleteEvidenceDocument}
         />
       </div>
+      <MortgagePaymentsPanel
+        propertyId={property.id}
+        payments={property.mortgagePayments}
+      />
     </div>
   );
 }
@@ -296,6 +308,7 @@ function ManualTransactionsPanel({
                 <TableHead>Vendor</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead>Allocation</TableHead>
                 <TableHead>Evidence</TableHead>
               </TableRow>
             </TableHeader>
@@ -322,6 +335,12 @@ function ManualTransactionsPanel({
                       </Badge>
                     </TableCell>
                     <TableCell>${entry.amount.toFixed(2)}</TableCell>
+                    <TableCell className="min-w-72">
+                      <TransactionAllocationControls
+                        propertyId={property.id}
+                        entry={entry}
+                      />
+                    </TableCell>
                     <TableCell>
                       <TransactionEvidenceControl
                         documents={linked}
@@ -407,8 +426,8 @@ function TransactionEvidenceControl({
         </div>
       ) : null}
       <form className="grid gap-2" onSubmit={handleSubmit}>
-        <label className="grid gap-1 text-xs" htmlFor={fileInputId}>
-          Receipt or invoice
+        <Field className="gap-1">
+          <FieldLabel htmlFor={fileInputId}>Receipt or invoice</FieldLabel>
           <Input
             id={fileInputId}
             name="file"
@@ -416,7 +435,7 @@ function TransactionEvidenceControl({
             accept="application/pdf,image/*"
             required
           />
-        </label>
+        </Field>
         <Button type="submit" size="sm" className="w-fit rounded-md">
           <Plus data-icon="inline-start" />
           {linkedCount > 0 ? "Add another" : "Attach"}

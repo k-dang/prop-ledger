@@ -8,7 +8,9 @@ import type {
   Property,
   Unit,
 } from "@/db/schema";
-import type { DocumentWithLinks, LedgerEntry } from "./evidence-binder";
+import type { LedgerEntryWithSplits } from "./allocations";
+import type { DocumentWithLinks } from "./evidence-binder";
+import type { MortgagePayment } from "./mortgage-payments";
 import type { CapitalAsset, PropertyTaxYear } from "./property-tax-year";
 
 export type { OwnershipPeriod };
@@ -45,7 +47,8 @@ export type RentalProperty = Property & {
   ownershipPeriods: OwnershipPeriod[];
   capitalAssets: CapitalAsset[];
   taxYears: PropertyTaxYear[];
-  ledgerEntries: LedgerEntry[];
+  ledgerEntries: LedgerEntryWithSplits[];
+  mortgagePayments: MortgagePayment[];
   documents: DocumentWithLinks[];
 };
 

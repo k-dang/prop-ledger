@@ -1,14 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import type { DocumentWithLinks, LedgerEntry } from "./evidence-binder";
+import type {
+  DocumentWithLinks,
+  LedgerEntryWithSplits,
+} from "./evidence-binder";
 import {
   buildSourceDocumentIndex,
+  entryMatchesCategory,
+  entryYear,
   getDocumentsForTarget,
+  getEntryIssues,
   getEvidenceExceptionCounts,
   summarizeRentalExpenses,
 } from "./evidence-binder";
 
-function makeEntry(entry: Partial<LedgerEntry> & Pick<LedgerEntry, "id">) {
+function makeEntry(
+  entry: Partial<LedgerEntryWithSplits> & Pick<LedgerEntryWithSplits, "id">,
+) {
   return {
     propertyId: "property-1",
     type: "expense",
@@ -18,12 +26,15 @@ function makeEntry(entry: Partial<LedgerEntry> & Pick<LedgerEntry, "id">) {
     amount: 100,
     expenseCategory: "repairs_and_maintenance",
     incomeCategory: null,
+    prepaidStartDate: null,
+    prepaidEndDate: null,
     isPersonal: false,
     isReconciled: false,
     reviewNotes: null,
     createdAt: new Date("2026-02-01T00:00:00.000Z"),
+    splits: [],
     ...entry,
-  } satisfies LedgerEntry;
+  } satisfies LedgerEntryWithSplits;
 }
 
 function makeDocument(
@@ -75,6 +86,81 @@ describe("evidence binder exceptions", () => {
     ).toEqual({
       uncategorizedTransactions: 2,
       missingReceipts: 1,
+      splitMismatches: 0,
+    });
+  });
+
+  it("treats a split transaction as categorized and flags unbalanced splits", () => {
+    const entries = [
+      makeEntry({
+        id: "split-balanced",
+        expenseCategory: null,
+        amount: 300,
+        splits: [
+          {
+            id: "s1",
+            ledgerEntryId: "split-balanced",
+            expenseCategory: "utilities",
+            incomeCategory: null,
+            amount: 200,
+            memo: null,
+          },
+          {
+            id: "s2",
+            ledgerEntryId: "split-balanced",
+            expenseCategory: "repairs_and_maintenance",
+            incomeCategory: null,
+            amount: 100,
+            memo: null,
+          },
+        ],
+      }),
+      makeEntry({
+        id: "split-unbalanced",
+        amount: 300,
+        splits: [
+          {
+            id: "s3",
+            ledgerEntryId: "split-unbalanced",
+            expenseCategory: "utilities",
+            incomeCategory: null,
+            amount: 100,
+            memo: null,
+          },
+        ],
+      }),
+    ];
+    const documents = [
+      makeDocument({
+        id: "doc-balanced",
+        links: [
+          {
+            id: "link-balanced",
+            documentId: "doc-balanced",
+            targetType: "transaction",
+            targetId: "split-balanced",
+          },
+        ],
+      }),
+      makeDocument({
+        id: "doc-unbalanced",
+        links: [
+          {
+            id: "link-unbalanced",
+            documentId: "doc-unbalanced",
+            targetType: "transaction",
+            targetId: "split-unbalanced",
+          },
+        ],
+      }),
+    ];
+
+    expect(
+      getEvidenceExceptionCounts({ ledgerEntries: entries, documents }),
+    ).toEqual({
+      uncategorizedTransactions: 0,
+      missingReceipts: 0,
+      splitMismatches: 1,
     });
   });
 });
@@ -127,8 +213,8 @@ describe("document linking and indexes", () => {
           {
             id: "link-2",
             documentId: "doc-2",
-            targetType: "loan",
-            targetId: "loan-1",
+            targetType: "mortgage_payment",
+            targetId: "payment-1",
           },
         ],
       }),
@@ -157,7 +243,7 @@ describe("document linking and indexes", () => {
         vendor: "Bank",
         documentDate: "2026-03-01",
         amount: 1200,
-        linkedTargets: ["loan:loan-1"],
+        linkedTargets: ["mortgage_payment:payment-1"],
         readableUrl: "https://example.test/statement.pdf",
       },
     ]);
@@ -183,5 +269,57 @@ describe("expense summaries", () => {
       repairs_and_maintenance: 250,
       insurance: 500,
     });
+  });
+});
+
+describe("inbox filtering", () => {
+  it("reads the tax year from a transaction date", () => {
+    expect(entryYear(makeEntry({ id: "e", date: "2025-09-30" }))).toBe(2025);
+  });
+
+  it("matches a transaction by its own category or a split category", () => {
+    const splitEntry = makeEntry({
+      id: "split",
+      expenseCategory: null,
+      splits: [
+        {
+          id: "s1",
+          ledgerEntryId: "split",
+          expenseCategory: "utilities",
+          incomeCategory: null,
+          amount: 50,
+          memo: null,
+        },
+      ],
+    });
+
+    expect(
+      entryMatchesCategory(makeEntry({ id: "own" }), "repairs_and_maintenance"),
+    ).toBe(true);
+    expect(entryMatchesCategory(splitEntry, "utilities")).toBe(true);
+    expect(entryMatchesCategory(splitEntry, "insurance")).toBe(false);
+  });
+
+  it("derives the issue list used to filter the inbox", () => {
+    const entry = makeEntry({
+      id: "needs-work",
+      expenseCategory: null,
+      amount: 100,
+      splits: [
+        {
+          id: "s1",
+          ledgerEntryId: "needs-work",
+          expenseCategory: "utilities",
+          incomeCategory: null,
+          amount: 40,
+          memo: null,
+        },
+      ],
+    });
+
+    expect(getEntryIssues(entry, [])).toEqual([
+      "missing_receipt",
+      "split_mismatch",
+    ]);
   });
 });

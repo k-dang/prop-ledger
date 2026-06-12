@@ -59,6 +59,7 @@ const baseProperty: RentalProperty = {
   capitalAssets: [],
   taxYears: [],
   ledgerEntries: [],
+  mortgagePayments: [],
   documents: [],
 };
 

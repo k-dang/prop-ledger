@@ -16,7 +16,8 @@ const withProperty = {
   ownershipPeriods: true,
   capitalAssets: true,
   taxYears: { with: { cca: true } },
-  ledgerEntries: true,
+  ledgerEntries: { with: { splits: true } },
+  mortgagePayments: true,
   documents: { with: { links: true } },
 } as const;
 

@@ -6,12 +6,14 @@ import type {
   RentalIncomeCategory,
   T776Category,
 } from "@/db/schema";
+import { type LedgerEntryWithSplits, splitsBalance } from "./allocations";
 
 export type {
   LedgerEntry,
   RentalIncomeCategory,
   T776Category,
 } from "@/db/schema";
+export type { LedgerEntryWithSplits } from "./allocations";
 
 export const T776_CATEGORY_OPTIONS: { value: T776Category; label: string }[] = [
   { value: "advertising", label: "Advertising" },
@@ -45,7 +47,7 @@ export const RENTAL_INCOME_CATEGORY_OPTIONS: {
 export type DocumentWithLinks = Document & { links: DocumentLink[] };
 
 export type EvidenceBinder = {
-  ledgerEntries: LedgerEntry[];
+  ledgerEntries: LedgerEntryWithSplits[];
   documents: DocumentWithLinks[];
 };
 
@@ -60,26 +62,99 @@ export type NewManualTransactionInput = {
   reviewNotes?: string;
 };
 
+export const INBOX_ISSUE_TYPES = [
+  "uncategorized",
+  "missing_receipt",
+  "split_mismatch",
+] as const;
+export type InboxIssueType = (typeof INBOX_ISSUE_TYPES)[number];
+
+export const INBOX_ISSUE_OPTIONS: { value: InboxIssueType; label: string }[] = [
+  { value: "uncategorized", label: "Uncategorized" },
+  { value: "missing_receipt", label: "Missing receipt" },
+  { value: "split_mismatch", label: "Split mismatch" },
+];
+
+export function getEntryIssues(
+  entry: LedgerEntryWithSplits,
+  documents: DocumentWithLinks[],
+): InboxIssueType[] {
+  const issues: InboxIssueType[] = [];
+
+  if (isUncategorized(entry)) {
+    issues.push("uncategorized");
+  }
+
+  if (
+    entry.type === "expense" &&
+    !hasDocumentLink(documents, "transaction", entry.id)
+  ) {
+    issues.push("missing_receipt");
+  }
+
+  if (!splitsBalance(entry.amount, entry.splits)) {
+    issues.push("split_mismatch");
+  }
+
+  return issues;
+}
+
 export type EvidenceExceptionCounts = {
   uncategorizedTransactions: number;
   missingReceipts: number;
+  splitMismatches: number;
 };
 
 export function getEvidenceExceptionCounts(
   binder: EvidenceBinder,
 ): EvidenceExceptionCounts {
-  return {
-    uncategorizedTransactions: binder.ledgerEntries.filter(
-      (entry) =>
-        (entry.type === "expense" && entry.expenseCategory === null) ||
-        (entry.type === "income" && entry.incomeCategory === null),
-    ).length,
-    missingReceipts: binder.ledgerEntries.filter(
-      (entry) =>
-        entry.type === "expense" &&
-        !hasDocumentLink(binder.documents, "transaction", entry.id),
-    ).length,
+  const counts: EvidenceExceptionCounts = {
+    uncategorizedTransactions: 0,
+    missingReceipts: 0,
+    splitMismatches: 0,
   };
+
+  for (const entry of binder.ledgerEntries) {
+    for (const issue of getEntryIssues(entry, binder.documents)) {
+      if (issue === "uncategorized") {
+        counts.uncategorizedTransactions += 1;
+      } else if (issue === "missing_receipt") {
+        counts.missingReceipts += 1;
+      } else {
+        counts.splitMismatches += 1;
+      }
+    }
+  }
+
+  return counts;
+}
+
+function isUncategorized(entry: LedgerEntryWithSplits): boolean {
+  if (entry.splits.length > 0) {
+    return false;
+  }
+
+  return entry.type === "expense"
+    ? entry.expenseCategory === null
+    : entry.incomeCategory === null;
+}
+
+export function entryMatchesCategory(
+  entry: LedgerEntryWithSplits,
+  category: string,
+): boolean {
+  if (entry.expenseCategory === category || entry.incomeCategory === category) {
+    return true;
+  }
+
+  return entry.splits.some(
+    (split) =>
+      split.expenseCategory === category || split.incomeCategory === category,
+  );
+}
+
+export function entryYear(entry: LedgerEntry): number {
+  return Number(entry.date.slice(0, 4));
 }
 
 export function getDocumentsForTarget(

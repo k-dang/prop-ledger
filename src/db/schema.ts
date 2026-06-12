@@ -159,6 +159,20 @@ export type RentalIncomeCategory = (typeof RENTAL_INCOME_CATEGORIES)[number];
 export const LEDGER_ENTRY_TYPES = ["expense", "income"] as const;
 export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[number];
 
+export const mortgagePayments = pgTable("mortgage_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  propertyId: uuid("property_id")
+    .notNull()
+    .references(() => properties.id, { onDelete: "cascade" }),
+  date: date("date", { mode: "string" }).notNull(),
+  lender: text("lender").notNull(),
+  totalAmount: doublePrecision("total_amount").notNull(),
+  principal: doublePrecision("principal"),
+  interest: doublePrecision("interest"),
+  fees: doublePrecision("fees"),
+  memo: text("memo"),
+});
+
 export const ledgerEntries = pgTable("ledger_entries", {
   id: uuid("id").primaryKey().defaultRandom(),
   propertyId: uuid("property_id")
@@ -171,12 +185,25 @@ export const ledgerEntries = pgTable("ledger_entries", {
   amount: doublePrecision("amount").notNull(),
   expenseCategory: text("expense_category").$type<T776Category>(),
   incomeCategory: text("income_category").$type<RentalIncomeCategory>(),
+  prepaidStartDate: date("prepaid_start_date", { mode: "string" }),
+  prepaidEndDate: date("prepaid_end_date", { mode: "string" }),
   isPersonal: boolean("is_personal").notNull().default(false),
   isReconciled: boolean("is_reconciled").notNull().default(false),
   reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+});
+
+export const transactionSplits = pgTable("transaction_splits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ledgerEntryId: uuid("ledger_entry_id")
+    .notNull()
+    .references(() => ledgerEntries.id, { onDelete: "cascade" }),
+  expenseCategory: text("expense_category").$type<T776Category>(),
+  incomeCategory: text("income_category").$type<RentalIncomeCategory>(),
+  amount: doublePrecision("amount").notNull(),
+  memo: text("memo"),
 });
 
 export const propertyTaxYears = pgTable("property_tax_years", {
@@ -236,7 +263,7 @@ export const DOCUMENT_LINK_TARGETS = [
   "lease",
   "transaction",
   "rent_event",
-  "loan",
+  "mortgage_payment",
   "capital_asset",
   "year_end_package",
 ] as const;
@@ -259,6 +286,7 @@ export const propertiesRelations = relations(properties, ({ many }) => ({
   taxYears: many(propertyTaxYears),
   rentEvents: many(rentEvents),
   ledgerEntries: many(ledgerEntries),
+  mortgagePayments: many(mortgagePayments),
   documents: many(documents),
 }));
 
@@ -289,12 +317,36 @@ export const rentEventsRelations = relations(rentEvents, ({ one }) => ({
   }),
 }));
 
-export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
-  property: one(properties, {
-    fields: [ledgerEntries.propertyId],
-    references: [properties.id],
+export const ledgerEntriesRelations = relations(
+  ledgerEntries,
+  ({ one, many }) => ({
+    property: one(properties, {
+      fields: [ledgerEntries.propertyId],
+      references: [properties.id],
+    }),
+    splits: many(transactionSplits),
   }),
-}));
+);
+
+export const mortgagePaymentsRelations = relations(
+  mortgagePayments,
+  ({ one }) => ({
+    property: one(properties, {
+      fields: [mortgagePayments.propertyId],
+      references: [properties.id],
+    }),
+  }),
+);
+
+export const transactionSplitsRelations = relations(
+  transactionSplits,
+  ({ one }) => ({
+    ledgerEntry: one(ledgerEntries, {
+      fields: [transactionSplits.ledgerEntryId],
+      references: [ledgerEntries.id],
+    }),
+  }),
+);
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
   property: one(properties, {
@@ -376,6 +428,8 @@ export type CcaClassRecord = typeof ccaClassRecords.$inferSelect;
 export type Lease = typeof leases.$inferSelect;
 export type RentEvent = typeof rentEvents.$inferSelect;
 export type LedgerEntry = typeof ledgerEntries.$inferSelect;
+export type MortgagePayment = typeof mortgagePayments.$inferSelect;
+export type TransactionSplit = typeof transactionSplits.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type DocumentLink = typeof documentLinks.$inferSelect;
 
@@ -388,5 +442,7 @@ export type NewPropertyTaxYear = typeof propertyTaxYears.$inferInsert;
 export type NewLease = typeof leases.$inferInsert;
 export type NewRentEvent = typeof rentEvents.$inferInsert;
 export type NewLedgerEntry = typeof ledgerEntries.$inferInsert;
+export type NewMortgagePayment = typeof mortgagePayments.$inferInsert;
+export type NewTransactionSplit = typeof transactionSplits.$inferInsert;
 export type NewDocument = typeof documents.$inferInsert;
 export type NewDocumentLink = typeof documentLinks.$inferInsert;
