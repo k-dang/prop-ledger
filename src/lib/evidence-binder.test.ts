@@ -8,6 +8,7 @@ import {
   buildSourceDocumentIndex,
   entryMatchesCategory,
   entryYear,
+  getCapitalAssetTransactions,
   getDocumentsForTarget,
   getEntryIssues,
   getEvidenceExceptionCounts,
@@ -30,6 +31,7 @@ function makeEntry(
     prepaidEndDate: null,
     isPersonal: false,
     isReconciled: false,
+    isCapitalAsset: false,
     reviewNotes: null,
     createdAt: new Date("2026-02-01T00:00:00.000Z"),
     splits: [],
@@ -321,5 +323,41 @@ describe("inbox filtering", () => {
       "missing_receipt",
       "split_mismatch",
     ]);
+  });
+});
+
+describe("capital asset transaction selection", () => {
+  it("lists only marked expense transactions for the selected year", () => {
+    const entries = [
+      makeEntry({
+        id: "marked-2026-late",
+        date: "2026-05-01",
+        amount: 300,
+        isCapitalAsset: true,
+      }),
+      makeEntry({ id: "unmarked", date: "2026-04-01", isCapitalAsset: false }),
+      makeEntry({
+        id: "marked-income",
+        type: "income",
+        expenseCategory: null,
+        incomeCategory: "rent",
+        isCapitalAsset: true,
+      }),
+      makeEntry({
+        id: "marked-2025",
+        date: "2025-12-31",
+        isCapitalAsset: true,
+      }),
+      makeEntry({
+        id: "marked-2026-early",
+        date: "2026-01-15",
+        amount: 100,
+        isCapitalAsset: true,
+      }),
+    ];
+
+    expect(
+      getCapitalAssetTransactions(entries, 2026).map((entry) => entry.id),
+    ).toEqual(["marked-2026-early", "marked-2026-late"]);
   });
 });

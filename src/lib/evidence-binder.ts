@@ -59,6 +59,7 @@ export type NewManualTransactionInput = {
   amount: number;
   expenseCategory?: T776Category;
   incomeCategory?: RentalIncomeCategory;
+  isCapitalAsset?: boolean;
   reviewNotes?: string;
 };
 
@@ -167,6 +168,20 @@ export function getDocumentsForTarget(
       (link) => link.targetType === targetType && link.targetId === targetId,
     ),
   );
+}
+
+export function getCapitalAssetTransactions(
+  entries: LedgerEntry[],
+  year: number,
+): LedgerEntry[] {
+  return entries
+    .filter(
+      (entry) =>
+        entry.type === "expense" &&
+        entry.isCapitalAsset &&
+        entryYear(entry) === year,
+    )
+    .toSorted((a, b) => a.date.localeCompare(b.date));
 }
 
 export type SourceDocumentIndexRow = {

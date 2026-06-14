@@ -8,6 +8,7 @@ import {
   MortgagePaymentsPanel,
   TransactionAllocationControls,
 } from "@/components/evidence-binder/allocation-controls";
+import { CapitalAssetControl } from "@/components/evidence-binder/capital-asset-control";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
   finiteFormNumber,
@@ -28,6 +29,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -65,6 +67,7 @@ const manualTransactionFormSchema = z
     memo: optionalFormString,
     amount: finiteFormNumber,
     category: optionalFormString,
+    isCapitalAsset: z.preprocess((value) => value === "on", z.boolean()),
     reviewNotes: optionalFormString,
   })
   .transform(
@@ -82,6 +85,7 @@ const manualTransactionFormSchema = z
         data.type === "income" && data.category !== undefined
           ? (data.category as NewManualTransactionInput["incomeCategory"])
           : undefined,
+      isCapitalAsset: data.type === "expense" && data.isCapitalAsset,
       reviewNotes: data.reviewNotes,
     }),
   );
@@ -287,6 +291,15 @@ function ManualTransactionsPanel({
             <FieldLabel htmlFor="reviewNotes">Review notes</FieldLabel>
             <Input id="reviewNotes" name="reviewNotes" />
           </Field>
+          {transactionType === "expense" ? (
+            <label
+              className="flex items-center gap-2 text-sm lg:col-span-3"
+              htmlFor="isCapitalAsset"
+            >
+              <Checkbox id="isCapitalAsset" name="isCapitalAsset" />
+              <span>Capital asset</span>
+            </label>
+          ) : null}
           <div className="flex items-end lg:col-span-6">
             <Button type="submit" className="w-full sm:w-auto">
               <Plus data-icon="inline-start" />
@@ -348,6 +361,13 @@ function ManualTransactionsPanel({
                         onUploadEvidence={onUploadEvidence}
                         onDeleteDocument={onDeleteDocument}
                       />
+                      {entry.type === "expense" ? (
+                        <CapitalAssetControl
+                          propertyId={property.id}
+                          transactionId={entry.id}
+                          isCapitalAsset={entry.isCapitalAsset}
+                        />
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 );

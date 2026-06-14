@@ -39,6 +39,7 @@ function makeEntry(
     prepaidEndDate: null,
     isPersonal: false,
     isReconciled: false,
+    isCapitalAsset: false,
     reviewNotes: null,
     createdAt: new Date("2026-02-01T00:00:00.000Z"),
     splits: [],

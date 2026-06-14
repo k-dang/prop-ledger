@@ -11,7 +11,6 @@ import type {
 import type { LedgerEntryWithSplits } from "./allocations";
 import type { DocumentWithLinks } from "./evidence-binder";
 import type { MortgagePayment } from "./mortgage-payments";
-import type { CapitalAsset, PropertyTaxYear } from "./property-tax-year";
 
 export type { OwnershipPeriod };
 export type RentalUnit = Unit;
@@ -45,8 +44,6 @@ export type RentalProperty = Property & {
   units: Unit[];
   owners: Owner[];
   ownershipPeriods: OwnershipPeriod[];
-  capitalAssets: CapitalAsset[];
-  taxYears: PropertyTaxYear[];
   ledgerEntries: LedgerEntryWithSplits[];
   mortgagePayments: MortgagePayment[];
   documents: DocumentWithLinks[];

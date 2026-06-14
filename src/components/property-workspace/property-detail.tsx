@@ -404,19 +404,25 @@ function OwnersPanel({
       </CardHeader>
       <CardContent className="grid gap-4">
         <form
-          className="grid gap-3 lg:grid-cols-[1fr_1fr_0.7fr_0.9fr_0.9fr_auto]"
+          className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,1.6fr)_minmax(0,1.6fr)_auto] lg:items-end"
           onSubmit={handleSubmit}
         >
           <Field>
-            <FieldLabel htmlFor="ownerName">Owner name</FieldLabel>
+            <FieldLabel className="lg:min-h-8" htmlFor="ownerName">
+              Owner name
+            </FieldLabel>
             <Input id="ownerName" name="ownerName" required />
           </Field>
           <Field>
-            <FieldLabel htmlFor="ownerEmail">Email</FieldLabel>
+            <FieldLabel className="lg:min-h-8" htmlFor="ownerEmail">
+              Email
+            </FieldLabel>
             <Input id="ownerEmail" name="ownerEmail" type="email" />
           </Field>
           <Field>
-            <FieldLabel htmlFor="ownerPercentage">Share %</FieldLabel>
+            <FieldLabel className="lg:min-h-8" htmlFor="ownerPercentage">
+              Share %
+            </FieldLabel>
             <Input
               id="ownerPercentage"
               name="percentage"
@@ -428,7 +434,9 @@ function OwnersPanel({
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="ownerEffectiveFrom">Effective from</FieldLabel>
+            <FieldLabel className="lg:min-h-8" htmlFor="ownerEffectiveFrom">
+              Effective from
+            </FieldLabel>
             <Input
               id="ownerEffectiveFrom"
               name="effectiveFrom"
@@ -438,7 +446,9 @@ function OwnersPanel({
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="ownerEffectiveTo">Effective to</FieldLabel>
+            <FieldLabel className="lg:min-h-8" htmlFor="ownerEffectiveTo">
+              Effective to
+            </FieldLabel>
             <Input id="ownerEffectiveTo" name="effectiveTo" type="date" />
           </Field>
           <div className="flex items-end">

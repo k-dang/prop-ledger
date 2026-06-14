@@ -27,9 +27,12 @@ export async function createManualTransaction(
       return { ok: false, error: "Enter an expense amount greater than zero." };
     }
 
+    const { isCapitalAsset, ...transactionInput } = input;
+
     await db.insert(ledgerEntries).values({
       propertyId,
-      ...input,
+      ...transactionInput,
+      isCapitalAsset: input.type === "expense" && isCapitalAsset === true,
       isPersonal: false,
       isReconciled: true,
     });

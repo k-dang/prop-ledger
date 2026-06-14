@@ -8,20 +8,20 @@ Durable decisions that apply across all phases:
 
 - **Application shape**: Build on the existing Next App Router application. Use Server Components by default, with Client Components reserved for dense tables, forms, filters, upload controls, and other interactive workflows.
 - **Primary routes**: Use five first-release product surfaces: `/dashboard`, `/transactions`, `/rent-ledger`, `/documents`, and `/year-end`. Property-specific detail should live under `/properties/[propertyId]`.
-- **Review-first workflow**: Manual ledger entries are rental-relevant records the user is deliberately adding. The MVP reviews their category, attached evidence, allocation, and capital questions; imported bank activity and reconciliation are deferred.
-- **Schema shape**: Model property setup, rent accruals, ledger entries, documents, capital assets, ownership allocations, and year-end close as separate durable concepts rather than one flat transaction table.
-- **Key models**: Property, Unit, Owner, OwnershipPeriod, Lease, RentEvent, BankTransaction, LedgerEntry, TransactionSplit, Document, DocumentLink, CapitalAsset, MortgagePayment, ReconciliationStatus, PropertyTaxYear, YearEndPackage, AccountantNote.
+- **Review-first workflow**: Manual ledger entries are rental-relevant records the user is deliberately adding. The MVP reviews their category, attached evidence, allocation, and capital asset marking; imported bank activity and reconciliation are deferred.
+- **Schema shape**: Model property setup, rent accruals, ledger entries, documents, ownership allocations, and year-end close as separate durable concepts rather than one flat transaction table. Detailed capital asset records are deferred.
+- **Key models**: Property, Unit, Owner, OwnershipPeriod, Lease, RentEvent, BankTransaction, LedgerEntry, TransactionSplit, Document, DocumentLink, MortgagePayment, ReconciliationStatus, PropertyTaxYear, YearEndPackage, AccountantNote.
 - **Ownership allocation**: Store owner shares as effective-dated records and validate that active periods do not exceed 100 percent ownership.
 - **Rent accounting**: Store rent charges separately from payments so income can be reviewed on an accrual basis and arrears are visible.
 - **Transaction accounting**: MVP transaction records are manual, rental-relevant ledger entries. CSV bank imports, bank feeds, duplicate detection, and reconciliation are out of scope.
 - **Non-rental activity**: Keep the rental ledger for rental-relevant records only. Personal or otherwise non-rental activity is out of scope for manual entry and should not be represented as ledger rows.
-- **Documents**: Treat documents as reusable evidence records with stable identifiers and many-to-many links to transactions, rent events, leases, mortgage payments, capital assets, and year-end packages. In Phase 3, evidence is attached directly from the transaction row; unsupported or mistaken uploads are deleted rather than detached into a separate holding workflow.
+- **Documents**: Treat documents as reusable evidence records with stable identifiers and many-to-many links to transactions, rent events, leases, mortgage payments, and year-end packages. In Phase 3, evidence is attached directly from the transaction row; unsupported or mistaken uploads are deleted rather than detached into a separate holding workflow.
 - **Transaction categories**: Use a CRA T776-shaped category set for rental expenses and a separate rental-income category set for income records. Do not force income through expense categories.
 - **Allocations**: Represent category splits, mortgage splits, prepaid expense periods, personal-use portions, and owner-share allocations as structured allocation records.
-- **Capital support**: Model capital assets separately from expense transactions, including land/building split, CCA class, opening UCC if known, additions, dispositions, proceeds, prior claims if known, accountant-entered closing values, and missing-history flags.
-- **Tax year model**: Treat a Tax Year as a record-keeping boundary, not a computation context, and as a thin overlay that *selects* dated records (rent, ledger, ownership) rather than owning them. The per-`(Property, Tax Year)` unit (`PropertyTaxYear`) holds only the accountant-entered CCA values and is the unit for readiness aggregation; the portfolio-wide tax year is a cross-property view.
+- **Capital support**: For the MVP, capital support is a transaction-level marking: an expense can be marked as a capital asset and listed separately at year end with its support document count. Guided capital review, separate capital asset records, land/building splits, CCA classes, UCC, additions, dispositions, proceeds, prior claims, accountant-entered values, and missing-history flags are deferred.
+- **Tax year model**: Treat a Tax Year as a record-keeping boundary, not a computation context, and as a thin overlay that *selects* dated records (rent, ledger, ownership) rather than owning them. Do not add CCA fields or carryforward records to the MVP schema; those belong to the deferred post-MVP capital module.
 - **No close state machine**: Property Tax Years stay permanently editable. Readiness is derived live from open exceptions rather than stored as a workflow state, and prior-year edits are captured by the audit log. Point-in-time defensibility comes from immutable `YearEndPackage` snapshots taken at export, not from locking live records. A soft per-year "filed" lock can be added later if accidental edits to filed years prove painful. See `docs/adr/0001-no-tax-year-close-state-machine.md`.
-- **CCA carryforward**: A Property Tax Year's opening CCA/UCC value is never computed. It has one of three provenances — *inherited* (the prior year's confirmed closing), *entered* (manual onboarding), or *unknown* (accountant-needed flag) — tracks the prior confirmed closing live, and re-flags downstream openings if it changes.
+- **CCA carryforward**: Deferred from the MVP. No opening UCC, CCA claim, or closing UCC chain is collected or computed in the first release.
 - **Scope**: Long-term residential rentals only. Short-term rental is out of scope (no STR flag or behavior in the model).
 - **Export stance**: Generate accountant-ready and T776-ready support packages. Do not calculate final tax outcomes, optimize CCA, estimate deductions, or file tax returns.
 - **Out of scope**: CSV bank import, bank feeds, duplicate import detection, and reconciliation workflows.
@@ -114,27 +114,25 @@ Extend manual transactions with allocation review. A co-owner can split rental-r
 
 ---
 
-## Phase 5: Capital and CCA Support Register
+## Phase 5: Capital Transaction Marking
 
-**User stories**: 46-59, 73, 78
+**User stories**: 46, 59, 78
 
 ### What to build
 
-Add a capital review and CCA-support workflow. A co-owner can classify an item as current expense or capital, answer guided capital-review prompts, create capital assets from transactions, capture asset description and placed-in-service date, split land and building cost, assign CCA class, record opening UCC if known, additions, dispositions, proceeds, prior claims if known, accountant-entered closing values, and mark unknown or accountant-needed details.
+Add a lightweight capital marking workflow. A co-owner can mark an expense transaction as a capital asset when entering it or from the transaction row. The Year-End surface lists transactions marked as capital assets for the selected tax year, including source transaction details, support document counts, and a simple total. Detailed capital asset records, guided review prompts, land/building split capture, CCA class support, UCC continuity, additions, dispositions, proceeds, prior claims, accountant-entered CCA values, and missing-history flags are deferred until after the MVP.
 
 ### Acceptance criteria
 
-- [ ] A user can mark a transaction as needing current-versus-capital review.
-- [ ] A guided question set helps classify likely capital items without presenting the result as tax advice.
-- [ ] A user can create a capital asset from a reviewed transaction.
-- [ ] A capital asset stores description, placed-in-service date, source transaction, linked support documents, and review notes.
-- [ ] A user can split acquisition cost between land and building.
-- [ ] A user can assign a CRA CCA class and record opening UCC when known.
-- [ ] A user can record additions, dispositions, proceeds, prior claims if known, and accountant-entered closing values.
-- [ ] Current-year additions and incomplete CCA details are flagged for accountant review.
-- [ ] The capital register can be reviewed independently from the transaction ledger.
-- [ ] A capital and CCA-support schedule can be generated for a property and tax year.
-- [ ] Tests cover asset creation from transactions, capital review flags, land/building split, class assignment, additions, dispositions, support documents, missing-history flags, and export warnings without validating tax formulas.
+- [x] A user can mark an expense transaction as a capital asset during manual transaction entry.
+- [x] A user can mark an existing expense transaction as a capital asset from the transaction row.
+- [x] Income transactions are not presented as capital asset candidates.
+- [x] The transaction row clearly shows when an expense is marked as a capital asset.
+- [x] The Year-End surface lists marked capital asset transactions independently from the ordinary transaction ledger.
+- [x] The Year-End capital list includes date, vendor, amount, review notes or memo, support document count, and capital asset status.
+- [x] The Year-End capital summary shows marked transaction count, linked document count, and total marked amount for the selected tax year.
+- [x] Detailed capital asset records, guided review prompts, land/building splits, CCA class support, UCC, additions, dispositions, proceeds, prior claims, accountant-entered values, and missing-history flags are intentionally deferred.
+- [x] Tests and validation cover transaction capital marking, year-filtered capital listing behavior, and regressions for existing transaction/evidence workflows.
 
 ---
 
@@ -149,8 +147,8 @@ Turn the records collected in prior phases into a year-end readiness view. A co-
 ### Acceptance criteria
 
 - [ ] A readiness checklist is derived live for each property and tax year (not stored as a workflow state).
-- [ ] The checklist includes uncategorized transactions, missing documents, unresolved capital/current items, ownership allocation warnings, personal-use warnings, and capital/CCA-support warnings.
-- [ ] Dashboard counts show missing receipts, uncategorized transactions, and capital review items by property.
+- [ ] The checklist includes uncategorized transactions, missing documents, marked capital asset transactions, ownership allocation warnings, and personal-use warnings.
+- [ ] Dashboard counts show missing receipts, uncategorized transactions, and capital asset transactions by property.
 - [ ] Readiness updates immediately as exceptions are resolved or new records are added; no record becomes uneditable as a result of readiness state.
 - [ ] Edits to records in any tax year — including prior years — are captured by the audit log.
 - [ ] Tests cover readiness derivation, blocking-versus-warning classification, live recomputation after edits, and dashboard exception counts.
@@ -163,13 +161,13 @@ Turn the records collected in prior phases into a year-end readiness view. A co-
 
 ### What to build
 
-Generate the year-end handoff package. A co-owner can create property-level and owner-specific packages containing T776-ready income and expense summaries, owner-share worksheets, rent ledger summaries, expense detail exports, capital and CCA-support schedules, source document indexes, accountant notes, and unresolved exception summaries. Each generated package is captured as an immutable snapshot at export time — this snapshot is the point-in-time, defensible record of what was filed, while the underlying live records remain editable.
+Generate the year-end handoff package. A co-owner can create property-level and owner-specific packages containing T776-ready income and expense summaries, owner-share worksheets, rent ledger summaries, expense detail exports, transactions marked as capital assets, source document indexes, accountant notes, and unresolved exception summaries. Each generated package is captured as an immutable snapshot at export time — this snapshot is the point-in-time, defensible record of what was filed, while the underlying live records remain editable.
 
 ### Acceptance criteria
 
 - [ ] A user can generate a T776-ready income and expense summary for a property and tax year.
 - [ ] A user can generate owner-share worksheets based on effective-dated ownership periods.
-- [ ] A user can generate rent ledger, expense detail, capital/CCA-support, and source document index sections.
+- [ ] A user can generate rent ledger, expense detail, capital asset transaction, and source document index sections.
 - [ ] Accountant notes and unresolved exception summaries are included in the package.
 - [ ] Each owner package is separate and limited to that owner-specific allocation view.
 - [ ] A full-property package remains available for the property-level audit trail.

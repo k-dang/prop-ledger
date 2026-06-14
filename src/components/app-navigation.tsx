@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, LayoutDashboard, ReceiptText } from "lucide-react";
+import { FileText, Landmark, LayoutDashboard, ReceiptText } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -25,6 +25,12 @@ const NAV_ITEMS = [
     label: "Documents",
     icon: FileText,
     isActive: (pathname: string) => pathname.startsWith("/documents"),
+  },
+  {
+    href: "/year-end",
+    label: "Year-End",
+    icon: Landmark,
+    isActive: (pathname: string) => pathname.startsWith("/year-end"),
   },
 ] as const;
 

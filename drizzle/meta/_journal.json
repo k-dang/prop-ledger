@@ -36,6 +36,13 @@
       "when": 1780895571540,
       "tag": "0004_military_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781234449552,
+      "tag": "0005_third_robin_chapel",
+      "breakpoints": true
     }
   ]
 }

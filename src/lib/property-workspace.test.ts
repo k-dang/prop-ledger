@@ -56,8 +56,6 @@ const baseProperty: RentalProperty = {
     },
   ],
   ownershipPeriods: [],
-  capitalAssets: [],
-  taxYears: [],
   ledgerEntries: [],
   mortgagePayments: [],
   documents: [],

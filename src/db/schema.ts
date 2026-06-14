@@ -15,9 +15,9 @@ const pgTable = rental.table.bind(rental);
 
 /**
  * Normalized persistence for the rental property domain. Tables mirror the
- * in-memory shapes in `src/lib/property-workspace.ts` and
- * `src/lib/property-tax-year.ts`; `src/db/queries.ts` maps rows back to those
- * domain types. Money and share values use `doublePrecision` to match the
+ * in-memory shapes in `src/lib/property-workspace.ts`; `src/db/queries.ts`
+ * maps rows back to those domain types. Money and share values use
+ * `doublePrecision` to match the
  * JS-number semantics the app has always used. ISO date fields are stored as
  * `date` columns read back as `YYYY-MM-DD` strings.
  */
@@ -66,22 +66,6 @@ export const ownershipPeriods = pgTable("ownership_periods", {
   percentage: doublePrecision("percentage").notNull(),
   effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
   effectiveTo: date("effective_to", { mode: "string" }),
-});
-
-export const capitalAssets = pgTable("capital_assets", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  propertyId: uuid("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  description: text("description").notNull(),
-  ccaClass: integer("cca_class").notNull(),
-  placedInServiceDate: date("placed_in_service_date", {
-    mode: "string",
-  }).notNull(),
-  buildingCost: doublePrecision("building_cost").notNull(),
-  landCost: doublePrecision("land_cost").notNull(),
-  dispositionDate: date("disposition_date", { mode: "string" }),
-  dispositionProceeds: doublePrecision("disposition_proceeds"),
 });
 
 export const RENT_FREQUENCIES = ["monthly", "biweekly", "weekly"] as const;
@@ -189,6 +173,7 @@ export const ledgerEntries = pgTable("ledger_entries", {
   prepaidEndDate: date("prepaid_end_date", { mode: "string" }),
   isPersonal: boolean("is_personal").notNull().default(false),
   isReconciled: boolean("is_reconciled").notNull().default(false),
+  isCapitalAsset: boolean("is_capital_asset").notNull().default(false),
   reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -212,24 +197,6 @@ export const propertyTaxYears = pgTable("property_tax_years", {
     .notNull()
     .references(() => properties.id, { onDelete: "cascade" }),
   year: integer("year").notNull(),
-});
-
-export type OpeningUccProvenance = "inherited" | "entered" | "unknown";
-
-export const ccaClassRecords = pgTable("cca_class_records", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  propertyTaxYearId: uuid("property_tax_year_id")
-    .notNull()
-    .references(() => propertyTaxYears.id, { onDelete: "cascade" }),
-  ccaClass: integer("cca_class").notNull(),
-  openingUccProvenance: text("opening_ucc_provenance")
-    .$type<OpeningUccProvenance>()
-    .notNull(),
-  openingUccAmount: doublePrecision("opening_ucc_amount"),
-  additions: doublePrecision("additions"),
-  dispositions: doublePrecision("dispositions"),
-  ccaClaimed: doublePrecision("cca_claimed"),
-  closingUcc: doublePrecision("closing_ucc"),
 });
 
 /**
@@ -264,7 +231,6 @@ export const DOCUMENT_LINK_TARGETS = [
   "transaction",
   "rent_event",
   "mortgage_payment",
-  "capital_asset",
   "year_end_package",
 ] as const;
 export type DocumentLinkTarget = (typeof DOCUMENT_LINK_TARGETS)[number];
@@ -282,7 +248,6 @@ export const propertiesRelations = relations(properties, ({ many }) => ({
   units: many(units),
   owners: many(owners),
   ownershipPeriods: many(ownershipPeriods),
-  capitalAssets: many(capitalAssets),
   taxYears: many(propertyTaxYears),
   rentEvents: many(rentEvents),
   ledgerEntries: many(ledgerEntries),
@@ -384,47 +349,27 @@ export const ownershipPeriodsRelations = relations(
   }),
 );
 
-export const capitalAssetsRelations = relations(capitalAssets, ({ one }) => ({
-  property: one(properties, {
-    fields: [capitalAssets.propertyId],
-    references: [properties.id],
-  }),
-}));
-
 export const propertyTaxYearsRelations = relations(
   propertyTaxYears,
-  ({ one, many }) => ({
+  ({ one }) => ({
     property: one(properties, {
       fields: [propertyTaxYears.propertyId],
       references: [properties.id],
-    }),
-    cca: many(ccaClassRecords),
-  }),
-);
-
-export const ccaClassRecordsRelations = relations(
-  ccaClassRecords,
-  ({ one }) => ({
-    propertyTaxYear: one(propertyTaxYears, {
-      fields: [ccaClassRecords.propertyTaxYearId],
-      references: [propertyTaxYears.id],
     }),
   }),
 );
 
 /**
  * Inferred row and insert types — the single source of truth for the domain
- * shapes. `src/lib/property-workspace.ts` and `src/lib/property-tax-year.ts`
- * re-export these (under domain-facing names) and add the logic that operates on
- * them; `src/db/queries.ts` returns these shapes directly.
+ * shapes. `src/lib/property-workspace.ts` re-exports these under domain-facing
+ * names and adds the logic that operates on them; `src/db/queries.ts` returns
+ * these shapes directly.
  */
 export type Property = typeof properties.$inferSelect;
 export type Unit = typeof units.$inferSelect;
 export type Owner = typeof owners.$inferSelect;
 export type OwnershipPeriod = typeof ownershipPeriods.$inferSelect;
-export type CapitalAsset = typeof capitalAssets.$inferSelect;
 export type PropertyTaxYearRow = typeof propertyTaxYears.$inferSelect;
-export type CcaClassRecord = typeof ccaClassRecords.$inferSelect;
 export type Lease = typeof leases.$inferSelect;
 export type RentEvent = typeof rentEvents.$inferSelect;
 export type LedgerEntry = typeof ledgerEntries.$inferSelect;
@@ -437,7 +382,6 @@ export type NewProperty = typeof properties.$inferInsert;
 export type NewUnit = typeof units.$inferInsert;
 export type NewOwner = typeof owners.$inferInsert;
 export type NewOwnershipPeriod = typeof ownershipPeriods.$inferInsert;
-export type NewCcaClassRecord = typeof ccaClassRecords.$inferInsert;
 export type NewPropertyTaxYear = typeof propertyTaxYears.$inferInsert;
 export type NewLease = typeof leases.$inferInsert;
 export type NewRentEvent = typeof rentEvents.$inferInsert;
