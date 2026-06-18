@@ -15,12 +15,17 @@ import {
 import { resetPortfolio } from "@/lib/actions";
 import type { PropertyReadiness } from "@/lib/property-workspace";
 import { cn } from "@/lib/utils";
+import type { YearEndDashboardCounts } from "@/lib/year-end-readiness";
+
+export type DashboardPropertyReadiness = PropertyReadiness & {
+  yearEndCounts: YearEndDashboardCounts;
+};
 
 export function PortfolioPanel({
   properties,
   hasProperties,
 }: {
-  properties: PropertyReadiness[];
+  properties: DashboardPropertyReadiness[];
   hasProperties: boolean;
 }) {
   const [isResetting, startReset] = useTransition();
@@ -69,6 +74,25 @@ export function PortfolioPanel({
                   <span className="block text-muted-foreground text-xs">
                     {property.completedCount}/{property.totalCount} checks
                   </span>
+                  <span className="mt-2 grid gap-1 text-xs">
+                    <span className="flex flex-wrap gap-1">
+                      <ExceptionBadge
+                        label="uncat"
+                        value={property.yearEndCounts.uncategorizedTransactions}
+                      />
+                      <ExceptionBadge
+                        label="receipts"
+                        value={property.yearEndCounts.missingReceipts}
+                      />
+                      <ExceptionBadge
+                        label="capital"
+                        value={property.yearEndCounts.capitalAssetTransactions}
+                      />
+                    </span>
+                    <span className="text-muted-foreground">
+                      {property.yearEndCounts.taxYear} year-end counts
+                    </span>
+                  </span>
                 </span>
                 <Badge
                   variant={property.setupGapCount === 0 ? "default" : "outline"}
@@ -97,5 +121,21 @@ export function PortfolioPanel({
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+function ExceptionBadge({ label, value }: { label: string; value: number }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "rounded-md",
+        value === 0
+          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+          : "border-amber-300 bg-amber-50 text-amber-900",
+      )}
+    >
+      {value} {label}
+    </Badge>
   );
 }

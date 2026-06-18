@@ -11,24 +11,25 @@ export async function markTransactionAsCapitalAsset(
   transactionId: string,
 ): Promise<ActionResult> {
   return runAction("Capital asset marker mutation", async () => {
-    const [updated] = await db
-      .update(ledgerEntries)
-      .set({ isCapitalAsset: true })
-      .where(
-        and(
-          eq(ledgerEntries.id, transactionId),
-          eq(ledgerEntries.propertyId, propertyId),
-          eq(ledgerEntries.type, "expense"),
-        ),
-      )
-      .returning({ id: ledgerEntries.id });
+    const entry = await db.query.ledgerEntries.findFirst({
+      where: and(
+        eq(ledgerEntries.id, transactionId),
+        eq(ledgerEntries.propertyId, propertyId),
+        eq(ledgerEntries.type, "expense"),
+      ),
+    });
 
-    if (updated === undefined) {
+    if (entry === undefined) {
       return {
         ok: false,
         error: "Only expense transactions can be marked as capital assets.",
       };
     }
+
+    await db
+      .update(ledgerEntries)
+      .set({ isCapitalAsset: true })
+      .where(eq(ledgerEntries.id, transactionId));
 
     return { ok: true };
   });

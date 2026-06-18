@@ -1,12 +1,14 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
 import { addOwnerWithOwnership, addUnit } from "@/lib/actions";
 import {
   createManualTransaction,
   deleteEvidenceDocument,
+  deleteManualTransaction,
   uploadTransactionEvidence,
 } from "@/lib/evidence-actions";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
@@ -24,6 +26,7 @@ export function PropertyWorkspace({
   propertyId: string;
   property: RentalProperty | undefined;
 }) {
+  const router = useRouter();
   const [unitError, setUnitError] = useState<string>();
   const [ownerError, setOwnerError] = useState<string>();
   const [transactionError, setTransactionError] = useState<string>();
@@ -68,6 +71,17 @@ export function PropertyWorkspace({
     return result.ok;
   }
 
+  async function handleDeleteManualTransaction(transactionId: string) {
+    const result = await deleteManualTransaction(selectedId, transactionId);
+    setTransactionError(result.ok ? undefined : result.error);
+
+    if (result.ok) {
+      router.refresh();
+    }
+
+    return result.ok;
+  }
+
   async function handleDeleteEvidenceDocument(documentId: string) {
     const result = await deleteEvidenceDocument(selectedId, documentId);
     setDocumentError(result.ok ? undefined : result.error);
@@ -86,6 +100,7 @@ export function PropertyWorkspace({
         onAddUnit={handleAddUnit}
         onAddOwner={handleAddOwner}
         onCreateManualTransaction={handleCreateManualTransaction}
+        onDeleteManualTransaction={handleDeleteManualTransaction}
         onUploadTransactionEvidence={handleUploadTransactionEvidence}
         onDeleteEvidenceDocument={handleDeleteEvidenceDocument}
       />

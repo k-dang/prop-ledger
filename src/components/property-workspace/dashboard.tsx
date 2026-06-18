@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
-import { PortfolioPanel } from "@/components/property-workspace/portfolio-panel";
+import {
+  type DashboardPropertyReadiness,
+  PortfolioPanel,
+} from "@/components/property-workspace/portfolio-panel";
 import { PropertyForm } from "@/components/property-workspace/property-form";
 import { createProperty } from "@/lib/actions";
-import type {
-  NewPropertyInput,
-  PropertyReadiness,
-} from "@/lib/property-workspace";
+import type { NewPropertyInput } from "@/lib/property-workspace";
 
 const SAVE_ERROR_MESSAGE =
   "Unable to save the property. Please try again in a moment.";
@@ -17,7 +17,7 @@ export function Dashboard({
   readiness,
   hasProperties,
 }: {
-  readiness: PropertyReadiness[];
+  readiness: DashboardPropertyReadiness[];
   hasProperties: boolean;
 }) {
   const [saveError, setSaveError] = useState<string>();

@@ -53,6 +53,14 @@ export async function deleteEvidenceFile(storageUrl: string | null) {
   }
 }
 
+export async function deleteEvidenceFileBestEffort(storageUrl: string | null) {
+  try {
+    await deleteEvidenceFile(storageUrl);
+  } catch (error) {
+    console.error("Evidence file cleanup failed", error);
+  }
+}
+
 async function deleteAbsoluteEvidenceFile(absolutePath: string) {
   try {
     await unlink(absolutePath);

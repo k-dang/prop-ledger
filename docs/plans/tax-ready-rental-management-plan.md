@@ -20,7 +20,7 @@ Durable decisions that apply across all phases:
 - **Allocations**: Represent category splits, mortgage splits, prepaid expense periods, personal-use portions, and owner-share allocations as structured allocation records.
 - **Capital support**: For the MVP, capital support is a transaction-level marking: an expense can be marked as a capital asset and listed separately at year end with its support document count. Guided capital review, separate capital asset records, land/building splits, CCA classes, UCC, additions, dispositions, proceeds, prior claims, accountant-entered values, and missing-history flags are deferred.
 - **Tax year model**: Treat a Tax Year as a record-keeping boundary, not a computation context, and as a thin overlay that *selects* dated records (rent, ledger, ownership) rather than owning them. Do not add CCA fields or carryforward records to the MVP schema; those belong to the deferred post-MVP capital module.
-- **No close state machine**: Property Tax Years stay permanently editable. Readiness is derived live from open exceptions rather than stored as a workflow state, and prior-year edits are captured by the audit log. Point-in-time defensibility comes from immutable `YearEndPackage` snapshots taken at export, not from locking live records. A soft per-year "filed" lock can be added later if accidental edits to filed years prove painful. See `docs/adr/0001-no-tax-year-close-state-machine.md`.
+- **No close state machine**: Property Tax Years stay permanently editable. Readiness is derived live from open exceptions rather than stored as a workflow state. Point-in-time defensibility will come from immutable `YearEndPackage` snapshots taken at export, with audit logging deferred out of the MVP. A soft per-year "filed" lock can be added later if accidental edits to filed years prove painful. See `docs/adr/0001-no-tax-year-close-state-machine.md`.
 - **CCA carryforward**: Deferred from the MVP. No opening UCC, CCA claim, or closing UCC chain is collected or computed in the first release.
 - **Scope**: Long-term residential rentals only. Short-term rental is out of scope (no STR flag or behavior in the model).
 - **Export stance**: Generate accountant-ready and T776-ready support packages. Do not calculate final tax outcomes, optimize CCA, estimate deductions, or file tax returns.
@@ -146,12 +146,12 @@ Turn the records collected in prior phases into a year-end readiness view. A co-
 
 ### Acceptance criteria
 
-- [ ] A readiness checklist is derived live for each property and tax year (not stored as a workflow state).
-- [ ] The checklist includes uncategorized transactions, missing documents, marked capital asset transactions, ownership allocation warnings, and personal-use warnings.
-- [ ] Dashboard counts show missing receipts, uncategorized transactions, and capital asset transactions by property.
-- [ ] Readiness updates immediately as exceptions are resolved or new records are added; no record becomes uneditable as a result of readiness state.
-- [ ] Edits to records in any tax year — including prior years — are captured by the audit log.
-- [ ] Tests cover readiness derivation, blocking-versus-warning classification, live recomputation after edits, and dashboard exception counts.
+- [x] A readiness checklist is derived live for each property and tax year (not stored as a workflow state).
+- [x] The checklist includes uncategorized transactions, missing documents, marked capital asset transactions, ownership allocation warnings, and personal-use warnings.
+- [x] Dashboard counts show missing receipts, uncategorized transactions, and capital asset transactions by property.
+- [x] Readiness updates immediately as exceptions are resolved or new records are added; no record becomes uneditable as a result of readiness state.
+- [ ] Audit logging for prior-year edits is deferred out of the MVP.
+- [x] Tests cover readiness derivation, blocking-versus-warning classification, live recomputation after edits, and dashboard exception counts.
 
 ---
 

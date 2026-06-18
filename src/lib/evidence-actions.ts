@@ -4,17 +4,12 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/index";
 import { documentLinks, documents, ledgerEntries } from "@/db/schema";
-import {
-  type ActionResult,
-  runAction,
-  SAVE_FAILED_MESSAGE,
-} from "@/lib/action-utils";
+import { type ActionResult, runAction } from "@/lib/action-utils";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
   cleanupStoredEvidenceFile,
-  deleteEvidenceFile,
+  deleteEvidenceFileBestEffort,
   isSupportedEvidenceFile,
-  type StoredEvidenceFile,
   saveEvidenceFile,
 } from "@/lib/evidence-file-storage";
 
@@ -28,14 +23,55 @@ export async function createManualTransaction(
     }
 
     const { isCapitalAsset, ...transactionInput } = input;
-
-    await db.insert(ledgerEntries).values({
+    const transaction = {
       propertyId,
       ...transactionInput,
       isCapitalAsset: input.type === "expense" && isCapitalAsset === true,
       isPersonal: false,
       isReconciled: true,
+    };
+
+    await db.insert(ledgerEntries).values(transaction);
+    return { ok: true };
+  });
+}
+
+export async function deleteManualTransaction(
+  propertyId: string,
+  transactionId: string,
+): Promise<ActionResult> {
+  return runAction("Manual transaction delete mutation", async () => {
+    const transaction = await db.query.ledgerEntries.findFirst({
+      where: and(
+        eq(ledgerEntries.id, transactionId),
+        eq(ledgerEntries.propertyId, propertyId),
+      ),
+      columns: { id: true },
     });
+
+    if (transaction === undefined) {
+      return { ok: false, error: "That transaction no longer exists." };
+    }
+
+    await db.batch([
+      db
+        .delete(documentLinks)
+        .where(
+          and(
+            eq(documentLinks.targetType, "transaction"),
+            eq(documentLinks.targetId, transactionId),
+          ),
+        ),
+      db
+        .delete(ledgerEntries)
+        .where(
+          and(
+            eq(ledgerEntries.id, transactionId),
+            eq(ledgerEntries.propertyId, propertyId),
+          ),
+        ),
+    ]);
+
     return { ok: true };
   });
 }
@@ -69,14 +105,27 @@ export async function uploadTransactionEvidence(
 
     const storedFile = await saveEvidenceFile(file);
 
+    const documentId = crypto.randomUUID();
+    const document = {
+      id: documentId,
+      propertyId,
+      fileName: file.name,
+      documentType: "receipt",
+      storageUrl: storedFile.storageUrl,
+      vendor: transaction.vendor,
+      documentDate: transaction.date,
+      amount: transaction.amount,
+    };
+
     try {
-      await createEvidenceDocumentLink({
-        propertyId,
-        transactionId,
-        storedFile,
-        originalFileName: file.name,
-        transaction,
-      });
+      await db.batch([
+        db.insert(documents).values(document),
+        db.insert(documentLinks).values({
+          documentId,
+          targetType: "transaction",
+          targetId: transactionId,
+        }),
+      ]);
     } catch (error) {
       await cleanupStoredEvidenceFile(storedFile);
       throw error;
@@ -107,50 +156,8 @@ export async function deleteEvidenceDocument(
       .where(
         and(eq(documents.id, documentId), eq(documents.propertyId, propertyId)),
       );
-    await deleteEvidenceFile(document.storageUrl);
+    await deleteEvidenceFileBestEffort(document.storageUrl);
 
     return { ok: true };
   });
-}
-
-async function createEvidenceDocumentLink({
-  propertyId,
-  transactionId,
-  storedFile,
-  originalFileName,
-  transaction,
-}: {
-  propertyId: string;
-  transactionId: string;
-  storedFile: StoredEvidenceFile;
-  originalFileName: string;
-  transaction: typeof ledgerEntries.$inferSelect;
-}) {
-  const [inserted] = await db
-    .insert(documents)
-    .values({
-      propertyId,
-      fileName: originalFileName,
-      documentType: "receipt",
-      storageUrl: storedFile.storageUrl,
-      vendor: transaction.vendor,
-      documentDate: transaction.date,
-      amount: transaction.amount,
-    })
-    .returning({ id: documents.id });
-
-  if (inserted === undefined) {
-    throw new Error(SAVE_FAILED_MESSAGE);
-  }
-
-  try {
-    await db.insert(documentLinks).values({
-      documentId: inserted.id,
-      targetType: "transaction",
-      targetId: transactionId,
-    });
-  } catch (error) {
-    await db.delete(documents).where(eq(documents.id, inserted.id));
-    throw error;
-  }
 }

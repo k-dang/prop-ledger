@@ -13,11 +13,7 @@ import {
   rentEvents,
   units,
 } from "@/db/schema";
-import {
-  type ActionResult,
-  runAction,
-  SAVE_FAILED_MESSAGE,
-} from "@/lib/action-utils";
+import { type ActionResult, runAction } from "@/lib/action-utils";
 import {
   canAddOwnershipPeriod,
   formatDisplayDate,
@@ -40,6 +36,7 @@ export async function createProperty(
   return runAction("Property creation mutation", async () => {
     // `input` already matches the insert shape, so it writes straight through.
     await db.insert(properties).values(input);
+
     return { ok: true };
   });
 }
@@ -50,6 +47,7 @@ export async function addUnit(
 ): Promise<ActionResult> {
   return runAction("Unit mutation", async () => {
     await db.insert(units).values({ propertyId, ...input });
+
     return { ok: true };
   });
 }
@@ -78,19 +76,17 @@ export async function addOwnerWithOwnership(
       return { ok: false, error: formatOwnershipIssue(validation.issues[0]) };
     }
 
-    await db.insert(owners).values({
+    const owner = {
       id: ownerId,
       propertyId,
       name: input.name,
       email: input.email,
-    });
+    };
 
-    try {
-      await db.insert(ownershipPeriods).values(nextPeriod);
-    } catch (error) {
-      await db.delete(owners).where(eq(owners.id, ownerId));
-      throw error;
-    }
+    await db.batch([
+      db.insert(owners).values(owner),
+      db.insert(ownershipPeriods).values(nextPeriod),
+    ]);
 
     return { ok: true };
   });
@@ -99,6 +95,7 @@ export async function addOwnerWithOwnership(
 export async function createLease(input: NewLeaseInput): Promise<ActionResult> {
   return runAction("Lease mutation", async () => {
     await db.insert(leases).values(input);
+
     return { ok: true };
   });
 }
@@ -173,36 +170,29 @@ export async function recordRentEvent(
     }
 
     await db.insert(rentEvents).values({ propertyId, ...input });
+
     return { ok: true };
   });
 }
 
-/**
- * Record a document against a lease: store the evidence record, then link it to
- * the lease. The neon-http driver has no interactive transactions, so on the
- * rare event the link insert fails the document still remains in the source
- * index rather than losing the upload.
- */
 export async function addLeaseDocument(
   propertyId: string,
   input: NewLeaseDocumentInput,
 ): Promise<ActionResult> {
   return runAction("Lease document mutation", async () => {
     const { leaseId, ...documentInput } = input;
-    const [inserted] = await db
-      .insert(documents)
-      .values({ propertyId, ...documentInput })
-      .returning({ id: documents.id });
+    const documentId = crypto.randomUUID();
 
-    if (inserted === undefined) {
-      return { ok: false, error: SAVE_FAILED_MESSAGE };
-    }
-
-    await db.insert(documentLinks).values({
-      documentId: inserted.id,
-      targetType: "lease",
-      targetId: leaseId,
-    });
+    await db.batch([
+      db
+        .insert(documents)
+        .values({ id: documentId, propertyId, ...documentInput }),
+      db.insert(documentLinks).values({
+        documentId,
+        targetType: "lease",
+        targetId: leaseId,
+      }),
+    ]);
     return { ok: true };
   });
 }

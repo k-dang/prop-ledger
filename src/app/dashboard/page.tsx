@@ -4,6 +4,10 @@ import { Suspense } from "react";
 import { Dashboard } from "@/components/property-workspace/dashboard";
 import { getPortfolio } from "@/db/queries";
 import { getPropertyReadiness } from "@/lib/property-workspace";
+import {
+  getDefaultTaxYear,
+  getYearEndDashboardCounts,
+} from "@/lib/year-end-readiness";
 
 export const metadata: Metadata = {
   title: "Dashboard | Rental Property Workspace",
@@ -23,7 +27,11 @@ export default function DashboardPage() {
 
 async function DashboardContent() {
   const portfolio = await getPortfolio();
-  const readiness = portfolio.properties.map(getPropertyReadiness);
+  const taxYear = getDefaultTaxYear();
+  const readiness = portfolio.properties.map((property) => ({
+    ...getPropertyReadiness(property),
+    yearEndCounts: getYearEndDashboardCounts(property, taxYear),
+  }));
 
   return (
     <Dashboard

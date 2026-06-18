@@ -21,6 +21,7 @@ export async function recordMortgagePayment(
     }
 
     await db.insert(mortgagePayments).values({ propertyId, ...input });
+
     return { ok: true };
   });
 }

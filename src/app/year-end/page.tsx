@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { CapitalRegister } from "@/components/capital-assets/capital-register";
 import { Skeleton } from "@/components/ui/skeleton";
+import { YearEndWorkspace } from "@/components/year-end/year-end-workspace";
 import { getPortfolio } from "@/db/queries";
+import {
+  getDefaultTaxYear,
+  getYearEndReadiness,
+} from "@/lib/year-end-readiness";
 
 export const metadata: Metadata = {
   title: "Year-End | Rental Property Workspace",
-  description: "Marked capital asset transactions for year-end packages.",
+  description: "Year-end readiness and marked capital asset transactions.",
 };
-
-const FALLBACK_YEAR = 2026;
 
 export default function YearEndPage({
   searchParams,
@@ -75,7 +77,19 @@ async function YearEndContent({
     );
   }
 
-  return <CapitalRegister property={property} year={parseYear(year)} />;
+  const parsedYear = parseYear(year);
+
+  return (
+    <YearEndWorkspace
+      properties={portfolio.properties.map((candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+      }))}
+      property={property}
+      readiness={getYearEndReadiness(property, parsedYear)}
+      year={parsedYear}
+    />
+  );
 }
 
 function parseYear(raw: string | undefined): number {
@@ -83,5 +97,5 @@ function parseYear(raw: string | undefined): number {
 
   return Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100
     ? parsed
-    : FALLBACK_YEAR;
+    : getDefaultTaxYear();
 }

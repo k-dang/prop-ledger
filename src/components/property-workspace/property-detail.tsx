@@ -94,6 +94,7 @@ export function PropertyWorkspaceDetail({
   onAddUnit,
   onAddOwner,
   onCreateManualTransaction,
+  onDeleteManualTransaction,
   onUploadTransactionEvidence,
   onDeleteEvidenceDocument,
 }: {
@@ -107,6 +108,9 @@ export function PropertyWorkspaceDetail({
   onAddOwner: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
   onCreateManualTransaction: (
     input: NewManualTransactionInput,
+  ) => boolean | Promise<boolean>;
+  onDeleteManualTransaction: (
+    transactionId: string,
   ) => boolean | Promise<boolean>;
   onUploadTransactionEvidence: (
     transactionId: string,
@@ -139,6 +143,7 @@ export function PropertyWorkspaceDetail({
         transactionError={transactionError}
         documentError={documentError}
         onCreateManualTransaction={onCreateManualTransaction}
+        onDeleteManualTransaction={onDeleteManualTransaction}
         onUploadTransactionEvidence={onUploadTransactionEvidence}
         onDeleteEvidenceDocument={onDeleteEvidenceDocument}
       />

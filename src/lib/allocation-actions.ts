@@ -31,21 +31,24 @@ export async function setTransactionCategory(
       return { ok: false, error: categoryError };
     }
 
+    const nextExpenseCategory =
+      entry.type === "expense" && category !== null && isT776Category(category)
+        ? category
+        : null;
+    const nextIncomeCategory =
+      entry.type === "income" &&
+      category !== null &&
+      isRentalIncomeCategory(category)
+        ? category
+        : null;
+    const nextCategory =
+      entry.type === "expense"
+        ? { expenseCategory: nextExpenseCategory }
+        : { incomeCategory: nextIncomeCategory };
+
     await db
       .update(ledgerEntries)
-      .set(
-        entry.type === "expense"
-          ? {
-              expenseCategory:
-                category !== null && isT776Category(category) ? category : null,
-            }
-          : {
-              incomeCategory:
-                category !== null && isRentalIncomeCategory(category)
-                  ? category
-                  : null,
-            },
-      )
+      .set(nextCategory)
       .where(eq(ledgerEntries.id, transactionId));
     return { ok: true };
   });
@@ -113,7 +116,6 @@ export async function saveTransactionSplits(
     const deleteExisting = db
       .delete(transactionSplits)
       .where(eq(transactionSplits.ledgerEntryId, transactionId));
-
     if (splits.length === 0) {
       await deleteExisting;
       return { ok: true };

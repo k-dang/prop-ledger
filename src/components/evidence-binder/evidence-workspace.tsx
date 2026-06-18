@@ -2,7 +2,7 @@
 
 import { FileText, type LucideIcon, Plus, Receipt, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   MortgagePaymentsPanel,
@@ -95,6 +95,7 @@ export function EvidenceBinderPanel({
   transactionError,
   documentError,
   onCreateManualTransaction,
+  onDeleteManualTransaction,
   onUploadTransactionEvidence,
   onDeleteEvidenceDocument,
 }: {
@@ -103,6 +104,9 @@ export function EvidenceBinderPanel({
   documentError?: string;
   onCreateManualTransaction: (
     input: NewManualTransactionInput,
+  ) => boolean | Promise<boolean>;
+  onDeleteManualTransaction: (
+    transactionId: string,
   ) => boolean | Promise<boolean>;
   onUploadTransactionEvidence: (
     transactionId: string,
@@ -169,6 +173,7 @@ export function EvidenceBinderPanel({
           error={transactionError}
           evidenceError={documentError}
           onSubmit={onCreateManualTransaction}
+          onDeleteTransaction={onDeleteManualTransaction}
           onUploadEvidence={onUploadTransactionEvidence}
           onDeleteDocument={onDeleteEvidenceDocument}
         />
@@ -200,6 +205,7 @@ function ManualTransactionsPanel({
   error,
   evidenceError,
   onSubmit,
+  onDeleteTransaction,
   onUploadEvidence,
   onDeleteDocument,
 }: {
@@ -207,6 +213,7 @@ function ManualTransactionsPanel({
   error?: string;
   evidenceError?: string;
   onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
+  onDeleteTransaction: (transactionId: string) => boolean | Promise<boolean>;
   onUploadEvidence: (
     transactionId: string,
     formData: FormData,
@@ -323,6 +330,9 @@ function ManualTransactionsPanel({
                 <TableHead>Amount</TableHead>
                 <TableHead>Allocation</TableHead>
                 <TableHead>Evidence</TableHead>
+                <TableHead className="w-10">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -369,6 +379,13 @@ function ManualTransactionsPanel({
                         />
                       ) : null}
                     </TableCell>
+                    <TableCell>
+                      <DeleteTransactionButton
+                        transactionId={entry.id}
+                        vendor={entry.vendor}
+                        onDelete={onDeleteTransaction}
+                      />
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -377,6 +394,46 @@ function ManualTransactionsPanel({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function DeleteTransactionButton({
+  transactionId,
+  vendor,
+  onDelete,
+}: {
+  transactionId: string;
+  vendor: string;
+  onDelete: (transactionId: string) => boolean | Promise<boolean>;
+}) {
+  const [isDeleting, startDelete] = useTransition();
+
+  function handleDelete() {
+    if (
+      !window.confirm(
+        "Delete this transaction? Its splits will be removed. Linked documents will remain in Documents.",
+      )
+    ) {
+      return;
+    }
+
+    startDelete(async () => {
+      await onDelete(transactionId);
+    });
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="destructive"
+      size="icon-sm"
+      aria-label={`Delete transaction from ${vendor}`}
+      title="Delete transaction"
+      disabled={isDeleting}
+      onClick={handleDelete}
+    >
+      <Trash2 aria-hidden="true" />
+    </Button>
   );
 }
 
