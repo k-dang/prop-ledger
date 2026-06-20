@@ -15,9 +15,6 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  // The portfolio is read fresh from the DB per request, so it streams in
-  // behind a Suspense boundary (Cache Components / PPR) rather than blocking
-  // the static shell.
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <DashboardContent />

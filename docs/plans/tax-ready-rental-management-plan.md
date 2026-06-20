@@ -17,7 +17,7 @@ Durable decisions that apply across all phases:
 - **Non-rental activity**: Keep the rental ledger for rental-relevant records only. Personal or otherwise non-rental activity is out of scope for manual entry and should not be represented as ledger rows.
 - **Documents**: Treat documents as reusable evidence records with stable identifiers and many-to-many links to transactions, rent events, leases, mortgage payments, and year-end packages. In Phase 3, evidence is attached directly from the transaction row; unsupported or mistaken uploads are deleted rather than detached into a separate holding workflow.
 - **Transaction categories**: Use a CRA T776-shaped category set for rental expenses and a separate rental-income category set for income records. Do not force income through expense categories.
-- **Allocations**: Represent category splits, mortgage splits, prepaid expense periods, personal-use portions, and owner-share allocations as structured allocation records.
+- **Allocations**: Represent category splits, mortgage splits, prepaid expense periods, and owner-share allocations as structured allocation records.
 - **Capital support**: For the MVP, capital support is a transaction-level marking: an expense can be marked as a capital asset and listed separately at year end with its support document count. Guided capital review, separate capital asset records, land/building splits, CCA classes, UCC, additions, dispositions, proceeds, prior claims, accountant-entered values, and missing-history flags are deferred.
 - **Tax year model**: Treat a Tax Year as a record-keeping boundary, not a computation context, and as a thin overlay that *selects* dated records (rent, ledger, ownership) rather than owning them. Do not add CCA fields or carryforward records to the MVP schema; those belong to the deferred post-MVP capital module.
 - **No close state machine**: Property Tax Years stay permanently editable. Readiness is derived live from open exceptions rather than stored as a workflow state. Point-in-time defensibility will come from immutable `YearEndPackage` snapshots taken at export, with audit logging deferred out of the MVP. A soft per-year "filed" lock can be added later if accidental edits to filed years prove painful. See `docs/adr/0001-no-tax-year-close-state-machine.md`.
@@ -35,11 +35,11 @@ Durable decisions that apply across all phases:
 
 ### What to build
 
-Create the first usable property accounting workspace. A co-owner can set up a property, add units, enter address and acquisition details, mark personal-use facts, add owners together with their initial effective-dated ownership shares, and see a dashboard that makes setup gaps obvious.
+Create the first usable property accounting workspace. A co-owner can set up a property, add units, enter address and acquisition details, add owners together with their initial effective-dated ownership shares, and see a dashboard that makes setup gaps obvious.
 
 ### Acceptance criteria
 
-- [x] A user can create a property with municipal address, acquisition date, and personal-use indicator.
+- [x] A user can create a property with municipal address and acquisition date.
 - [x] A user can add one or more units under a property.
 - [x] A user can add an owner only together with their initial effective-dated ownership share.
 - [x] Ownership periods reject active allocations above 100 percent.
@@ -99,14 +99,13 @@ Create the manual transaction and document workflow. A co-owner can enter rental
 
 ### What to build
 
-Extend manual transactions with allocation review. A co-owner can split rental-relevant transactions across categories, split mortgage payments, apply personal-use percentages to mixed-use rental records, mark prepaid expenses with service periods, and filter existing transaction review work by property, tax year, issue type, and category.
+Extend manual transactions with allocation review. A co-owner can split rental-relevant transactions across categories, split mortgage payments, mark prepaid expenses with service periods, and filter existing transaction review work by property, tax year, issue type, and category.
 
 ### Acceptance criteria
 
 - [x] A user can split one manual transaction across multiple categories.
 - [x] A user can split a mortgage payment into principal, interest, and fees.
 - [x] A user can record individual mortgage payments with lender/payee, principal, interest, fees, and notes.
-- [~] A user can apply personal-use percentages to transactions. Dropped from MVP scope while the product targets fully rental properties.
 - [x] A user can mark an expense as prepaid and enter the service period.
 - [x] The inbox supports filtering by property, tax year, issue type, and category.
 - [x] The inbox supports efficient keyboard-friendly review of common categorization actions.
@@ -147,7 +146,7 @@ Turn the records collected in prior phases into a year-end readiness view. A co-
 ### Acceptance criteria
 
 - [x] A readiness checklist is derived live for each property and tax year (not stored as a workflow state).
-- [x] The checklist includes uncategorized transactions, missing documents, marked capital asset transactions, ownership allocation warnings, and personal-use warnings.
+- [x] The checklist includes uncategorized transactions, missing documents, marked capital asset transactions, and ownership allocation warnings.
 - [x] Dashboard counts show missing receipts, uncategorized transactions, and capital asset transactions by property.
 - [x] Readiness updates immediately as exceptions are resolved or new records are added; no record becomes uneditable as a result of readiness state.
 - [ ] Audit logging for prior-year edits is deferred out of the MVP.

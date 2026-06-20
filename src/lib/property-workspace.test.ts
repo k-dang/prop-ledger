@@ -31,7 +31,6 @@ const baseProperty: RentalProperty = {
   province: "ON",
   postalCode: "L8P 1A1",
   acquisitionDate: "2021-04-15",
-  hasPersonalUse: false,
   createdAt: new Date("2021-04-15T00:00:00.000Z"),
   units: [
     {

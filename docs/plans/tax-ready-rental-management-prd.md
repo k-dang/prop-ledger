@@ -13,7 +13,7 @@ The core problem is that rental tax submission depends on source records that ar
 - Co-owner shares must be effective-dated tax facts.
 - Receipts and source documents must remain linked to the numbers they support.
 - Repairs and capital improvements must be identified deliberately, even though detailed CCA support can wait until after the MVP.
-- Personal-use portions, prepaid expenses, and owner prorations must be visible before year-end.
+- Prepaid expenses and owner prorations must be visible before year-end.
 - The final package must be useful to each owner and to an accountant, not just visually attractive in a dashboard.
 
 The product should therefore help users answer a practical question at any point in the year: "What records are still missing or unresolved before I hand this property to my accountant or tax software?"
@@ -48,7 +48,6 @@ The product should support these first-release capabilities:
 - Marking expense transactions as capital assets
 - A simple year-end capital transaction list with source transaction and document support counts
 - Prepaid expense allocation
-- Personal-use allocation
 - Owner-share allocation
 - Basic loan and financing-cost tracking
 - Year-end readiness checklist
@@ -65,7 +64,6 @@ The first release should avoid building a full resident experience. Tenant porta
 2. As a co-owner, I want to add units under a property, so that rent and expenses can be tracked at the right level of detail.
 3. As a co-owner, I want to enter the municipal address of a property, so that year-end exports identify the property clearly.
 4. As a co-owner, I want to record the acquisition date of a property, so that tax and capital schedules have the right timeline.
-5. As a co-owner, I want to record whether a property has personal-use portions, so that deductible amounts can be prorated correctly.
 6. _(Removed — short-term rental is out of scope. The product covers long-term residential rentals only. See Out of Scope.)_
 7. As a co-owner, I want to add another owner together with their initial ownership share, so that owner records are never missing allocation facts.
 8. As a co-owner, I want ownership percentages to be effective-dated, so that ownership changes are handled accurately by tax year.
@@ -87,7 +85,6 @@ The first release should avoid building a full resident experience. Tenant porta
 27. As a co-owner, I want expense and income records to use separate category lists, so that year-end summaries map cleanly to tax reporting.
 28. As a co-owner, I want to split one transaction across multiple categories, so that mixed expenses can be represented accurately.
 29. As a co-owner, I want to split a mortgage payment into principal, interest, and fees, so that only deductible portions flow to expenses.
-31. As a co-owner, I want to apply a personal-use percentage to a transaction, so that only the rental portion is deducted.
 32. As a co-owner, I want to mark an expense as prepaid, so that the deduction can be allocated across the benefit period.
 33. As a co-owner, I want to enter the service period for a prepaid expense, so that annual insurance or similar costs are spread correctly.
 34. As a co-owner, I want the app to show transactions missing categories, so that I can finish review before year end.
@@ -115,7 +112,6 @@ The first release should avoid building a full resident experience. Tenant porta
 58. _(Deferred — capital and CCA history continuity is out of MVP scope.)_
 59. As an accountant, I want to review transactions marked as capital assets separately from ordinary expenses, so that likely improvements are easy to inspect.
 60. As a co-owner, I want to track mortgage financing costs separately, so that five-year amortization can be handled.
-61. As a co-owner, I want to record refinancing notes, so that personal-use borrowing is not accidentally deducted.
 62. As a co-owner, I want to mark transaction review decisions with notes, so that future reviewers understand why an item was treated a certain way.
 63. As a co-owner, I want an activity log for material edits, so that changes to tax-relevant data can be traced.
 64. As a co-owner, I want each exported year-end package to be an immutable snapshot, so that I can prove what I handed to my accountant even after the underlying records change.
@@ -125,7 +121,6 @@ The first release should avoid building a full resident experience. Tenant porta
 68. As a co-owner, I want the checklist to include missing documents, so that evidence gaps are visible.
 70. As a co-owner, I want the checklist to include transactions marked as capital assets, so that likely improvements are visible before export.
 71. As a co-owner, I want the checklist to include ownership allocation warnings, so that each owner package is calculated correctly.
-72. As a co-owner, I want the checklist to include personal-use warnings, so that mixed-use expenses are not overstated.
 73. _(Deferred — capital and CCA-support warnings are out of MVP scope.)_
 74. As a co-owner, I want to generate a T776-ready income and expense summary, so that my accountant can prepare the return efficiently.
 75. As a co-owner, I want to generate an owner-share worksheet, so that each owner sees their allocable share.
@@ -172,7 +167,7 @@ The first release should avoid building a full resident experience. Tenant porta
 - For the MVP, model likely capital items as expense transactions marked with a capital asset status. Do not require a separate capital asset record, land/building split, CCA class, or UCC history before year-end review.
 - Model documents as reusable evidence records that can attach to transactions, leases, loans, rent events, and year-end packages. Mistaken source documents are deleted rather than detached into a separate holding workflow.
 - Use a CRA/T776-shaped category set as the default chart of rental expense categories and a separate rental-income category set for income records.
-- Support category splits, personal-use splits, owner-share allocation, and prepaid expense allocation as explicit allocation records rather than free-form notes.
+- Support category splits, owner-share allocation, and prepaid expense allocation as explicit allocation records rather than free-form notes.
 - Defer the detailed capital and CCA-support module. The MVP only needs to mark transactions as capital assets and surface those marked transactions with their support document counts.
 - Implement an ownership allocation module as a deep domain module with a stable interface for storing effective-dated owner shares and producing owner-share worksheets for review.
 - Implement a year-end package generator as a deep domain module that consumes reviewed ledger, rent, document, capital, and ownership data and produces traceable package sections.
@@ -198,11 +193,10 @@ The first release should avoid building a full resident experience. Tenant porta
 - The most important tests are domain tests for record capture, report totals, export contents, and workflow state transitions.
 - The ownership allocation module should be tested with equal ownership, unequal ownership, mid-year ownership changes, gaps, overlaps, and invalid totals.
 - The rent ledger should be tested with rent schedules, partial periods, payments, arrears, credits, write-offs, and other rental income.
-- The transaction review module should be tested with manual entries, category assignment, splits, personal portions, prepaid allocations, and unresolved-review states.
+- The transaction review module should be tested with manual entries, category assignment, splits, prepaid allocations, and unresolved-review states.
 - The document module should be tested for upload metadata, attachment creation, document deletion, and export index generation.
 - Capital marking should be tested for expense transaction creation with the capital asset flag, marking an existing expense transaction as capital, excluding income transactions, and year-end listing with support document counts.
 - The prepaid expense allocator should be tested with single-year and multi-year service periods.
-- The personal-use allocator should be tested with full rental, partial rental, and fully personal cases.
 - Year-end readiness should be tested for live derivation of blocking and warning conditions, recomputation after edits, and the guarantee that no record becomes uneditable as a result of readiness state. Year-end package snapshots should be tested for immutability after subsequent record edits.
 - The year-end package generator should be tested with golden-output fixtures for representative properties and tax years.
 - The audit log should be tested for material edit events and export events.

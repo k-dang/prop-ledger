@@ -15,7 +15,6 @@ const property: YearEndPackageSource = {
   province: "ON",
   postalCode: "L8P 1A1",
   acquisitionDate: "2020-01-01",
-  hasPersonalUse: false,
   createdAt: new Date("2020-01-01T00:00:00Z"),
   units: [],
   owners: [
@@ -63,7 +62,6 @@ const property: YearEndPackageSource = {
       incomeCategory: null,
       prepaidStartDate: null,
       prepaidEndDate: null,
-      isPersonal: false,
       isReconciled: true,
       isCapitalAsset: true,
       reviewNotes: "Accountant to review",
@@ -82,7 +80,6 @@ const property: YearEndPackageSource = {
       incomeCategory: "laundry",
       prepaidStartDate: null,
       prepaidEndDate: null,
-      isPersonal: false,
       isReconciled: true,
       isCapitalAsset: false,
       reviewNotes: null,

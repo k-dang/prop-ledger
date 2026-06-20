@@ -283,13 +283,6 @@ function toReadinessRow(
             : formatOwnershipWarning(item.ownershipWarning),
         href: `/properties/${propertyId}`,
       };
-    case "personal_use":
-      return {
-        ...item,
-        label: "Personal-use review",
-        detail: formatPersonalUseDetail(item),
-        href: `/properties/${propertyId}`,
-      };
     default:
       return assertNever(item);
   }
@@ -318,22 +311,6 @@ function formatOwnershipWarning(warning: OwnershipReadinessWarning) {
   }
 
   return "Review ownership percentages before export.";
-}
-
-function formatPersonalUseDetail(
-  item: Extract<YearEndReadinessItem, { id: "personal_use" }>,
-) {
-  if (item.personalTransactionCount > 0) {
-    const count = item.personalTransactionCount;
-
-    return `${count} transaction${plural(count)} are marked with personal-use treatment.`;
-  }
-
-  if (item.propertyHasPersonalUse) {
-    return "This property is flagged for personal use; review deductible treatment before export.";
-  }
-
-  return "No personal-use warning is open for this property and year.";
 }
 
 function assertNever(value: never): never {

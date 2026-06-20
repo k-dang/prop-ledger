@@ -32,9 +32,6 @@ export type NewOwnershipPeriodInput = Omit<
 export type NewOwnerWithOwnershipInput = NewOwnerInput &
   Pick<NewOwnershipPeriodInput, "percentage" | "effectiveFrom" | "effectiveTo">;
 
-/** The boolean property flags surfaced in the create-property form. */
-export type PropertyFlagState = Pick<Property, "hasPersonalUse">;
-
 /**
  * A rental property loaded as an aggregate: the property row plus its related
  * collections. The address lives flat on the row (`line1`, `municipality`, …) and

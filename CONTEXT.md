@@ -22,11 +22,6 @@ An effective-dated record of one owner's share of a property over a date range; 
 authoritative source of owner allocation, selected by date — never restated per year.
 _Avoid_: share, allocation, split (as standalone nouns)
 
-**Personal-Use Allocation**:
-A per-transaction split marking the non-deductible personal portion of an expense;
-year-to-year variation emerges from each year's transactions, not a per-year field.
-_Avoid_: personal-use percentage (as a property- or year-level setting)
-
 **Year-End Package**:
 An immutable snapshot of a property's records for a Tax Year, captured at export; the
 point-in-time artifact that makes filed records defensible.

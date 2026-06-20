@@ -2,7 +2,7 @@
 
 ## Executive summary
 
-For two individual co-owners in Ontario who hold residential rentals directly, the right product target is not a generic “landlord app”; it is an **accrual-capable, document-backed rental accounting system** that can survive tax season and an audit. The governing return for most ordinary personal rental activity is **Form T776, Statement of Real Estate Rentals**, filed with the owners’ personal returns, and the CRA’s co-owner guidance requires each co-owner to report based on ownership share and complete the co-owner details section when applicable. The CRA’s rental guide also makes accrual accounting the default in most cases, requires support for personal-use prorations, and treats capital items, CCA, and document retention as first-class compliance concerns. citeturn6view3turn6view4turn6view5turn7view2turn8view1turn6view8turn11view8
+For two individual co-owners in Ontario who hold residential rentals directly, the right product target is not a generic “landlord app”; it is an **accrual-capable, document-backed rental accounting system** that can survive tax season and an audit. The governing return for most ordinary rental activity is **Form T776, Statement of Real Estate Rentals**, filed with the owners' personal returns, and the CRA's co-owner guidance requires each co-owner to report based on ownership share and complete the co-owner details section when applicable. The CRA's rental guide also makes accrual accounting the default in most cases and treats capital items, CCA, and document retention as first-class compliance concerns. citeturn6view3turn6view4turn6view5turn7view2turn6view8turn11view8
 
 The most important product decision is therefore **what to build first**. For this use case, the MVP should prioritise: a property and ownership master; an accrual rent ledger; expense capture mapped to T776 categories; scanned receipt/document storage; bank-feed reconciliation with CSV fallback; a capital improvements and CCA register; mixed-use and multi-owner prorations; and an exportable year-end package for each owner. Tenant portals, online rent collection, e-signatures, maintenance ticketing, OCR, and mobile polish are valuable, but they should come **after** the tax ledger is reliable. That priority follows directly from CRA rules on accrual reporting, capital-versus-current treatment, CCA, and record keeping. citeturn7view2turn11view0turn11view1turn10view0turn10view2turn10view3turn6view8turn38view0
 
@@ -44,7 +44,7 @@ Digital records are acceptable, but the format matters. CRA says it accepts pape
 
 ### Common review-risk areas
 
-The CRA does not publish a simple landlord “audit trigger” checklist, but its real-estate compliance pages, audit guidance, and rental rules make the high-risk patterns fairly clear. The strongest review-risk signals are: **unreported or under-reported rental income**; weak books and missing support; deductions that do not reconcile to bank statements or loan documents; current-expense claims for what should be capital improvements; CCA claims that improperly create or increase losses; expenses that should have been prorated for personal use; repeated losses where there may be no genuine source-of-income expectation; and short-term rental deductions taken in circumstances that are not compliant with applicable rules. The CRA also says it uses analytics, leads, and **third-party data** to identify high-risk real-estate files. In this report, I treat these as **review-risk indicators inferred from CRA publications**, not as a formally published CRA trigger list. citeturn6view0turn38view0turn11view0turn11view1turn10view0turn8view1turn11view7turn6view2
+The CRA does not publish a simple landlord “audit trigger” checklist, but its real-estate compliance pages, audit guidance, and rental rules make the high-risk patterns fairly clear. The strongest review-risk signals are: **unreported or under-reported rental income**; weak books and missing support; deductions that do not reconcile to bank statements or loan documents; current-expense claims for what should be capital improvements; CCA claims that improperly create or increase losses; repeated losses where there may be no genuine source-of-income expectation; and short-term rental deductions taken in circumstances that are not compliant with applicable rules. The CRA also says it uses analytics, leads, and **third-party data** to identify high-risk real-estate files. In this report, I treat these as **review-risk indicators inferred from CRA publications**, not as a formally published CRA trigger list. citeturn6view0turn38view0turn11view0turn11view1turn10view0turn11view7turn6view2
 
 ## Product requirements for tax-ready capture
 
@@ -54,14 +54,14 @@ A bare-minimum tax-ready product for Ontario co-owners should be designed around
 
 | Area | Must capture | Why it is tax-critical |
 |---|---|---|
-| Property and ownership master | Property, units, purchase date, municipal address, owners, effective-dated ownership %, personal-use %, short-term flag | CRA requires co-owners to report based on ownership share and complete co-owner details; personal-use portions must also be tracked. citeturn6view4turn6view5turn8view1 |
+| Property and ownership master | Property, units, purchase date, municipal address, owners, effective-dated ownership %, short-term flag | CRA requires co-owners to report based on ownership share and complete co-owner details. citeturn6view4turn6view5 |
 | Accrual rent ledger | Lease terms, rent schedule, charges, payments, arrears, credits, write-offs, other rental income | CRA says rental income is generally reported on the accrual basis, and bad debts/uncollectible rent can affect gross income. citeturn7view2 |
 | T776-shaped expense model | Categories for advertising, insurance, interest/bank charges, office, professional fees, management/admin, repairs, salaries/wages/benefits, property tax, travel, utilities, motor vehicle, other | These are the CRA’s published rental categories; a mismatched chart of accounts creates year-end rework. citeturn8view0turn9view1turn38view2 |
 | Receipt and document vault | Image/PDF uploads, source metadata, vendor/date/amount tags, link to transaction, exportable archive | CRA accepts digital records, but they must remain readable, accessible, and support the reported figures. citeturn6view9turn11view8turn38view0 |
 | Bank connection and reconciliation | Bank feeds, CSV/QIF fallback, transaction matching, reconciliation status, unmatched exception queue | CRA audit materials explicitly reference bank statements and electronic records; reconciliation is what turns raw feeds into defensible books. citeturn38view0 |
 | Loan and financing subledger | Mortgage interest, lender, statement periods, refinancing notes, mortgage set-up/broker/legal/appraisal fees with amortisation schedule | Mortgage principal is not deductible; qualifying interest is, and certain financing costs are deducted over five years. citeturn7view4turn8view1 |
 | Capital improvements and CCA register | Asset description, acquisition date, land/building split, CRA class, cost basis, additions, dispositions, proceeds, opening UCC, half-year-rule flag | Capital items, land allocation, class/UCC continuity, and CCA-loss limits are central CRA requirements. citeturn11view0turn10view2turn10view3turn10view0turn6view7 |
-| Proration engine | Personal-use allocation, partial-year availability, owner split, prepaids, vacancy periods, short-term non-compliant portion | CRA requires personal portions to be segregated, prepaids spread over benefit periods, and certain short-term rental deductions denied. citeturn8view1turn11view7 |
+| Proration engine | Partial-year availability, owner split, prepaids, vacancy periods, short-term non-compliant portion | CRA requires prepaids to be spread over benefit periods and certain short-term rental deductions to be denied. citeturn11view7 |
 | GST/HST flags | Supply type, exempt/taxable flag, taxable-stay indicator, GST/HST amount if applicable, registration status | Long-term residential rent is generally exempt, but short-term accommodation may be taxable and registration may become mandatory above the small-supplier threshold. citeturn11view4turn11view5turn11view6turn12search0 |
 | Year-end tax package export | T776-ready summary, owner share worksheet, rent ledger, expense detail, capital/CCA schedule, receipt index, bank rec status, accountant notes | CRA expects figures to be supportable from records, not merely summarised into a single net number. citeturn38view0turn6view8 |
 
@@ -106,7 +106,7 @@ flowchart LR
     D --> E{Current expense or capital item?}
     E -->|Current| F[Map to T776 expense category]
     E -->|Capital| G[Create capital record and CCA class entry]
-    F --> H[Review personal-use, prepaid, and owner prorations]
+    F --> H[Review prepaid and owner prorations]
     G --> H
     H --> I[Reconcile bank accounts and review tenant ledgers]
     I --> J[Generate year-end package]
@@ -171,7 +171,6 @@ erDiagram
       uuid property_id
       string address
       date acquisition_date
-      decimal personal_use_percent
       boolean short_term_enabled
     }
 
@@ -301,7 +300,6 @@ B. T776-ready income and expense summary
 - Utilities
 - Motor vehicle expenses
 - Other expenses
-- Personal portion adjustments
 - Owner share adjustments
 
 C. Capital and CCA schedule
@@ -367,7 +365,7 @@ The roadmap should follow the **tax risk curve**, not the feature-marketing curv
 |---|---|---|---|
 | **Foundation** | Property/unit model, owner records, effective-dated ownership shares, CRA-shaped expense categories, document storage, manual transaction entry, basic rent ledger | **Low–Medium** | Without this, every later feature sits on weak data |
 | **Accounting core** | Bank feeds, CSV import, reconciliation queue, transaction review, receipt attachment, arrears view, year-end close status | **Medium** | This creates the audit trail and removes spreadsheet dependency |
-| **Tax hardening** | Capital-vs-current workflow, land/building split, financing-fee amortisation, CCA engine, personal-use and owner prorations, T776-ready exports | **High** | This is the hardest logic and the main source of accountant clean-up if omitted |
+| **Tax hardening** | Capital-vs-current workflow, land/building split, financing-fee amortisation, CCA engine, owner prorations, T776-ready exports | **High** | This is the hardest logic and the main source of accountant clean-up if omitted |
 | **Collaboration** | Accountant access, owner approvals for capex, exception notes, package sharing, formal close/freeze process | **Medium** | Important for two-owner governance and year-end confidence |
 | **Operational convenience** | Tenant portal, rent collection, e-signatures, maintenance tickets, OCR, automated categorisation, mobile polish, dashboards | **Medium–High** | Valuable commercially, but safer once the tax ledger is stable |
 

@@ -18,8 +18,7 @@ export type YearEndReadinessItemId =
   | "uncategorized_transactions"
   | "missing_documents"
   | "capital_assets"
-  | "ownership_allocations"
-  | "personal_use";
+  | "ownership_allocations";
 
 type YearEndReadinessItemBase<TId extends YearEndReadinessItemId> = {
   id: TId;
@@ -35,10 +34,6 @@ export type YearEndReadinessItem =
     })
   | (YearEndReadinessItemBase<"ownership_allocations"> & {
       ownershipWarning: OwnershipReadinessWarning | null;
-    })
-  | (YearEndReadinessItemBase<"personal_use"> & {
-      personalTransactionCount: number;
-      propertyHasPersonalUse: boolean;
     });
 
 export type OwnershipReadinessWarning =
@@ -110,7 +105,6 @@ export function getYearEndReadiness(
         .length > 0,
   ).length;
   const ownershipWarnings = getOwnershipAllocationWarnings(property, taxYear);
-  const personalUse = getPersonalUseReadiness(property, taxYear);
 
   const items: YearEndReadinessItem[] = [
     {
@@ -135,13 +129,6 @@ export function getYearEndReadiness(
       status: ownershipWarnings.length > 0 ? "warning" : "clear",
       count: ownershipWarnings.length,
       ownershipWarning: ownershipWarnings[0] ?? null,
-    },
-    {
-      id: "personal_use",
-      status: personalUse.hasWarning ? "warning" : "clear",
-      count: personalUse.count,
-      personalTransactionCount: personalUse.personalTransactionCount,
-      propertyHasPersonalUse: personalUse.propertyHasPersonalUse,
     },
   ];
 
@@ -244,22 +231,6 @@ function getOwnershipCheckpoints(
   }
 
   return Array.from(checkpoints).toSorted();
-}
-
-function getPersonalUseReadiness(property: RentalProperty, taxYear: number) {
-  const personalEntries = getLedgerEntriesForYear(
-    property.ledgerEntries,
-    taxYear,
-  ).filter((entry) => entry.isPersonal);
-  const hasWarning = personalEntries.length > 0 || property.hasPersonalUse;
-
-  return {
-    hasWarning,
-    count:
-      personalEntries.length > 0 ? personalEntries.length : Number(hasWarning),
-    personalTransactionCount: personalEntries.length,
-    propertyHasPersonalUse: property.hasPersonalUse,
-  };
 }
 
 function addIsoDays(date: string, days: number) {

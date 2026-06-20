@@ -37,7 +37,6 @@ export const properties = pgTable("properties", {
   province: text("province").notNull(),
   postalCode: text("postal_code").notNull(),
   acquisitionDate: date("acquisition_date", { mode: "string" }).notNull(),
-  hasPersonalUse: boolean("has_personal_use").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -159,7 +158,6 @@ export const ledgerEntries = pgTable("ledger_entries", {
   incomeCategory: text("income_category").$type<RentalIncomeCategory>(),
   prepaidStartDate: date("prepaid_start_date", { mode: "string" }),
   prepaidEndDate: date("prepaid_end_date", { mode: "string" }),
-  isPersonal: boolean("is_personal").notNull().default(false),
   isReconciled: boolean("is_reconciled").notNull().default(false),
   isCapitalAsset: boolean("is_capital_asset").notNull().default(false),
   reviewNotes: text("review_notes"),

@@ -1,7 +1,6 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useState } from "react";
 import { z } from "zod";
 
 import {
@@ -21,17 +20,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import type {
-  NewPropertyInput,
-  PropertyFlagState,
-} from "@/lib/property-workspace";
-
-const DEFAULT_FLAGS: PropertyFlagState = {
-  hasPersonalUse: false,
-};
+import type { NewPropertyInput } from "@/lib/property-workspace";
 
 const propertyFormSchema = z.object({
   propertyName: requiredFormString,
@@ -48,8 +39,6 @@ export function PropertyForm({
 }: {
   onSubmit: (input: NewPropertyInput) => boolean | Promise<boolean>;
 }) {
-  const [flags, setFlags] = useState<PropertyFlagState>(DEFAULT_FLAGS);
-
   const handleSubmit = createFormSubmit(propertyFormSchema, async (data) => {
     const isSaved = await onSubmit({
       name: data.propertyName,
@@ -59,12 +48,7 @@ export function PropertyForm({
       province: data.province ?? DEFAULT_PROVINCE,
       postalCode: data.postalCode,
       acquisitionDate: data.acquisitionDate,
-      hasPersonalUse: flags.hasPersonalUse,
     });
-
-    if (isSaved) {
-      setFlags(DEFAULT_FLAGS);
-    }
 
     return isSaved;
   });
@@ -146,20 +130,6 @@ export function PropertyForm({
                 required
                 defaultValue={SAMPLE_PROPERTY_FORM.acquisitionDate}
               />
-            </Field>
-          </div>
-          <div className="grid gap-2 rounded-md border bg-sky-50/70 p-3">
-            <Field orientation="horizontal">
-              <Checkbox
-                id="personal-use"
-                checked={flags.hasPersonalUse}
-                onCheckedChange={(checked) =>
-                  setFlags({ ...flags, hasPersonalUse: checked })
-                }
-              />
-              <FieldLabel htmlFor="personal-use" className="font-normal">
-                Personal-use portion
-              </FieldLabel>
             </Field>
           </div>
           <Button type="submit" className="mt-1 w-full">

@@ -24,7 +24,6 @@ function makeEntry(
     incomeCategory: null,
     prepaidStartDate: null,
     prepaidEndDate: null,
-    isPersonal: false,
     isReconciled: true,
     isCapitalAsset: false,
     reviewNotes: null,
@@ -73,7 +72,6 @@ function makeProperty(property: Partial<RentalProperty> = {}): RentalProperty {
     province: "ON",
     postalCode: "L8P 1A1",
     acquisitionDate: "2021-04-15",
-    hasPersonalUse: false,
     createdAt: new Date("2021-04-15T00:00:00.000Z"),
     units: [],
     owners: [
@@ -97,7 +95,6 @@ function makeProperty(property: Partial<RentalProperty> = {}): RentalProperty {
 describe("year-end readiness", () => {
   it("classifies unresolved transaction evidence as blocking and review items as warnings", () => {
     const property = makeProperty({
-      hasPersonalUse: true,
       ownershipPeriods: [
         makeOwnershipPeriod({
           id: "period-1",
@@ -131,7 +128,7 @@ describe("year-end readiness", () => {
     const readiness = getYearEndReadiness(property, 2026);
 
     expect(readiness.blockingCount).toBe(2);
-    expect(readiness.warningCount).toBe(3);
+    expect(readiness.warningCount).toBe(2);
     expect(readiness.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -157,11 +154,6 @@ describe("year-end readiness", () => {
             code: "incomplete_ownership_total",
             totalPercentage: 75,
           }),
-        }),
-        expect.objectContaining({
-          id: "personal_use",
-          status: "warning",
-          count: 1,
         }),
       ]),
     );

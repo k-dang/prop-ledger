@@ -37,7 +37,6 @@ function makeEntry(
     incomeCategory: null,
     prepaidStartDate: null,
     prepaidEndDate: null,
-    isPersonal: false,
     isReconciled: false,
     isCapitalAsset: false,
     reviewNotes: null,

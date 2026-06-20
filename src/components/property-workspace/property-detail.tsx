@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -302,20 +301,6 @@ function PropertyFacts({ property }: { property: RentalProperty }) {
               {property.acquisitionDate}
             </p>
           </div>
-        </div>
-        <Separator />
-        <div className="flex flex-wrap gap-2">
-          <Badge
-            variant="outline"
-            className={cn(
-              "rounded-md",
-              property.hasPersonalUse
-                ? "border-amber-300 bg-amber-50 text-amber-800"
-                : "border-emerald-300 bg-emerald-50 text-emerald-800",
-            )}
-          >
-            Personal use: {property.hasPersonalUse ? "yes" : "no"}
-          </Badge>
         </div>
       </CardContent>
     </Card>
