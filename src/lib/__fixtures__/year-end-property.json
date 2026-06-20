@@ -1,0 +1,8 @@
+{
+  "scope": { "type": "property", "label": "Full property" },
+  "totalIncome": 25000,
+  "totalExpenses": 3600,
+  "expenseAllocation": 2400,
+  "capitalAllocation": 2400,
+  "ownerCount": 2
+}

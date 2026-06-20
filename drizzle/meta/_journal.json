@@ -43,6 +43,13 @@
       "when": 1781234449552,
       "tag": "0005_third_robin_chapel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781751769320,
+      "tag": "0006_useful_sabretooth",
+      "breakpoints": true
     }
   ]
 }

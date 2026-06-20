@@ -165,14 +165,14 @@ Generate the year-end handoff package. A co-owner can create property-level and 
 
 ### Acceptance criteria
 
-- [ ] A user can generate a T776-ready income and expense summary for a property and tax year.
-- [ ] A user can generate owner-share worksheets based on effective-dated ownership periods.
-- [ ] A user can generate rent ledger, expense detail, capital asset transaction, and source document index sections.
-- [ ] Accountant notes and unresolved exception summaries are included in the package.
-- [ ] Each owner package is separate and limited to that owner-specific allocation view.
-- [ ] A full-property package remains available for the property-level audit trail.
-- [ ] Package totals trace back to source records, allocations, and linked documents.
-- [ ] Each generated package is persisted as an immutable snapshot; later edits to live records do not alter previously exported snapshots.
-- [ ] Tenant personal information is minimized in accounting exports unless needed to support the record.
-- [ ] The package can be exported as shareable files.
-- [ ] Tests include golden-output fixtures for representative property-level and owner-specific packages, and verify snapshot immutability after subsequent record edits.
+- [x] A user can generate a T776-ready income and expense summary for a property and tax year.
+- [x] A user can generate owner-share worksheets based on effective-dated ownership periods.
+- [x] A user can generate rent ledger, expense detail, capital asset transaction, and source document index sections.
+- [x] Accountant notes and unresolved exception summaries are included in the package.
+- [x] Each owner package is separate and limited to that owner-specific allocation view.
+- [x] A full-property package remains available for the property-level audit trail.
+- [x] Package totals trace back to source records, allocations, and linked documents.
+- [x] Each generated package is persisted as an immutable snapshot; later edits to live records do not alter previously exported snapshots.
+- [x] Tenant personal information is minimized in accounting exports unless needed to support the record.
+- [x] The package can be exported as shareable files.
+- [x] Tests include golden-output fixtures for representative property-level and owner-specific packages, and verify snapshot immutability after subsequent record edits.

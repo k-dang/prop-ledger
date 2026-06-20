@@ -34,6 +34,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  PackageExportPanel,
+  type PackageHistoryItem,
+} from "@/components/year-end/package-export-panel";
+import type { AccountantNote } from "@/db/schema";
 import type { RentalProperty } from "@/lib/property-workspace";
 import { formatDisplayDate, formatPercent } from "@/lib/property-workspace";
 import { cn } from "@/lib/utils";
@@ -50,11 +55,15 @@ export function YearEndWorkspace({
   property,
   readiness,
   year,
+  notes,
+  packages,
 }: {
   properties: { id: string; name: string }[];
   property: RentalProperty;
   readiness: YearEndReadiness;
   year: number;
+  notes: AccountantNote[];
+  packages: PackageHistoryItem[];
 }) {
   return (
     <section className="grid gap-4">
@@ -64,6 +73,12 @@ export function YearEndWorkspace({
         selectedYear={year}
       />
       <ReadinessPanel readiness={readiness} />
+      <PackageExportPanel
+        property={property}
+        year={year}
+        notes={notes}
+        packages={packages}
+      />
       <CapitalRegister property={property} year={year} />
     </section>
   );

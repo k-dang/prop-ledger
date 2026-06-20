@@ -3,9 +3,9 @@
 import { Landmark } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { markTransactionAsCapitalAsset } from "@/lib/capital-actions";
+import { setTransactionCapitalAssetStatus } from "@/lib/capital-actions";
+import { cn } from "@/lib/utils";
 
 export function CapitalAssetControl({
   propertyId,
@@ -16,33 +16,10 @@ export function CapitalAssetControl({
   transactionId: string;
   isCapitalAsset: boolean;
 }) {
-  if (isCapitalAsset) {
-    return (
-      <Badge
-        variant="outline"
-        className="mt-2 w-fit rounded-md border-sky-300 bg-sky-50 text-sky-800"
-      >
-        <Landmark className="size-3" aria-hidden="true" />
-        Capital asset
-      </Badge>
-    );
-  }
-
-  return (
-    <CapitalAssetButton propertyId={propertyId} transactionId={transactionId} />
-  );
-}
-
-function CapitalAssetButton({
-  propertyId,
-  transactionId,
-}: {
-  propertyId: string;
-  transactionId: string;
-}) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>();
+  const nextStatus = !isCapitalAsset;
 
   return (
     <div className="mt-2 grid gap-1">
@@ -50,31 +27,43 @@ function CapitalAssetButton({
         type="button"
         variant="outline"
         size="sm"
-        className="h-7 rounded-md px-2"
+        className={cn(
+          "h-7 rounded-md px-2",
+          isCapitalAsset &&
+            "border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100 hover:text-sky-900",
+        )}
         disabled={isSubmitting}
         onClick={async () => {
           setError(undefined);
           setIsSubmitting(true);
 
           try {
-            const result = await markTransactionAsCapitalAsset(
+            const result = await setTransactionCapitalAssetStatus(
               propertyId,
               transactionId,
+              nextStatus,
             );
 
             if (!result.ok) {
               setError(result.error);
-              return;
+            } else {
+              router.refresh();
             }
-
-            router.refresh();
-          } finally {
-            setIsSubmitting(false);
+          } catch {
+            setError("Unable to update the capital asset status.");
           }
+
+          setIsSubmitting(false);
         }}
       >
         <Landmark data-icon="inline-start" />
-        {isSubmitting ? "Marking..." : "Mark capital asset"}
+        {isSubmitting
+          ? isCapitalAsset
+            ? "Unmarking..."
+            : "Marking..."
+          : isCapitalAsset
+            ? "Unmark capital asset"
+            : "Mark capital asset"}
       </Button>
       {error !== undefined ? (
         <p className="text-red-700 text-xs">{error}</p>

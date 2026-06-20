@@ -1,0 +1,8 @@
+{
+  "scope": { "type": "owner", "ownerId": "owner-a", "label": "Avery Chen" },
+  "totalIncome": 15000,
+  "totalExpenses": 2160,
+  "expenseAllocation": 1440,
+  "capitalAllocation": 1440,
+  "ownerCount": 1
+}

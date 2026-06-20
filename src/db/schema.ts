@@ -4,11 +4,17 @@ import {
   date,
   doublePrecision,
   integer,
+  jsonb,
   pgSchema,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type {
+  RentalIncomeCategory,
+  T776Category,
+} from "../domain/ledger-categories";
+import type { YearEndPackageSnapshot } from "../domain/year-end-package";
 
 const rental = pgSchema("rental");
 const pgTable = rental.table.bind(rental);
@@ -115,30 +121,12 @@ export const rentEvents = pgTable("rent_events", {
   memo: text("memo"),
 });
 
-export const T776_CATEGORIES = [
-  "advertising",
-  "insurance",
-  "interest_and_bank_charges",
-  "office_expenses",
-  "professional_fees",
-  "repairs_and_maintenance",
-  "salaries_wages_and_benefits",
-  "property_taxes",
-  "travel",
-  "utilities",
-  "other_expenses",
-] as const;
-export type T776Category = (typeof T776_CATEGORIES)[number];
-
-export const RENTAL_INCOME_CATEGORIES = [
-  "rent",
-  "other_income",
-  "laundry",
-  "parking",
-  "fees",
-  "recoveries",
-] as const;
-export type RentalIncomeCategory = (typeof RENTAL_INCOME_CATEGORIES)[number];
+export {
+  RENTAL_INCOME_CATEGORIES,
+  type RentalIncomeCategory,
+  T776_CATEGORIES,
+  type T776Category,
+} from "../domain/ledger-categories";
 
 export const LEDGER_ENTRY_TYPES = ["expense", "income"] as const;
 export type LedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[number];
@@ -199,6 +187,37 @@ export const propertyTaxYears = pgTable("property_tax_years", {
   year: integer("year").notNull(),
 });
 
+export const accountantNotes = pgTable("accountant_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  propertyId: uuid("property_id")
+    .notNull()
+    .references(() => properties.id, { onDelete: "cascade" }),
+  taxYear: integer("tax_year").notNull(),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const YEAR_END_PACKAGE_SCOPES = ["property", "owner"] as const;
+export type YearEndPackageScope = (typeof YEAR_END_PACKAGE_SCOPES)[number];
+
+export const yearEndPackages = pgTable("year_end_packages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  propertyId: uuid("property_id")
+    .notNull()
+    .references(() => properties.id, { onDelete: "cascade" }),
+  taxYear: integer("tax_year").notNull(),
+  scope: text("scope").$type<YearEndPackageScope>().notNull(),
+  ownerId: uuid("owner_id").references(() => owners.id, {
+    onDelete: "restrict",
+  }),
+  snapshot: jsonb("snapshot").$type<YearEndPackageSnapshot>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /**
  * Reusable evidence records. A document is uploaded once and linked to the
  * records it supports through `documentLinks`, so the same lease agreement or
@@ -253,6 +272,8 @@ export const propertiesRelations = relations(properties, ({ many }) => ({
   ledgerEntries: many(ledgerEntries),
   mortgagePayments: many(mortgagePayments),
   documents: many(documents),
+  accountantNotes: many(accountantNotes),
+  yearEndPackages: many(yearEndPackages),
 }));
 
 export const unitsRelations = relations(units, ({ one, many }) => ({
@@ -359,6 +380,30 @@ export const propertyTaxYearsRelations = relations(
   }),
 );
 
+export const accountantNotesRelations = relations(
+  accountantNotes,
+  ({ one }) => ({
+    property: one(properties, {
+      fields: [accountantNotes.propertyId],
+      references: [properties.id],
+    }),
+  }),
+);
+
+export const yearEndPackagesRelations = relations(
+  yearEndPackages,
+  ({ one }) => ({
+    property: one(properties, {
+      fields: [yearEndPackages.propertyId],
+      references: [properties.id],
+    }),
+    owner: one(owners, {
+      fields: [yearEndPackages.ownerId],
+      references: [owners.id],
+    }),
+  }),
+);
+
 /**
  * Inferred row and insert types — the single source of truth for the domain
  * shapes. `src/lib/property-workspace.ts` re-exports these under domain-facing
@@ -377,6 +422,8 @@ export type MortgagePayment = typeof mortgagePayments.$inferSelect;
 export type TransactionSplit = typeof transactionSplits.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type DocumentLink = typeof documentLinks.$inferSelect;
+export type AccountantNote = typeof accountantNotes.$inferSelect;
+export type YearEndPackage = typeof yearEndPackages.$inferSelect;
 
 export type NewProperty = typeof properties.$inferInsert;
 export type NewUnit = typeof units.$inferInsert;
