@@ -299,13 +299,13 @@ function ManualTransactionsPanel({
             <Input id="reviewNotes" name="reviewNotes" />
           </Field>
           {transactionType === "expense" ? (
-            <label
+            <FieldLabel
               className="flex items-center gap-2 text-sm lg:col-span-3"
               htmlFor="isCapitalAsset"
             >
               <Checkbox id="isCapitalAsset" name="isCapitalAsset" />
               <span>Capital asset</span>
-            </label>
+            </FieldLabel>
           ) : null}
           <div className="flex items-end lg:col-span-6">
             <Button type="submit" className="w-full sm:w-auto">

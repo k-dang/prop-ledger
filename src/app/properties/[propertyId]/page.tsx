@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { PropertyWorkspace } from "@/components/property-workspace/property-workspace";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getProperty } from "@/db/queries";
 
 export const metadata: Metadata = {
@@ -37,10 +38,10 @@ async function PropertyContent({
 function PropertySkeleton() {
   return (
     <section className="flex min-w-0 flex-col gap-4">
-      <div className="h-32 animate-pulse rounded-md border bg-muted/40" />
+      <Skeleton className="h-32 border" />
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="h-64 animate-pulse rounded-md border bg-muted/40" />
-        <div className="h-64 animate-pulse rounded-md border bg-muted/40" />
+        <Skeleton className="h-64 border" />
+        <Skeleton className="h-64 border" />
       </div>
     </section>
   );

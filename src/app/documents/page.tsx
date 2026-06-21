@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -29,11 +30,7 @@ export const metadata = {
 
 export default function DocumentsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-120 animate-pulse rounded-md border bg-muted/40" />
-      }
-    >
+    <Suspense fallback={<Skeleton className="h-120 border" />}>
       <DocumentsContent />
     </Suspense>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { RentLedgerWorkspace } from "@/components/rent-ledger/rent-ledger-workspace";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getPropertyRentLedger } from "@/db/queries";
 
 export const metadata: Metadata = {
@@ -57,11 +58,11 @@ function parseYear(raw: string | undefined): number {
 function RentLedgerSkeleton() {
   return (
     <section className="flex min-w-0 flex-col gap-4">
-      <div className="h-28 animate-pulse rounded-md border bg-muted/40" />
-      <div className="h-40 animate-pulse rounded-md border bg-muted/40" />
+      <Skeleton className="h-28 border" />
+      <Skeleton className="h-40 border" />
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="h-96 animate-pulse rounded-md border bg-muted/40" />
-        <div className="h-96 animate-pulse rounded-md border bg-muted/40" />
+        <Skeleton className="h-96 border" />
+        <Skeleton className="h-96 border" />
       </div>
     </section>
   );

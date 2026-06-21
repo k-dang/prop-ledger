@@ -4,6 +4,7 @@ import {
   type InboxRow,
   TransactionsInbox,
 } from "@/components/evidence-binder/transactions-inbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getPortfolio } from "@/db/queries";
 import { getEntryIssues } from "@/lib/evidence-binder";
 
@@ -14,11 +15,7 @@ export const metadata = {
 
 export default function TransactionsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-120 animate-pulse rounded-md border bg-muted/40" />
-      }
-    >
+    <Suspense fallback={<Skeleton className="h-120 border" />}>
       <TransactionsContent />
     </Suspense>
   );

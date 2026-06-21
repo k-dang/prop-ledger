@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Dashboard } from "@/components/property-workspace/dashboard";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getPortfolio } from "@/db/queries";
 import { getPropertyReadiness } from "@/lib/property-workspace";
 import {
@@ -41,8 +42,8 @@ async function DashboardContent() {
 function DashboardSkeleton() {
   return (
     <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-      <div className="h-140 animate-pulse rounded-md border bg-muted/40" />
-      <div className="h-140 animate-pulse rounded-md border bg-muted/40" />
+      <Skeleton className="h-140 border" />
+      <Skeleton className="h-140 border" />
     </div>
   );
 }
