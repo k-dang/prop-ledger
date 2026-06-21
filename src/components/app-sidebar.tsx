@@ -21,7 +21,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 const NAV_ITEMS = [
@@ -57,26 +56,26 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-sidebar-border border-b p-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-1.5 outline-none ring-sidebar-ring focus-visible:ring-2 group-data-[collapsible=icon]:hidden"
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-emerald-100 text-emerald-700">
-              <Building2 className="size-4" aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate font-semibold text-sm">
-                Rental Workspace
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="Rental Workspace"
+              render={<Link href="/dashboard" />}
+            >
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
+                <Building2 className="size-4" aria-hidden="true" />
               </span>
-              <span className="block truncate text-muted-foreground text-xs">
-                Property accounting
+              <span className="grid min-w-0 flex-1 text-left leading-tight">
+                <span className="truncate font-semibold">Rental Workspace</span>
+                <span className="truncate text-muted-foreground text-xs">
+                  Property accounting
+                </span>
               </span>
-            </span>
-          </Link>
-          <SidebarTrigger className="shrink-0" />
-        </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

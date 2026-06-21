@@ -60,9 +60,12 @@ export default function RootLayout({
               <AppSidebar />
             </Suspense>
             <SidebarInset className="min-w-0 bg-[#f7f8f5]">
-              <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6">
-                <SidebarTrigger className="-ml-1 md:hidden" />
-                <Separator orientation="vertical" className="h-4 md:hidden" />
+              <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-6">
+                <SidebarTrigger className="-ml-1" />
+                <Separator
+                  orientation="vertical"
+                  className="data-vertical:h-4 data-vertical:self-auto"
+                />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-sm">
                     Property accounting workspace
