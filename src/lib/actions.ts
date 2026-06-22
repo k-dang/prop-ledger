@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/index";
 import {
@@ -36,6 +37,7 @@ export async function createProperty(
   return runAction("Property creation mutation", async () => {
     // `input` already matches the insert shape, so it writes straight through.
     await db.insert(properties).values(input);
+    revalidatePath("/", "layout");
 
     return { ok: true };
   });
@@ -201,6 +203,7 @@ export async function resetPortfolio(): Promise<ActionResult> {
   return runAction("Portfolio reset mutation", async () => {
     // Cascading foreign keys clear units, owners, ownership periods, etc.
     await db.delete(properties);
+    revalidatePath("/", "layout");
     return { ok: true };
   });
 }

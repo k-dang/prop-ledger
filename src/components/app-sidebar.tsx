@@ -28,8 +28,7 @@ const NAV_ITEMS = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    isActive: (pathname: string) =>
-      pathname === "/dashboard" || pathname.startsWith("/properties"),
+    isActive: (pathname: string) => pathname === "/dashboard",
   },
   {
     href: "/transactions",
@@ -51,7 +50,11 @@ const NAV_ITEMS = [
   },
 ] as const;
 
-export function AppSidebar() {
+export function AppSidebar({
+  properties,
+}: {
+  properties: ReadonlyArray<{ id: string; name: string }>;
+}) {
   const pathname = usePathname();
 
   return (
@@ -99,6 +102,40 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Properties</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {properties.length === 0 ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled tooltip="No properties yet">
+                    <Building2 aria-hidden="true" />
+                    <span>No properties yet</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : (
+                properties.map((property) => {
+                  const href = `/properties/${property.id}`;
+                  const active =
+                    pathname === href || pathname.startsWith(`${href}/`);
+
+                  return (
+                    <SidebarMenuItem key={property.id}>
+                      <SidebarMenuButton
+                        tooltip={property.name}
+                        isActive={active}
+                        render={<Link href={href} />}
+                      >
+                        <Building2 aria-hidden="true" />
+                        <span>{property.name}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

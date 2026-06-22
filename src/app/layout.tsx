@@ -10,6 +10,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getPropertyNavigation } from "@/db/queries";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -57,7 +58,7 @@ export default function RootLayout({
                 />
               }
             >
-              <AppSidebar />
+              <SidebarNavigation />
             </Suspense>
             <SidebarInset className="min-w-0 bg-[#f7f8f5]">
               <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-6">
@@ -83,4 +84,10 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+
+async function SidebarNavigation() {
+  const properties = await getPropertyNavigation();
+
+  return <AppSidebar properties={properties} />;
 }

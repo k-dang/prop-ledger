@@ -28,6 +28,16 @@ export async function getPortfolio(): Promise<Portfolio> {
   return { properties: rows };
 }
 
+export async function getPropertyNavigation() {
+  return db.query.properties.findMany({
+    columns: { id: true, name: true },
+    orderBy: (property, { asc }) => [
+      asc(property.name),
+      asc(property.createdAt),
+    ],
+  });
+}
+
 export async function getProperty(
   id: string,
 ): Promise<RentalProperty | undefined> {
