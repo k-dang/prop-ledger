@@ -41,6 +41,7 @@ import {
 import type { AccountantNote } from "@/db/schema";
 import type { RentalProperty } from "@/lib/property-workspace";
 import { formatDisplayDate, formatPercent } from "@/lib/property-workspace";
+import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 import type {
   OwnershipReadinessWarning,
@@ -97,7 +98,7 @@ function YearEndSelector({
     <Card className="rounded-md">
       <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle>Year-end readiness</CardTitle>
+          <CardTitle as="h1">Year-end readiness</CardTitle>
           <CardDescription>
             Live exception checklist for accountant-ready records.
           </CardDescription>
@@ -155,7 +156,7 @@ function ReadinessPanel({ readiness }: { readiness: YearEndReadiness }) {
     <Card className="rounded-md">
       <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle>{readiness.propertyName}</CardTitle>
+          <CardTitle as="h2">{readiness.propertyName}</CardTitle>
           <CardDescription>
             Blocking items should be resolved before export; warnings stay
             visible for review.
@@ -168,17 +169,19 @@ function ReadinessPanel({ readiness }: { readiness: YearEndReadiness }) {
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <dl className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <Metric
             label="Uncategorized"
             value={readiness.uncategorizedTransactions}
+            position="first"
           />
           <Metric label="Missing receipts" value={readiness.missingReceipts} />
           <Metric
             label="Capital marked"
             value={readiness.capitalAssetTransactions}
+            position="last"
           />
-        </div>
+        </dl>
 
         <Table>
           <TableHeader>
@@ -357,33 +360,47 @@ function StatusBadge({
 
 function StatusIcon({ status }: { status: ReadinessStatus }) {
   if (status === "clear") {
-    return <CheckCircle2 className="size-4 text-emerald-700" />;
+    return <CheckCircle2 className="size-4 text-ready" />;
   }
 
   if (status === "warning") {
-    return <CircleDot className="size-4 text-amber-700" />;
+    return <CircleDot className="size-4 text-review" />;
   }
 
-  return <AlertTriangle className="size-4 text-red-700" />;
+  return <AlertTriangle className="size-4 text-blocked" />;
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({
+  label,
+  value,
+  position,
+}: {
+  label: string;
+  value: number;
+  position?: "first" | "last";
+}) {
   return (
-    <div className="rounded-md border bg-background p-3">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="mt-1 font-semibold text-2xl">{value}</p>
+    <div
+      className={cn(
+        "py-3 sm:px-5 sm:py-0",
+        position === "first" && "pt-0 sm:pt-0 sm:pl-0",
+        position === "last" && "pb-0 sm:pb-0 sm:pr-0",
+      )}
+    >
+      <dt className="text-muted-foreground text-xs">{label}</dt>
+      <dd className="mt-1 font-semibold text-2xl tabular-nums">{value}</dd>
     </div>
   );
 }
 
 function statusClassName(status: ReadinessStatus) {
   if (status === "clear") {
-    return "border-emerald-300 bg-emerald-50 text-emerald-800";
+    return toneSurface.ready;
   }
 
   if (status === "warning") {
-    return "border-amber-300 bg-amber-50 text-amber-800";
+    return toneSurface.review;
   }
 
-  return "border-red-300 bg-red-50 text-red-800";
+  return toneSurface.blocked;
 }

@@ -45,6 +45,7 @@ import type {
   PropertyDashboardStatus,
 } from "@/lib/portfolio-dashboard";
 import { formatMoney } from "@/lib/rent-ledger";
+import { toneChip, toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 export function Dashboard({ summary }: { summary: PortfolioDashboardSummary }) {
@@ -72,7 +73,7 @@ function DashboardHeader({ summary }: { summary: PortfolioDashboardSummary }) {
     <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-lg bg-indigo-100 text-indigo-700">
+          <span className="grid size-9 place-items-center rounded-lg bg-brand-surface text-brand">
             <Landmark className="size-4" aria-hidden="true" />
           </span>
           <div>
@@ -121,7 +122,7 @@ function EmptyPortfolio() {
   return (
     <Card className="border-dashed bg-background/60 py-16 text-center">
       <CardContent className="mx-auto grid max-w-md justify-items-center gap-3">
-        <span className="grid size-12 place-items-center rounded-xl bg-indigo-100 text-indigo-700">
+        <span className="grid size-12 place-items-center rounded-xl bg-brand-surface text-brand">
           <Building2 className="size-5" aria-hidden="true" />
         </span>
         <div>
@@ -150,7 +151,7 @@ function FinancialKpis({
       value: totals.grossRentalIncome,
       hint: "Income earned on an accrual basis",
       icon: BanknoteArrowUp,
-      accent: "bg-emerald-50 text-emerald-700",
+      accent: toneChip.ready,
       // Uncategorized entries can be recorded income, so gross income is as
       // provisional as the expense and net figures when any remain.
       incomplete: incomplete > 0,
@@ -160,7 +161,7 @@ function FinancialKpis({
       value: totals.paymentsReceived,
       hint: "Rent cash received",
       icon: WalletCards,
-      accent: "bg-sky-50 text-sky-700",
+      accent: toneChip.info,
       incomplete: false,
     },
     {
@@ -168,7 +169,7 @@ function FinancialKpis({
       value: totals.deductibleExpenses,
       hint: "Categorized T776 current expenses",
       icon: BanknoteArrowDown,
-      accent: "bg-amber-50 text-amber-700",
+      accent: toneChip.review,
       incomplete: incomplete > 0,
     },
     {
@@ -176,7 +177,7 @@ function FinancialKpis({
       value: totals.netRecordedRentalIncome,
       hint: "Recorded income less deductible expenses",
       icon: CircleDollarSign,
-      accent: "bg-indigo-50 text-indigo-700",
+      accent: "bg-brand-surface text-brand",
       incomplete: incomplete > 0,
     },
   ];
@@ -211,8 +212,8 @@ function FinancialKpis({
                 <span>{card.hint}</span>
                 {card.incomplete ? (
                   <Badge
-                    className="border-amber-300 bg-amber-50 text-amber-800"
                     variant="outline"
+                    className={cn("rounded-md", toneSurface.review)}
                   >
                     Incomplete
                   </Badge>
@@ -221,7 +222,7 @@ function FinancialKpis({
                 )}
               </div>
               {card.incomplete ? (
-                <p className="mt-2 text-amber-800">
+                <p className="mt-2 text-review-text">
                   Review {incomplete} uncategorized transaction
                   {incomplete === 1 ? "" : "s"}; totals may change.
                 </p>
@@ -244,7 +245,7 @@ function AttentionPanel({ summary }: { summary: PortfolioDashboardSummary }) {
     <Card className="bg-background">
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle>Needs attention</CardTitle>
+          <CardTitle as="h2">Needs attention</CardTitle>
           <CardDescription>
             Portfolio-wide work ordered by filing impact.
           </CardDescription>
@@ -260,11 +261,16 @@ function AttentionPanel({ summary }: { summary: PortfolioDashboardSummary }) {
       </CardHeader>
       <CardContent>
         {summary.attentionItems.length === 0 ? (
-          <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+          <div
+            className={cn(
+              "flex items-center gap-3 rounded-lg border p-4",
+              toneSurface.ready,
+            )}
+          >
             <CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
             <div>
               <p className="font-medium text-sm">No open portfolio issues</p>
-              <p className="text-emerald-800 text-xs">
+              <p className="text-ready-text text-xs">
                 All active properties are ready for {summary.taxYear}.
               </p>
             </div>
@@ -289,7 +295,7 @@ function AttentionRow({ item }: { item: DashboardAttentionItem }) {
       <span
         className={cn(
           "grid size-8 place-items-center rounded-full",
-          blocking ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",
+          blocking ? toneChip.blocked : toneChip.review,
         )}
       >
         {blocking ? (
@@ -327,7 +333,7 @@ function ExpenseBreakdown({ summary }: { summary: PortfolioDashboardSummary }) {
   return (
     <Card className="bg-background">
       <CardHeader>
-        <CardTitle>Expenses by T776 category</CardTitle>
+        <CardTitle as="h2">Expenses by T776 category</CardTitle>
         <CardDescription>
           Deductible expenses recorded for {summary.taxYear}.
         </CardDescription>
@@ -355,7 +361,7 @@ function ExpenseBreakdown({ summary }: { summary: PortfolioDashboardSummary }) {
                 </span>
                 <span className="h-2 overflow-hidden rounded-full bg-muted">
                   <span
-                    className="block h-full rounded-full bg-indigo-600 transition-colors group-hover:bg-indigo-700"
+                    className="block h-full rounded-full bg-brand transition-colors group-hover:bg-brand-hover"
                     style={{ width: `${category.percentage}%` }}
                   />
                 </span>
@@ -380,7 +386,7 @@ function PropertyComparison({
     <Card className="bg-background">
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle>Property comparison</CardTitle>
+          <CardTitle as="h2">Property comparison</CardTitle>
           <CardDescription>
             Recorded financials and Year-End Readiness for {summary.taxYear}.
           </CardDescription>
@@ -495,16 +501,16 @@ function StatusBadge({
 
 function statusClassName(status: PropertyDashboardStatus) {
   if (status === "ready") {
-    return "rounded-md border-emerald-300 bg-emerald-50 text-emerald-800";
+    return cn("rounded-md", toneSurface.ready);
   }
 
   if (status === "needs_review") {
-    return "rounded-md border-amber-300 bg-amber-50 text-amber-800";
+    return cn("rounded-md", toneSurface.review);
   }
 
   if (status === "blocked") {
-    return "rounded-md border-red-300 bg-red-50 text-red-800";
+    return cn("rounded-md", toneSurface.blocked);
   }
 
-  return "rounded-md border-slate-300 bg-slate-50 text-slate-700";
+  return cn("rounded-md", toneSurface.inactive);
 }

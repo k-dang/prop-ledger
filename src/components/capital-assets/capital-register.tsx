@@ -23,6 +23,7 @@ import {
 } from "@/lib/evidence-binder";
 import type { RentalProperty } from "@/lib/property-workspace";
 import { formatMoney } from "@/lib/rent-ledger";
+import { toneSurface } from "@/lib/status-styles";
 
 export function CapitalRegister({
   property,
@@ -40,7 +41,7 @@ export function CapitalRegister({
     <section className="grid gap-4">
       <Card className="rounded-md">
         <CardHeader>
-          <CardTitle>Capital assets</CardTitle>
+          <CardTitle as="h2">Capital assets</CardTitle>
           <CardDescription>
             Expense transactions marked as capital assets for {year}.
           </CardDescription>
@@ -77,7 +78,7 @@ export function CapitalRegister({
 
       <Card className="rounded-md">
         <CardHeader>
-          <CardTitle>Marked capital transactions</CardTitle>
+          <CardTitle as="h2">Marked capital transactions</CardTitle>
           <CardDescription>
             These records stay traceable to their source transaction and support
             documents.
@@ -122,7 +123,7 @@ export function CapitalRegister({
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className="rounded-md border-sky-300 bg-sky-50 text-sky-800"
+                          className={`rounded-md ${toneSurface.info}`}
                         >
                           <Landmark className="size-3" aria-hidden="true" />
                           Capital asset

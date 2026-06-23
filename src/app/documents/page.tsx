@@ -22,6 +22,7 @@ import {
 import { getPortfolio } from "@/db/queries";
 import { buildSourceDocumentIndex } from "@/lib/evidence-binder";
 import { formatMoney } from "@/lib/rent-ledger";
+import { toneSurface } from "@/lib/status-styles";
 
 export const metadata = {
   title: "Documents | Rental Property Workspace",
@@ -49,7 +50,7 @@ async function DocumentsContent() {
     <section className="grid gap-4">
       <Card className="rounded-md">
         <CardHeader>
-          <CardTitle>Documents</CardTitle>
+          <CardTitle as="h1">Documents</CardTitle>
           <CardDescription>
             Source document index with metadata and attachment counts.
           </CardDescription>
@@ -103,7 +104,7 @@ async function DocumentsContent() {
                       {document.linkedTargets.length === 0 ? (
                         <Badge
                           variant="outline"
-                          className="rounded-md border-amber-300 bg-amber-50 text-amber-800"
+                          className={`rounded-md ${toneSurface.review}`}
                         >
                           not attached
                         </Badge>

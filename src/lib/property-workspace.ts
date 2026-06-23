@@ -154,14 +154,15 @@ function getSortedOwnershipPeriods(property: RentalProperty) {
 }
 
 export function getOwnershipHistory(property: RentalProperty) {
-  const ownersById = new Map(
-    property.owners.map((owner) => [owner.id, owner.name]),
-  );
+  const ownersById = new Map(property.owners.map((owner) => [owner.id, owner]));
 
   return getSortedOwnershipPeriods(property).map((period) => {
+    const owner = ownersById.get(period.ownerId);
+
     return {
       ...period,
-      ownerName: ownersById.get(period.ownerId) ?? "Unknown owner",
+      ownerName: owner?.name ?? "Unknown owner",
+      ownerEmail: owner?.email ?? null,
       dateRange: formatDateRange(period.effectiveFrom, period.effectiveTo),
       percentageLabel: `${formatPercent(period.percentage)}%`,
     };

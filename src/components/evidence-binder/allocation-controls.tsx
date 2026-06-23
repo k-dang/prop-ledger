@@ -67,6 +67,8 @@ import {
   type NewMortgagePaymentInput,
 } from "@/lib/mortgage-payments";
 import { formatMoney } from "@/lib/rent-ledger";
+import { toneSurface } from "@/lib/status-styles";
+import { cn } from "@/lib/utils";
 
 type SplitDraft = {
   key: string;
@@ -101,7 +103,7 @@ export function TransactionAllocationControls({
             {prepaid ? (
               <Badge
                 variant="outline"
-                className="rounded-md border-sky-300 bg-sky-50 text-sky-800"
+                className={cn("rounded-md", toneSurface.info)}
               >
                 prepaid
               </Badge>
@@ -255,8 +257,8 @@ function SplitsEditor({
         <span
           className={
             Math.round(draftTotal * 100) === Math.round(entry.amount * 100)
-              ? "text-emerald-700 text-xs"
-              : "text-red-700 text-xs"
+              ? "text-ready text-xs"
+              : "text-blocked text-xs"
           }
         >
           {formatMoney(draftTotal)} of {formatMoney(entry.amount)}
@@ -313,7 +315,7 @@ function SplitsEditor({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 rounded-md text-red-700"
+            className="h-9 rounded-md text-blocked"
             onClick={() => {
               removeDraft(index);
             }}
@@ -395,7 +397,7 @@ export function MortgagePaymentsPanel({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle>Mortgage payments</CardTitle>
+        <CardTitle as="h2">Mortgage payments</CardTitle>
         <CardDescription>
           Record each payment directly. Interest is deductible; principal is
           kept for support but excluded from expense totals.
@@ -518,21 +520,21 @@ export function MortgagePaymentsPanel({
                       {!allocated ? (
                         <Badge
                           variant="outline"
-                          className="rounded-md border-amber-300 bg-amber-50 text-amber-800"
+                          className={cn("rounded-md", toneSurface.review)}
                         >
                           unallocated
                         </Badge>
                       ) : balanced ? (
                         <Badge
                           variant="outline"
-                          className="rounded-md border-emerald-300 bg-emerald-50 text-emerald-800"
+                          className={cn("rounded-md", toneSurface.ready)}
                         >
                           balanced
                         </Badge>
                       ) : (
                         <Badge
                           variant="outline"
-                          className="rounded-md border-red-300 bg-red-50 text-red-800"
+                          className={cn("rounded-md", toneSurface.blocked)}
                         >
                           mismatch
                         </Badge>
@@ -543,7 +545,7 @@ export function MortgagePaymentsPanel({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-7 rounded-md px-2 text-red-700"
+                        className="h-7 rounded-md px-2 text-blocked"
                         onClick={() => {
                           void deleteMortgagePayment(propertyId, payment.id);
                         }}

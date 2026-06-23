@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { setTransactionCapitalAssetStatus } from "@/lib/capital-actions";
+import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 export function CapitalAssetControl({
@@ -22,15 +23,14 @@ export function CapitalAssetControl({
   const nextStatus = !isCapitalAsset;
 
   return (
-    <div className="mt-2 grid gap-1">
+    <div className="grid gap-1">
       <Button
         type="button"
         variant="outline"
         size="sm"
         className={cn(
           "h-7 rounded-md px-2",
-          isCapitalAsset &&
-            "border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100 hover:text-sky-900",
+          isCapitalAsset && cn(toneSurface.info, "hover:bg-info-border/40"),
         )}
         disabled={isSubmitting}
         onClick={async () => {
@@ -66,7 +66,7 @@ export function CapitalAssetControl({
             : "Mark capital asset"}
       </Button>
       {error !== undefined ? (
-        <p className="text-red-700 text-xs">{error}</p>
+        <p className="text-blocked text-xs">{error}</p>
       ) : null}
     </div>
   );

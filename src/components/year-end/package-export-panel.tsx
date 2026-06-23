@@ -48,7 +48,7 @@ export function PackageExportPanel({
     <Card className="rounded-md">
       <CardHeader>
         <div>
-          <CardTitle>Year-end packages</CardTitle>
+          <CardTitle as="h2">Year-end packages</CardTitle>
           <CardDescription>
             Generate immutable JSON snapshots for the full property or an
             individual owner. Live record changes never rewrite an existing

@@ -42,6 +42,7 @@ import {
   T776_CATEGORY_OPTIONS,
 } from "@/lib/evidence-binder";
 import { formatMoney } from "@/lib/rent-ledger";
+import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 export type InboxRow = {
@@ -165,7 +166,7 @@ export function TransactionsInbox({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle>Transactions</CardTitle>
+        <CardTitle as="h1">Transactions</CardTitle>
         <CardDescription>
           Rental records that need category or evidence review. Use j/k to move
           between rows and Enter to jump to the category control.
@@ -334,7 +335,7 @@ export function TransactionsInbox({
                           {row.issues.length === 0 ? (
                             <Badge
                               variant="outline"
-                              className="rounded-md border-emerald-300 bg-emerald-50 text-emerald-800"
+                              className={cn("rounded-md", toneSurface.ready)}
                             >
                               clear
                             </Badge>
@@ -343,7 +344,10 @@ export function TransactionsInbox({
                               <Badge
                                 key={issue}
                                 variant="outline"
-                                className="rounded-md border-red-300 bg-red-50 text-red-800"
+                                className={cn(
+                                  "rounded-md",
+                                  toneSurface.blocked,
+                                )}
                               >
                                 <AlertTriangle
                                   className="size-3"

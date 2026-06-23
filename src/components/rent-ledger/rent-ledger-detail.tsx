@@ -68,6 +68,7 @@ import {
   summarizeArrears,
   summarizeRentLedger,
 } from "@/lib/rent-ledger";
+import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 const FREQUENCY_LABELS: Record<RentFrequency, string> = {
@@ -206,7 +207,9 @@ function LedgerHeader({
             <ArrowLeft className="size-3.5" aria-hidden="true" />
             {property.name}
           </Link>
-          <CardTitle className="mt-1 text-xl">Rent ledger</CardTitle>
+          <CardTitle as="h1" className="mt-1 text-xl">
+            Rent ledger
+          </CardTitle>
           <CardDescription className="mt-1">
             Accrual rent charges, payments, and arrears for {year}.
           </CardDescription>
@@ -222,7 +225,7 @@ function LedgerHeader({
           >
             <ChevronLeft aria-hidden="true" />
           </Link>
-          <Badge className="rounded-md bg-emerald-700">
+          <Badge className="rounded-md bg-ready text-ready-foreground">
             <CalendarRange data-icon="inline-start" />
             {year}
           </Badge>
@@ -271,7 +274,7 @@ function SummaryCard({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle>Year summary</CardTitle>
+        <CardTitle as="h2">Year summary</CardTitle>
         <CardDescription>
           Gross rent on an accrual basis, with arrears support.
         </CardDescription>
@@ -325,7 +328,7 @@ function LeasesPanel({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle>Leases</CardTitle>
+        <CardTitle as="h2">Leases</CardTitle>
         <CardDescription>
           Lease terms drive the accrual rent schedule.
         </CardDescription>
@@ -470,9 +473,7 @@ function LeaseCard({
           variant="outline"
           className={cn(
             "rounded-md",
-            balance > 0
-              ? "border-red-300 bg-red-50 text-red-800"
-              : "border-emerald-300 bg-emerald-50 text-emerald-800",
+            balance > 0 ? toneSurface.blocked : toneSurface.ready,
           )}
         >
           {balance > 0 ? `${formatMoney(balance)} owing` : "Paid up"}
@@ -579,7 +580,7 @@ function RentEventPanel({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle>Record activity</CardTitle>
+        <CardTitle as="h2">Record activity</CardTitle>
         <CardDescription>
           Payments, credits, write-offs, and other income.
         </CardDescription>
@@ -664,7 +665,7 @@ function ArrearsPanel({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle>Arrears</CardTitle>
+        <CardTitle as="h2">Arrears</CardTitle>
         <CardDescription>Outstanding rent by tenant and unit.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -721,7 +722,7 @@ function RentLedgerTable({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle>Ledger entries</CardTitle>
+        <CardTitle as="h2">Ledger entries</CardTitle>
         <CardDescription>
           All {year} rent activity, newest first.
         </CardDescription>

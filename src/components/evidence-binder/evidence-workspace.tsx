@@ -1,13 +1,17 @@
 "use client";
 
-import { FileText, type LucideIcon, Plus, Receipt, Trash2 } from "lucide-react";
+import {
+  FileText,
+  type LucideIcon,
+  Paperclip,
+  Plus,
+  Receipt,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState, useTransition } from "react";
 import { z } from "zod";
-import {
-  MortgagePaymentsPanel,
-  TransactionAllocationControls,
-} from "@/components/evidence-binder/allocation-controls";
+import { MortgagePaymentsPanel } from "@/components/evidence-binder/allocation-controls";
 import { CapitalAssetControl } from "@/components/evidence-binder/capital-asset-control";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -40,6 +44,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Table,
   TableBody,
   TableCell,
@@ -48,7 +59,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  buildSourceDocumentIndex,
   formatLedgerCategory,
   getDocumentsForTarget,
   getEvidenceExceptionCounts,
@@ -57,6 +67,7 @@ import {
   T776_CATEGORY_OPTIONS,
 } from "@/lib/evidence-binder";
 import type { RentalProperty } from "@/lib/property-workspace";
+import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 const manualTransactionFormSchema = z
@@ -89,6 +100,11 @@ const manualTransactionFormSchema = z
       reviewNotes: data.reviewNotes,
     }),
   );
+
+const currencyFormatter = new Intl.NumberFormat("en-CA", {
+  style: "currency",
+  currency: "CAD",
+});
 
 export function EvidenceBinderPanel({
   property,
@@ -124,7 +140,7 @@ export function EvidenceBinderPanel({
       <Card className="rounded-md">
         <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
           <div>
-            <CardTitle>Transactions and evidence</CardTitle>
+            <CardTitle as="h2">Transactions and evidence</CardTitle>
             <CardDescription>
               Manual records, source documents, and open review exceptions.
             </CardDescription>
@@ -162,27 +178,29 @@ export function EvidenceBinderPanel({
             value={exceptions.missingReceipts}
           />
           <ExceptionTile
-            label="Split mismatches"
-            value={exceptions.splitMismatches}
+            label="With evidence"
+            value={
+              property.ledgerEntries.filter(
+                (entry) =>
+                  getDocumentsForTarget(
+                    property.documents,
+                    "transaction",
+                    entry.id,
+                  ).length > 0,
+              ).length
+            }
           />
         </CardContent>
       </Card>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <ManualTransactionsPanel
-          property={property}
-          error={transactionError}
-          evidenceError={documentError}
-          onSubmit={onCreateManualTransaction}
-          onDeleteTransaction={onDeleteManualTransaction}
-          onUploadEvidence={onUploadTransactionEvidence}
-          onDeleteDocument={onDeleteEvidenceDocument}
-        />
-        <DocumentsPanel
-          property={property}
-          error={documentError}
-          onDeleteDocument={onDeleteEvidenceDocument}
-        />
-      </div>
+      <ManualTransactionsPanel
+        property={property}
+        error={transactionError}
+        evidenceError={documentError}
+        onSubmit={onCreateManualTransaction}
+        onDeleteTransaction={onDeleteManualTransaction}
+        onUploadEvidence={onUploadTransactionEvidence}
+        onDeleteDocument={onDeleteEvidenceDocument}
+      />
       <MortgagePaymentsPanel
         propertyId={property.id}
         payments={property.mortgagePayments}
@@ -222,100 +240,45 @@ function ManualTransactionsPanel({
 }) {
   const [transactionType, setTransactionType] =
     useState<NewManualTransactionInput["type"]>("expense");
-  const handleSubmit = createFormSubmit(manualTransactionFormSchema, onSubmit);
-  const categoryOptions =
-    transactionType === "expense"
-      ? T776_CATEGORY_OPTIONS
-      : RENTAL_INCOME_CATEGORY_OPTIONS;
+  const incomeTotal = property.ledgerEntries
+    .filter((entry) => entry.type === "income")
+    .reduce((total, entry) => total + entry.amount, 0);
+  const expenseTotal = property.ledgerEntries
+    .filter((entry) => entry.type === "expense")
+    .reduce((total, entry) => total + entry.amount, 0);
 
   return (
     <Card className="rounded-md">
-      <CardHeader>
-        <CardTitle>Manual transactions</CardTitle>
-        <CardDescription>
-          Expenses, income, categories, and review notes.
-        </CardDescription>
+      <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
+        <div>
+          <CardTitle as="h2">Manual transactions</CardTitle>
+          <CardDescription>
+            Review records, categorization, and attached source evidence.
+          </CardDescription>
+        </div>
+        <CardAction>
+          <AddManualTransactionSheet
+            transactionType={transactionType}
+            onTransactionTypeChange={setTransactionType}
+            onSubmit={onSubmit}
+          />
+        </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <form className="grid gap-3 lg:grid-cols-6" onSubmit={handleSubmit}>
-          <Field>
-            <FieldLabel htmlFor="transactionType">Type</FieldLabel>
-            <Select
-              name="type"
-              value={transactionType}
-              onValueChange={(value) => {
-                setTransactionType(value as NewManualTransactionInput["type"]);
-              }}
-            >
-              <SelectTrigger id="transactionType" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="transactionDate">Date</FieldLabel>
-            <Input id="transactionDate" name="date" type="date" required />
-          </Field>
-          <Field className="lg:col-span-2">
-            <FieldLabel htmlFor="vendor">Vendor</FieldLabel>
-            <Input id="vendor" name="vendor" required />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="amount">Amount</FieldLabel>
-            <Input
-              id="amount"
-              name="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              required
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="category">Category</FieldLabel>
-            <Select key={transactionType} name="category" defaultValue="">
-              <SelectTrigger id="category" className="w-full">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoryOptions.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field className="lg:col-span-3">
-            <FieldLabel htmlFor="memo">Memo</FieldLabel>
-            <Input id="memo" name="memo" />
-          </Field>
-          <Field className="lg:col-span-3">
-            <FieldLabel htmlFor="reviewNotes">Review notes</FieldLabel>
-            <Input id="reviewNotes" name="reviewNotes" />
-          </Field>
-          {transactionType === "expense" ? (
-            <FieldLabel
-              className="flex items-center gap-2 text-sm lg:col-span-3"
-              htmlFor="isCapitalAsset"
-            >
-              <Checkbox id="isCapitalAsset" name="isCapitalAsset" />
-              <span>Capital asset</span>
-            </FieldLabel>
-          ) : null}
-          <div className="flex items-end lg:col-span-6">
-            <Button type="submit" className="w-full sm:w-auto">
-              <Plus data-icon="inline-start" />
-              Add transaction
-            </Button>
-          </div>
-        </form>
         <FormErrorAlert message={error} />
         <FormErrorAlert message={evidenceError} />
+        <div className="grid gap-2 sm:grid-cols-4">
+          <SummaryMetric
+            label="Records"
+            value={property.ledgerEntries.length}
+          />
+          <SummaryMetric label="Income" value={formatMoney(incomeTotal)} />
+          <SummaryMetric label="Expenses" value={formatMoney(expenseTotal)} />
+          <SummaryMetric
+            label="Net"
+            value={formatMoney(incomeTotal - expenseTotal)}
+          />
+        </div>
         {property.ledgerEntries.length === 0 ? (
           <EmptyState icon={Receipt}>
             No manual transactions recorded.
@@ -324,12 +287,10 @@ function ManualTransactionsPanel({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Allocation</TableHead>
-                <TableHead>Evidence</TableHead>
+                <TableHead className="w-28">Date</TableHead>
+                <TableHead className="min-w-64">Transaction</TableHead>
+                <TableHead className="w-32 text-right">Amount</TableHead>
+                <TableHead className="min-w-96">Evidence</TableHead>
                 <TableHead className="w-10">
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -345,41 +306,52 @@ function ManualTransactionsPanel({
 
                 return (
                   <TableRow key={entry.id}>
-                    <TableCell>{entry.date}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{entry.vendor}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {entry.reviewNotes || entry.memo || "No notes"}
+                    <TableCell className="align-top text-muted-foreground text-sm">
+                      {entry.date}
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{entry.vendor}</span>
+                        <Badge variant="outline" className="rounded-md">
+                          {formatLedgerCategory(entry)}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-md",
+                            entry.type === "income"
+                              ? toneSurface.ready
+                              : toneSurface.info,
+                          )}
+                        >
+                          {entry.type}
+                        </Badge>
                       </div>
+                      <p className="mt-1 text-muted-foreground text-xs">
+                        {entry.reviewNotes || entry.memo || "No notes"}
+                      </p>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="rounded-md">
-                        {formatLedgerCategory(entry)}
-                      </Badge>
+                    <TableCell className="align-top text-right font-semibold">
+                      {formatMoney(entry.amount)}
                     </TableCell>
-                    <TableCell>${entry.amount.toFixed(2)}</TableCell>
-                    <TableCell className="min-w-72">
-                      <TransactionAllocationControls
-                        propertyId={property.id}
-                        entry={entry}
-                      />
-                    </TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-96 align-top">
                       <TransactionEvidenceControl
                         documents={linked}
                         transactionId={entry.id}
+                        capitalAssetControl={
+                          entry.type === "expense" ? (
+                            <CapitalAssetControl
+                              propertyId={property.id}
+                              transactionId={entry.id}
+                              isCapitalAsset={entry.isCapitalAsset}
+                            />
+                          ) : null
+                        }
                         onUploadEvidence={onUploadEvidence}
                         onDeleteDocument={onDeleteDocument}
                       />
-                      {entry.type === "expense" ? (
-                        <CapitalAssetControl
-                          propertyId={property.id}
-                          transactionId={entry.id}
-                          isCapitalAsset={entry.isCapitalAsset}
-                        />
-                      ) : null}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="align-top">
                       <DeleteTransactionButton
                         transactionId={entry.id}
                         vendor={entry.vendor}
@@ -397,6 +369,150 @@ function ManualTransactionsPanel({
   );
 }
 
+function AddManualTransactionSheet({
+  transactionType,
+  onTransactionTypeChange,
+  onSubmit,
+}: {
+  transactionType: NewManualTransactionInput["type"];
+  onTransactionTypeChange: (
+    transactionType: NewManualTransactionInput["type"],
+  ) => void;
+  onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const categoryOptions =
+    transactionType === "expense"
+      ? T776_CATEGORY_OPTIONS
+      : RENTAL_INCOME_CATEGORY_OPTIONS;
+  const handleSubmit = createFormSubmit(
+    manualTransactionFormSchema,
+    async (input) => {
+      const saved = await onSubmit(input);
+
+      if (saved) {
+        setOpen(false);
+      }
+
+      return saved;
+    },
+  );
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <Button type="button" onClick={() => setOpen(true)}>
+        <Plus data-icon="inline-start" />
+        Add transaction
+      </Button>
+      <SheetContent className="overflow-y-auto sm:max-w-xl">
+        <SheetHeader className="border-b pr-12">
+          <SheetTitle>Add manual transaction</SheetTitle>
+          <SheetDescription>
+            Record one income or expense line and classify it for year-end
+            review.
+          </SheetDescription>
+        </SheetHeader>
+        <form className="grid gap-4 px-4 pb-4" onSubmit={handleSubmit}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="transactionType">Type</FieldLabel>
+              <Select
+                name="type"
+                value={transactionType}
+                onValueChange={(value) => {
+                  onTransactionTypeChange(
+                    value as NewManualTransactionInput["type"],
+                  );
+                }}
+              >
+                <SelectTrigger id="transactionType" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="transactionDate">Date</FieldLabel>
+              <Input id="transactionDate" name="date" type="date" required />
+            </Field>
+          </div>
+          <Field>
+            <FieldLabel htmlFor="vendor">Vendor</FieldLabel>
+            <Input id="vendor" name="vendor" required />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="amount">Amount</FieldLabel>
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="category">Category</FieldLabel>
+              <Select key={transactionType} name="category" defaultValue="">
+                <SelectTrigger id="category" className="w-full">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <Field>
+            <FieldLabel htmlFor="memo">Memo</FieldLabel>
+            <Input id="memo" name="memo" />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="reviewNotes">Review notes</FieldLabel>
+            <Input id="reviewNotes" name="reviewNotes" />
+          </Field>
+          {transactionType === "expense" ? (
+            <FieldLabel
+              className="flex items-center gap-2 text-sm"
+              htmlFor="isCapitalAsset"
+            >
+              <Checkbox id="isCapitalAsset" name="isCapitalAsset" />
+              <span>Capital asset</span>
+            </FieldLabel>
+          ) : null}
+          <Button type="submit" className="justify-self-start">
+            <Plus data-icon="inline-start" />
+            Add transaction
+          </Button>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className="mt-1 font-semibold text-lg">{value}</p>
+    </div>
+  );
+}
+
 function DeleteTransactionButton({
   transactionId,
   vendor,
@@ -411,7 +527,7 @@ function DeleteTransactionButton({
   function handleDelete() {
     if (
       !window.confirm(
-        "Delete this transaction? Its splits will be removed. Linked documents will remain in Documents.",
+        "Delete this transaction? Linked documents will remain in Documents.",
       )
     ) {
       return;
@@ -440,11 +556,13 @@ function DeleteTransactionButton({
 function TransactionEvidenceControl({
   documents,
   transactionId,
+  capitalAssetControl,
   onUploadEvidence,
   onDeleteDocument,
 }: {
   documents: RentalProperty["documents"];
   transactionId: string;
+  capitalAssetControl: ReactNode;
   onUploadEvidence: (
     transactionId: string,
     formData: FormData,
@@ -468,43 +586,61 @@ function TransactionEvidenceControl({
 
   return (
     <div className="grid gap-2">
-      <Badge
-        variant="outline"
-        className={
-          linkedCount > 0
-            ? "w-fit rounded-md border-emerald-300 bg-emerald-50 text-emerald-800"
-            : "w-fit rounded-md border-amber-300 bg-amber-50 text-amber-800"
-        }
-      >
-        {linkedCount} linked
-      </Badge>
-      {documents.length > 0 ? (
-        <div className="grid gap-1">
+      <div className="grid gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Paperclip className="size-3.5 text-muted-foreground" />
+          <Badge
+            variant="outline"
+            className={cn(
+              "w-fit rounded-md",
+              linkedCount > 0 ? toneSurface.ready : toneSurface.review,
+            )}
+          >
+            {linkedCount} linked
+          </Badge>
+          <div className="ml-auto flex min-w-fit items-center gap-2">
+            {capitalAssetControl}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {documents.length === 0 ? (
+            <p className="text-muted-foreground text-xs">
+              No receipt attached.
+            </p>
+          ) : null}
           {documents.map((document) => (
             <div
-              className="flex min-w-0 items-center justify-between gap-2 rounded-md border bg-background px-2 py-1"
+              className="flex min-w-0 items-center gap-2 rounded-md bg-muted/40 px-2 py-1"
               key={document.id}
             >
-              <span className="truncate text-xs">{document.fileName}</span>
+              <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="max-w-48 truncate text-xs">
+                {document.fileName}
+              </span>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 shrink-0 rounded-md px-2 text-red-700"
+                variant="ghost"
+                size="icon-xs"
+                className="shrink-0 text-blocked"
+                aria-label={`Delete ${document.fileName}`}
                 onClick={() => {
                   void onDeleteDocument(document.id);
                 }}
               >
-                <Trash2 data-icon="inline-start" />
-                Delete
+                <Trash2 aria-hidden="true" />
               </Button>
             </div>
           ))}
         </div>
-      ) : null}
-      <form className="grid gap-2" onSubmit={handleSubmit}>
+      </div>
+      <form
+        className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
+        onSubmit={handleSubmit}
+      >
         <Field className="gap-1">
-          <FieldLabel htmlFor={fileInputId}>Receipt or invoice</FieldLabel>
+          <FieldLabel className="sr-only" htmlFor={fileInputId}>
+            Receipt or invoice
+          </FieldLabel>
           <Input
             id={fileInputId}
             name="file"
@@ -513,119 +649,22 @@ function TransactionEvidenceControl({
             required
           />
         </Field>
-        <Button type="submit" size="sm" className="w-fit rounded-md">
+        <Button
+          type="submit"
+          variant="outline"
+          size="sm"
+          className="rounded-md"
+        >
           <Plus data-icon="inline-start" />
-          {linkedCount > 0 ? "Add another" : "Attach"}
+          {linkedCount > 0 ? "Add receipt" : "Attach receipt"}
         </Button>
       </form>
     </div>
   );
 }
 
-function DocumentsPanel({
-  property,
-  error,
-  onDeleteDocument,
-}: {
-  property: RentalProperty;
-  error?: string;
-  onDeleteDocument: (documentId: string) => boolean | Promise<boolean>;
-}) {
-  const index = buildSourceDocumentIndex(property.documents);
-  const documentsById = new Map(
-    property.documents.map((document) => [document.id, document]),
-  );
-
-  return (
-    <Card className="rounded-md">
-      <CardHeader>
-        <CardTitle>Source documents</CardTitle>
-        <CardDescription>
-          Uploaded evidence linked from transaction rows.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <FormErrorAlert message={error} />
-        {index.length === 0 ? (
-          <EmptyState icon={FileText}>No documents recorded.</EmptyState>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Document</TableHead>
-                <TableHead>Metadata</TableHead>
-                <TableHead>Attached to</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {index.map((row) => {
-                const document = documentsById.get(row.documentId);
-
-                return (
-                  <TableRow key={row.documentId}>
-                    <TableCell>
-                      <div className="font-medium">{row.fileName}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {row.readableUrl ?? "No URL recorded"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>{row.documentType}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {[row.vendor, row.documentDate, row.amount?.toFixed(2)]
-                          .filter(Boolean)
-                          .join(" | ") || "No metadata"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {row.linkedTargets.length === 0 ? (
-                          <Badge
-                            variant="outline"
-                            className="rounded-md border-amber-300 bg-amber-50 text-amber-800"
-                          >
-                            not attached
-                          </Badge>
-                        ) : (
-                          row.linkedTargets.map((target) => (
-                            <Badge
-                              key={target}
-                              variant="outline"
-                              className="h-7 rounded-md px-2"
-                            >
-                              {target.split(":")[0]}
-                            </Badge>
-                          ))
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 rounded-md px-2 text-red-700"
-                        disabled={document === undefined}
-                        onClick={() => {
-                          if (document !== undefined) {
-                            void onDeleteDocument(document.id);
-                          }
-                        }}
-                      >
-                        <Trash2 data-icon="inline-start" />
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
+function formatMoney(value: number) {
+  return currencyFormatter.format(value);
 }
 
 function EmptyState({

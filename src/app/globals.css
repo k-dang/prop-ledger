@@ -39,6 +39,37 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-border: var(--brand-border);
+  --color-brand-text: var(--brand-text);
+  --color-ready: var(--ready);
+  --color-ready-foreground: var(--ready-foreground);
+  --color-ready-surface: var(--ready-surface);
+  --color-ready-border: var(--ready-border);
+  --color-ready-text: var(--ready-text);
+  --color-review: var(--review);
+  --color-review-foreground: var(--review-foreground);
+  --color-review-surface: var(--review-surface);
+  --color-review-border: var(--review-border);
+  --color-review-text: var(--review-text);
+  --color-blocked: var(--blocked);
+  --color-blocked-foreground: var(--blocked-foreground);
+  --color-blocked-surface: var(--blocked-surface);
+  --color-blocked-border: var(--blocked-border);
+  --color-blocked-text: var(--blocked-text);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-surface: var(--info-surface);
+  --color-info-border: var(--info-border);
+  --color-info-text: var(--info-text);
+  --color-inactive: var(--inactive);
+  --color-inactive-foreground: var(--inactive-foreground);
+  --color-inactive-surface: var(--inactive-surface);
+  --color-inactive-border: var(--inactive-border);
+  --color-inactive-text: var(--inactive-text);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -60,18 +91,62 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Darkened from 0.556 to clear WCAG AA 4.5:1 for secondary text on white. */
+  --muted-foreground: oklch(0.505 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Indigo accent now carries focus rings (the brand's interactive signal). */
+  --ring: oklch(0.511 0.262 277);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+
+  /* Brand accent — Ledger Indigo. Action/brand only (links, selection, focus,
+     progress, brand marks); never decoration. See DESIGN.md "The One Accent Rule". */
+  --brand: oklch(0.511 0.262 277);
+  --brand-foreground: oklch(0.985 0 0);
+  --brand-hover: oklch(0.457 0.247 277);
+  --brand-surface: oklch(0.962 0.018 277);
+  --brand-border: oklch(0.872 0.06 277);
+  --brand-text: oklch(0.46 0.24 277);
+
+  /* Semantic status — soft tints (surface/border/text) + a strong solid/icon
+     tone. Every status pairs color with a label/icon; color is never alone. */
+  --ready: oklch(0.508 0.118 166);
+  --ready-foreground: oklch(0.985 0 0);
+  --ready-surface: oklch(0.979 0.021 166);
+  --ready-border: oklch(0.847 0.143 165);
+  --ready-text: oklch(0.432 0.101 166);
+
+  --review: oklch(0.555 0.137 49);
+  --review-foreground: oklch(0.985 0 0);
+  --review-surface: oklch(0.987 0.022 95);
+  --review-border: oklch(0.852 0.156 86);
+  --review-text: oklch(0.473 0.123 46);
+
+  --blocked: oklch(0.505 0.213 27);
+  --blocked-foreground: oklch(0.985 0 0);
+  --blocked-surface: oklch(0.971 0.013 17);
+  --blocked-border: oklch(0.808 0.114 19);
+  --blocked-text: oklch(0.444 0.177 27);
+
+  --info: oklch(0.5 0.118 242);
+  --info-foreground: oklch(0.985 0 0);
+  --info-surface: oklch(0.977 0.013 236);
+  --info-border: oklch(0.828 0.111 230);
+  --info-text: oklch(0.443 0.094 240);
+
+  --inactive: oklch(0.446 0.043 257);
+  --inactive-foreground: oklch(0.985 0 0);
+  --inactive-surface: oklch(0.984 0.003 248);
+  --inactive-border: oklch(0.869 0.022 252);
+  --inactive-text: oklch(0.372 0.044 257);
+
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -80,7 +155,7 @@
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.511 0.262 277);
 }
 
 .dark {
@@ -101,20 +176,61 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.62 0.2 277);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+
+  /* Brand accent — lifted lightness, eased chroma for dark surfaces. */
+  --brand: oklch(0.62 0.2 277);
+  --brand-foreground: oklch(0.985 0 0);
+  --brand-hover: oklch(0.69 0.17 277);
+  --brand-surface: oklch(0.3 0.07 277);
+  --brand-border: oklch(0.44 0.1 277);
+  --brand-text: oklch(0.85 0.1 277);
+
+  /* Semantic status — deep tinted surfaces with light, readable ink so chips
+     sit in the dark theme instead of glowing as near-white tints. */
+  --ready: oklch(0.8 0.13 165);
+  --ready-foreground: oklch(0.205 0 0);
+  --ready-surface: oklch(0.29 0.045 165);
+  --ready-border: oklch(0.43 0.07 165);
+  --ready-text: oklch(0.87 0.12 165);
+
+  --review: oklch(0.83 0.13 80);
+  --review-foreground: oklch(0.205 0 0);
+  --review-surface: oklch(0.3 0.05 75);
+  --review-border: oklch(0.45 0.08 75);
+  --review-text: oklch(0.88 0.1 85);
+
+  --blocked: oklch(0.7 0.18 25);
+  --blocked-foreground: oklch(0.205 0 0);
+  --blocked-surface: oklch(0.29 0.08 27);
+  --blocked-border: oklch(0.45 0.13 27);
+  --blocked-text: oklch(0.85 0.09 22);
+
+  --info: oklch(0.72 0.13 235);
+  --info-foreground: oklch(0.205 0 0);
+  --info-surface: oklch(0.3 0.06 240);
+  --info-border: oklch(0.45 0.09 240);
+  --info-text: oklch(0.87 0.08 235);
+
+  --inactive: oklch(0.72 0.025 257);
+  --inactive-foreground: oklch(0.205 0 0);
+  --inactive-surface: oklch(0.28 0.015 257);
+  --inactive-border: oklch(0.42 0.02 257);
+  --inactive-text: oklch(0.82 0.025 255);
+
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.488 0.243 277);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.62 0.2 277);
 }
 
 @layer base {

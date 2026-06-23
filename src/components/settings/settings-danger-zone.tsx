@@ -45,7 +45,9 @@ export function SettingsDangerZone() {
   return (
     <Card className="max-w-3xl border-destructive/30 bg-background">
       <CardHeader>
-        <CardTitle className="text-destructive">Danger zone</CardTitle>
+        <CardTitle as="h2" className="text-destructive">
+          Danger zone
+        </CardTitle>
         <CardDescription>
           These actions permanently change the entire workspace.
         </CardDescription>

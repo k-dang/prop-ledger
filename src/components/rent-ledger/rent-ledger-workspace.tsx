@@ -80,7 +80,7 @@ function RentLedgerNotFound({ propertyId }: { propertyId: string }) {
     <section className="flex min-w-0 flex-col gap-4">
       <div className="grid min-h-140 place-items-center rounded-md border border-dashed bg-background p-8 text-center">
         <div className="max-w-md">
-          <div className="mx-auto grid size-12 place-items-center rounded-md bg-red-50 text-red-700">
+          <div className="mx-auto grid size-12 place-items-center rounded-md bg-blocked-surface text-blocked">
             <AlertTriangle className="size-6" aria-hidden="true" />
           </div>
           <h2 className="mt-4 font-semibold text-xl">Property not found</h2>

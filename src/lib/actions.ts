@@ -85,6 +85,40 @@ export async function addUnit(
   });
 }
 
+export async function deleteUnit(
+  propertyId: string,
+  unitId: string,
+): Promise<ActionResult> {
+  return runAction("Unit delete mutation", async () => {
+    const unit = await db.query.units.findFirst({
+      where: and(eq(units.id, unitId), eq(units.propertyId, propertyId)),
+      columns: { id: true },
+    });
+
+    if (unit === undefined) {
+      return { ok: false, error: "That unit no longer exists." };
+    }
+
+    const lease = await db.query.leases.findFirst({
+      where: eq(leases.unitId, unitId),
+      columns: { id: true },
+    });
+
+    if (lease !== undefined) {
+      return {
+        ok: false,
+        error: "Units with leases cannot be deleted from setup.",
+      };
+    }
+
+    await db
+      .delete(units)
+      .where(and(eq(units.id, unitId), eq(units.propertyId, propertyId)));
+
+    return { ok: true };
+  });
+}
+
 export async function addOwnerWithOwnership(
   propertyId: string,
   input: NewOwnerWithOwnershipInput,

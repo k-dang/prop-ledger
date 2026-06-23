@@ -4,7 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
-import { addOwnerWithOwnership, addUnit } from "@/lib/actions";
+import { addOwnerWithOwnership, addUnit, deleteUnit } from "@/lib/actions";
 import {
   createManualTransaction,
   deleteEvidenceDocument,
@@ -40,6 +40,12 @@ export function PropertyWorkspace({
 
   async function handleAddUnit(input: NewUnitInput) {
     const result = await addUnit(selectedId, input);
+    setUnitError(result.ok ? undefined : result.error);
+    return result.ok;
+  }
+
+  async function handleDeleteUnit(unitId: string) {
+    const result = await deleteUnit(selectedId, unitId);
     setUnitError(result.ok ? undefined : result.error);
     return result.ok;
   }
@@ -98,6 +104,7 @@ export function PropertyWorkspace({
         transactionError={transactionError}
         documentError={documentError}
         onAddUnit={handleAddUnit}
+        onDeleteUnit={handleDeleteUnit}
         onAddOwner={handleAddOwner}
         onCreateManualTransaction={handleCreateManualTransaction}
         onDeleteManualTransaction={handleDeleteManualTransaction}
@@ -113,7 +120,7 @@ function PropertyNotFound({ propertyId }: { propertyId: string }) {
     <section className="flex min-w-0 flex-col gap-4">
       <div className="grid min-h-140 place-items-center rounded-md border border-dashed bg-background p-8 text-center">
         <div className="max-w-md">
-          <div className="mx-auto grid size-12 place-items-center rounded-md bg-red-50 text-red-700">
+          <div className="mx-auto grid size-12 place-items-center rounded-md bg-blocked-surface text-blocked">
             <AlertTriangle className="size-6" aria-hidden="true" />
           </div>
           <h2 className="mt-4 font-semibold text-xl">Property not found</h2>

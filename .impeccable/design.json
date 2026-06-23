@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-23T00:00:00.000Z",
+  "title": "Design System: Rental Property Workspace",
+  "extensions": {
+    "colorMeta": {
+      "ledger-indigo": { "role": "primary", "displayName": "Ledger Indigo", "canonical": "#4f46e5", "tonalRamp": ["#1e1b4b", "#312e81", "#3730a3", "#4338ca", "#4f46e5", "#6366f1", "#818cf8", "#c7d2fe"] },
+      "primary-ink": { "role": "secondary", "displayName": "Primary Ink", "canonical": "oklch(0.205 0 0)", "tonalRamp": ["#171717", "#262626", "#404040", "#525252", "#737373", "#a3a3a3", "#d4d4d4", "#f5f5f5"] },
+      "status-ready": { "role": "tertiary", "displayName": "Ready Emerald", "canonical": "#065f46", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#6ee7b7", "#ecfdf5"] },
+      "status-review": { "role": "tertiary", "displayName": "Review Amber", "canonical": "#92400e", "tonalRamp": ["#451a03", "#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fcd34d", "#fffbeb"] },
+      "status-blocked": { "role": "tertiary", "displayName": "Blocked Red", "canonical": "#991b1b", "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fca5a5", "#fef2f2"] },
+      "status-inactive": { "role": "tertiary", "displayName": "Inactive Slate", "canonical": "#334155", "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"] },
+      "foreground": { "role": "neutral", "displayName": "Foreground", "canonical": "oklch(0.145 0 0)", "tonalRamp": ["#0a0a0a", "#171717", "#252525", "#404040", "#737373", "#a3a3a3", "#d4d4d4", "#fafafa"] },
+      "muted-foreground": { "role": "neutral", "displayName": "Muted Foreground", "canonical": "oklch(0.505 0 0)", "tonalRamp": ["#404040", "#525252", "#6e6e6e", "#737373", "#a3a3a3", "#c4c4c4", "#e5e5e5", "#fafafa"] },
+      "border": { "role": "neutral", "displayName": "Border", "canonical": "oklch(0.922 0 0)", "tonalRamp": ["#737373", "#a3a3a3", "#cccccc", "#ededed", "#f4f4f4", "#f7f7f7", "#fafafa", "#ffffff"] }
+    },
+    "typographyMeta": {
+      "heading": { "displayName": "Heading", "purpose": "Page titles only (text-2xl, tracking-tight, balance)." },
+      "title": { "displayName": "Title", "purpose": "Card and section titles (text-base, medium)." },
+      "body": { "displayName": "Body", "purpose": "Dominant app text (text-sm). Prose caps 65-75ch." },
+      "label": { "displayName": "Label", "purpose": "KPI/field labels: text-xs, tracking-wide, uppercase." },
+      "numeric": { "displayName": "Numeric", "purpose": "KPI values and money. Always tabular-nums." },
+      "mono": { "displayName": "Mono", "purpose": "Geist Mono token for raw code/identifiers." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "transition-standard", "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default state transitions on buttons, links, inputs, rows." },
+      { "name": "active-press", "value": "translateY(1px)", "purpose": "Tactile press feedback on buttons (active:translate-y-px)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The solid, confident primary action. Near-black ink fill.",
+      "html": "<button class=\"ds-btn-primary\">Apply</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; border: 1px solid transparent; border-radius: 0.625rem; background: oklch(0.205 0 0); color: oklch(0.985 0 0); font: 500 0.875rem/1.5 Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: color-mix(in oklch, oklch(0.205 0 0), white 20%); } .ds-btn-primary:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Default secondary action: white fill, hairline border.",
+      "html": "<button class=\"ds-btn-outline\">Review</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; border: 1px solid oklch(0.922 0 0); border-radius: 0.625rem; background: #ffffff; color: oklch(0.145 0 0); font: 500 0.875rem/1.5 Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); } .ds-btn-outline:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-status-ready",
+      "description": "Semantic readiness pill: 50-fill, 300-border, 800-ink, with leading icon. Shown here in the Ready (emerald) variant.",
+      "html": "<span class=\"ds-badge-status\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\"/><path d=\"m9 11 3 3L22 4\"/></svg>Ready</span>",
+      "css": ".ds-badge-status { display: inline-flex; align-items: center; gap: 0.25rem; height: 1.25rem; padding: 0 0.5rem; border: 1px solid #6ee7b7; border-radius: 1.625rem; background: #ecfdf5; color: #065f46; font: 500 0.75rem/1 Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; } .ds-badge-status > svg { width: 0.75rem; height: 0.75rem; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Hairline-bordered field with a quiet 3px focus halo.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search transactions\" />",
+      "css": ".ds-input { height: 2rem; width: 100%; min-width: 0; padding: 0.25rem 0.625rem; border: 1px solid oklch(0.922 0 0); border-radius: 0.625rem; background: transparent; color: oklch(0.145 0 0); font: 400 0.875rem/1.5 Inter, ui-sans-serif, system-ui, sans-serif; transition: color 150ms, border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus-visible { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat content container lifted by a hairline ring, no shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Needs attention</div><div class=\"ds-card-desc\">Portfolio-wide work ordered by filing impact.</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; border-radius: 0.875rem; background: #ffffff; color: oklch(0.145 0 0); box-shadow: inset 0 0 0 1px oklch(0.145 0 0 / 0.1); } .ds-card-title { font: 500 1rem/1.375 Inter, ui-sans-serif, system-ui, sans-serif; } .ds-card-desc { font: 400 0.875rem/1.5 Inter, ui-sans-serif, system-ui, sans-serif; color: oklch(0.556 0 0); }"
+    },
+    {
+      "name": "KPI Stat Card",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Signature dashboard metric: uppercase label, large tabular value, colored status icon chip, bordered hint footer. The flat, honest answer to the gradient hero-metric template.",
+      "html": "<div class=\"ds-kpi\"><div class=\"ds-kpi-head\"><div><div class=\"ds-kpi-label\">Gross rental income</div><div class=\"ds-kpi-value\">$48,200</div></div><span class=\"ds-kpi-chip\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 2v20\"/><path d=\"m17 7-5-5-5 5\"/></svg></span></div><div class=\"ds-kpi-foot\"><span>Income earned on an accrual basis</span><span class=\"ds-kpi-year\">2026</span></div></div>",
+      "css": ".ds-kpi { display: flex; flex-direction: column; gap: 1rem; padding: 1.25rem; border-radius: 0.875rem; background: #ffffff; box-shadow: inset 0 0 0 1px oklch(0.145 0 0 / 0.1); } .ds-kpi-head { display: grid; grid-template-columns: 1fr auto; align-items: start; } .ds-kpi-label { font: 500 0.75rem/1.4 Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: oklch(0.556 0 0); } .ds-kpi-value { margin-top: 0.5rem; font: 600 1.5rem/1.1 Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: oklch(0.145 0 0); } .ds-kpi-chip { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 0.5rem; background: #ecfdf5; color: #047857; } .ds-kpi-chip > svg { width: 1rem; height: 1rem; } .ds-kpi-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid oklch(0.922 0 0); font: 400 0.75rem/1.4 Inter, ui-sans-serif, system-ui, sans-serif; color: oklch(0.556 0 0); } .ds-kpi-year { font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Category Progress Bar",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Signature T776 expense breakdown row: label + tabular amount over an indigo-filled track, with an explicit percentage caption.",
+      "html": "<a class=\"ds-cat\" href=\"#\"><span class=\"ds-cat-row\"><span class=\"ds-cat-label\">Insurance</span><span class=\"ds-cat-amount\">$3,120</span></span><span class=\"ds-cat-track\"><span class=\"ds-cat-fill\" style=\"width:42%\"></span></span><span class=\"ds-cat-caption\">42% of recorded deductible expenses</span></a>",
+      "css": ".ds-cat { display: grid; gap: 0.375rem; text-decoration: none; } .ds-cat-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; font: 400 0.875rem/1.5 Inter, ui-sans-serif, system-ui, sans-serif; color: oklch(0.145 0 0); } .ds-cat:hover .ds-cat-label { text-decoration: underline; } .ds-cat-amount { font-weight: 500; font-variant-numeric: tabular-nums; } .ds-cat-track { display: block; height: 0.5rem; overflow: hidden; border-radius: 9999px; background: oklch(0.97 0 0); } .ds-cat-fill { display: block; height: 100%; border-radius: 9999px; background: #4f46e5; transition: background 150ms; } .ds-cat:hover .ds-cat-fill { background: #4338ca; } .ds-cat-caption { font: 400 0.75rem/1.4 Inter, ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: oklch(0.556 0 0); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Ledger",
+    "overview": "This is a record-keeper, not a marketing surface. The interface stays calm and almost self-effacing so that the figures carry the trust on their own. The visual system is built on a true-neutral grayscale canvas with a single restrained indigo accent and a tight semantic status palette. Density is moderate and tabular; money is set in tabular numerals so columns align to the digit. Surfaces are flat, separated by hairline rings and tonal layering rather than shadow. It explicitly rejects both legacy accounting software (dense gray chrome) and the generic AI-SaaS dashboard (gradient hero-metric cards, purple gradients).",
+    "keyCharacteristics": [
+      "True-neutral grayscale canvas; color appears only to mean something.",
+      "One indigo accent (Ledger Indigo) for action and brand; semantic palette for status only.",
+      "Flat surfaces, hairline rings, tonal layering — no decorative shadow.",
+      "Tabular numerals everywhere money appears; precision is the brand.",
+      "Calm signal over alarm: status guides, it never shouts."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Ledger Indigo is the only color used for action and brand. Emerald / amber / red / slate are reserved exclusively for status. If a saturated color is on screen and it isn't indigo, it must communicate a readiness or severity state.", "section": "colors" },
+      { "name": "The Contrast Floor Rule", "body": "Muted Foreground is set to ~#6e6e6e (~5:1 on white) so it clears WCAG AA 4.5:1 for body text. Reserve it for secondary hints; primary text uses Foreground. Never lighten it back toward the old #8a8a8a (~3.5:1).", "section": "colors" },
+      { "name": "The Soft-Destructive Rule", "body": "Destructive intent is shown as a 10% tint with colored ink, never a solid red fill. Even danger stays calm.", "section": "colors" },
+      { "name": "The Tabular Money Rule", "body": "Every monetary value, count, and percentage uses tabular-nums. Money never reflows column alignment as digits change.", "section": "typography" },
+      { "name": "The One Family Rule", "body": "Inter carries everything. Geist Mono is available for raw code/identifiers only; do not introduce a display or serif face for personality.", "section": "typography" },
+      { "name": "The Hairline Ring Rule", "body": "Cards and contained surfaces use a 1px ring at foreground/10, not a heavy border and not a shadow. Never add a drop shadow to a content card to make it pop.", "section": "elevation" },
+      { "name": "The Tonal Layer Rule", "body": "When two surfaces must read as distinct, separate them by one tonal step on the grayscale ramp, not by elevation.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep Ledger Indigo (#4f46e5) as the only action/brand color; reserve emerald / amber / red / slate strictly for readiness and severity.",
+      "Do set every monetary value, count, and percentage in tabular-nums.",
+      "Do lift cards with a ring-1 ring-foreground/10 hairline and tonal layering — flat, no drop shadow.",
+      "Do show destructive intent as a soft destructive/10 tint with colored ink, never a solid red.",
+      "Do pair every status color with a text label and (usually) an icon, so meaning survives for color-blind users and grayscale print.",
+      "Do verify body text hits WCAG AA 4.5:1; step toward Foreground rather than relying on Muted Foreground for anything a user must read.",
+      "Do make empty states teach the interface (icon + headline + one guiding line)."
+    ],
+    "donts": [
+      "Don't make this look like legacy accounting software — no dense gray toolbars, no cluttered chrome, nothing intimidating to a non-accountant.",
+      "Don't make this look like a generic AI-SaaS dashboard — no gradient hero-metric cards, no identical icon-card grids, no purple gradients.",
+      "Don't use a second brand hue. If a saturated color isn't indigo, it must be status.",
+      "Don't add drop shadows to content cards to make them pop.",
+      "Don't use muted-foreground (~#6e6e6e) for primary reading text or essential labels, and never lighten it back toward #8a8a8a (~3.5:1).",
+      "Don't reintroduce raw Tailwind status colors (bg-emerald-50, text-red-700, ...); route every status through the --ready/--review/--blocked/--info/--inactive tokens and src/lib/status-styles.ts.",
+      "Don't use border-left/border-right colored stripes on cards, rows, or alerts; use full hairline rings, tinted fills, or leading icons.",
+      "Don't use background-clip: text gradient text, decorative glassmorphism, or alarm-red full fills for ordinary states.",
+      "Don't introduce a display or serif typeface for personality — restraint is the voice."
+    ]
+  }
+}
