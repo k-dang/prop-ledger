@@ -293,7 +293,9 @@ const moneyFormatter = new Intl.NumberFormat("en-CA", {
 
 /** Format a dollar amount as Canadian currency for display. */
 export function formatMoney(value: number): string {
-  return moneyFormatter.format(value);
+  // Guard against non-finite inputs so a bad upstream amount renders as $0.00
+  // rather than the literal "$NaN".
+  return moneyFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
 function sumByType(events: RentEvent[], type: RentEvent["type"]): number {

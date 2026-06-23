@@ -2,7 +2,8 @@
 
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useRef, useState } from "react";
 
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import { Badge } from "@/components/ui/badge";
@@ -73,59 +74,47 @@ export function TransactionsInbox({
   rows: InboxRow[];
   properties: { id: string; name: string }[];
 }) {
-  const [filters, setFilters] = useState<Filters>({
-    propertyId: ALL,
-    year: ALL,
-    issue: ALL,
-    category: ALL,
-  });
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const filters: Filters = {
+    propertyId: searchParams.get("propertyId") ?? ALL,
+    year: searchParams.get("year") ?? ALL,
+    issue: searchParams.get("issue") ?? ALL,
+    category: searchParams.get("category") ?? ALL,
+  };
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState<string>();
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const years = useMemo(
-    () =>
-      Array.from(new Set(rows.map((row) => entryYear(row.entry)))).toSorted(
-        (a, b) => b - a,
-      ),
-    [rows],
-  );
+  const years = Array.from(
+    new Set(rows.map((row) => entryYear(row.entry))),
+  ).toSorted((a, b) => b - a);
 
-  const filtered = useMemo(
-    () =>
-      rows.filter((row) => {
-        if (
-          filters.propertyId !== ALL &&
-          row.propertyId !== filters.propertyId
-        ) {
-          return false;
-        }
+  const filtered = rows.filter((row) => {
+    if (filters.propertyId !== ALL && row.propertyId !== filters.propertyId) {
+      return false;
+    }
 
-        if (
-          filters.year !== ALL &&
-          entryYear(row.entry) !== Number(filters.year)
-        ) {
-          return false;
-        }
+    if (filters.year !== ALL && entryYear(row.entry) !== Number(filters.year)) {
+      return false;
+    }
 
-        if (
-          filters.issue !== ALL &&
-          !row.issues.includes(filters.issue as InboxIssueType)
-        ) {
-          return false;
-        }
+    if (
+      filters.issue !== ALL &&
+      !row.issues.includes(filters.issue as InboxIssueType)
+    ) {
+      return false;
+    }
 
-        if (
-          filters.category !== ALL &&
-          !entryMatchesCategory(row.entry, filters.category)
-        ) {
-          return false;
-        }
+    if (
+      filters.category !== ALL &&
+      !entryMatchesCategory(row.entry, filters.category)
+    ) {
+      return false;
+    }
 
-        return true;
-      }),
-    [rows, filters],
-  );
+    return true;
+  });
 
   const boundedActive = Math.min(activeIndex, Math.max(filtered.length - 1, 0));
 
@@ -155,6 +144,24 @@ export function TransactionsInbox({
     setError(result.ok ? undefined : result.error);
   }
 
+  function updateFilter(name: keyof Filters, value: string) {
+    const next = new URLSearchParams(searchParams.toString());
+
+    if (value === ALL) {
+      next.delete(name);
+    } else {
+      next.set(name, value);
+    }
+
+    const query = next.toString();
+    window.history.replaceState(
+      null,
+      "",
+      query.length > 0 ? `${pathname}?${query}` : pathname,
+    );
+    setActiveIndex(0);
+  }
+
   return (
     <Card className="rounded-md">
       <CardHeader>
@@ -171,7 +178,7 @@ export function TransactionsInbox({
             label="Property"
             value={filters.propertyId}
             onChange={(propertyId) => {
-              setFilters((prev) => ({ ...prev, propertyId }));
+              updateFilter("propertyId", propertyId);
             }}
             options={[
               { value: ALL, label: "All properties" },
@@ -186,7 +193,7 @@ export function TransactionsInbox({
             label="Tax year"
             value={filters.year}
             onChange={(year) => {
-              setFilters((prev) => ({ ...prev, year }));
+              updateFilter("year", year);
             }}
             options={[
               { value: ALL, label: "All years" },
@@ -201,7 +208,7 @@ export function TransactionsInbox({
             label="Issue type"
             value={filters.issue}
             onChange={(issue) => {
-              setFilters((prev) => ({ ...prev, issue }));
+              updateFilter("issue", issue);
             }}
             options={[
               { value: ALL, label: "All issues" },
@@ -216,7 +223,7 @@ export function TransactionsInbox({
             label="Category"
             value={filters.category}
             onChange={(category) => {
-              setFilters((prev) => ({ ...prev, category }));
+              updateFilter("category", category);
             }}
             options={[
               { value: ALL, label: "All categories" },

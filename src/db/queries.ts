@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
+import type { DashboardPropertySource } from "@/lib/portfolio-dashboard";
 import type { Portfolio, RentalProperty } from "@/lib/property-workspace";
 import type { RentLedger } from "@/lib/rent-ledger";
 
@@ -26,6 +27,15 @@ export async function getPortfolio(): Promise<Portfolio> {
   });
 
   return { properties: rows };
+}
+
+export async function getPortfolioDashboardSource(): Promise<
+  DashboardPropertySource[]
+> {
+  return db.query.properties.findMany({
+    with: { ...withProperty, rentEvents: true },
+    orderBy: (property, { asc }) => [asc(property.createdAt)],
+  });
 }
 
 export async function getPropertyNavigation() {

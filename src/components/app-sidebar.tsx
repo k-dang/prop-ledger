@@ -6,6 +6,7 @@ import {
   Landmark,
   LayoutDashboard,
   ReceiptText,
+  Settings2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -47,6 +48,12 @@ const NAV_ITEMS = [
     label: "Year-End",
     icon: Landmark,
     isActive: (pathname: string) => pathname.startsWith("/year-end"),
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: Settings2,
+    isActive: (pathname: string) => pathname.startsWith("/settings"),
   },
 ] as const;
 

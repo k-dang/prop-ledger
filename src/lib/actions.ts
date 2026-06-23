@@ -2,6 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { db } from "@/db/index";
 import {
@@ -13,6 +14,7 @@ import {
   properties,
   rentEvents,
   units,
+  yearEndPackages,
 } from "@/db/schema";
 import { type ActionResult, runAction } from "@/lib/action-utils";
 import {
@@ -31,12 +33,41 @@ import {
   type NewRentEventInput,
 } from "@/lib/rent-ledger";
 
+// Server-side contract for a new property. A server action is a public
+// endpoint, so the client form's schema cannot be trusted: re-validate here and
+// require `acquisitionDate` to be a real ISO date, since the dashboard derives
+// active-year and tax-year logic from it by string comparison.
+const newPropertySchema = z.object({
+  name: z.string().trim().min(1),
+  line1: z.string().trim().min(1),
+  line2: z
+    .string()
+    .trim()
+    .transform((value) => (value.length > 0 ? value : null))
+    .nullish(),
+  municipality: z.string().trim().min(1),
+  province: z.string().trim().min(1),
+  postalCode: z.string().trim().min(1),
+  acquisitionDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((value) => !Number.isNaN(new Date(value).getTime())),
+});
+
 export async function createProperty(
   input: NewPropertyInput,
 ): Promise<ActionResult> {
   return runAction("Property creation mutation", async () => {
-    // `input` already matches the insert shape, so it writes straight through.
-    await db.insert(properties).values(input);
+    const parsed = newPropertySchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: "Enter valid property details before saving.",
+      };
+    }
+
+    await db.insert(properties).values(parsed.data);
     revalidatePath("/", "layout");
 
     return { ok: true };
@@ -199,10 +230,23 @@ export async function addLeaseDocument(
   });
 }
 
-export async function resetPortfolio(): Promise<ActionResult> {
+export async function resetPortfolio(
+  confirmation: string,
+): Promise<ActionResult> {
   return runAction("Portfolio reset mutation", async () => {
-    // Cascading foreign keys clear units, owners, ownership periods, etc.
-    await db.delete(properties);
+    // Re-check the typed confirmation on the server: the client gate is just a
+    // UX affordance and a direct caller would otherwise wipe everything.
+    if (confirmation !== "RESET") {
+      return { ok: false, error: "Type RESET to confirm." };
+    }
+
+    // Delete year-end packages before properties. Deleting a property cascades
+    // to both its owners and its packages, but `yearEndPackages.ownerId` has an
+    // onDelete: "restrict" edge to owners, so an owner-scoped package would
+    // abort the whole cascade. Clearing packages first removes that edge.
+    // db.batch runs the statements in order inside one transaction (neon-http
+    // has no interactive transactions, so we cannot use db.transaction here).
+    await db.batch([db.delete(yearEndPackages), db.delete(properties)]);
     revalidatePath("/", "layout");
     return { ok: true };
   });

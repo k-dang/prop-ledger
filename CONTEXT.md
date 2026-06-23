@@ -27,11 +27,48 @@ An immutable snapshot of a property's records for a Tax Year, captured at export
 point-in-time artifact that makes filed records defensible.
 _Avoid_: report, export (as names for the defensible artifact)
 
+**Portfolio Dashboard**:
+The portfolio-wide overview that summarizes financial activity and record-readiness
+across all properties, with property-specific detail delegated to each property workspace.
+_Avoid_: property dashboard, setup dashboard
+
+**Gross Rental Income**:
+Rental income earned during a Tax Year, including accrued rent and other recorded
+rental income whether or not the cash has been received.
+_Avoid_: rent collected, cash income
+
+**Payments Received**:
+Rent cash received during a Tax Year, reported separately from income earned so
+unpaid rent remains visible.
+_Avoid_: gross rent, gross rental income
+
+**Deductible Expenses**:
+Recorded current expenses allocated to a Tax Year and classified to T776 expense
+categories, including recorded mortgage interest but excluding mortgage principal.
+_Avoid_: total spending, cash outflow
+
+**Net Recorded Rental Income**:
+Gross Rental Income less Deductible Expenses for a Tax Year; a record summary that
+is neither taxable income nor tax payable.
+_Avoid_: net operating income, net profit, tax outcome
+
+**Year-End Readiness**:
+The live review status of a Property Tax Year: *Ready* has no open blockers or
+warnings, *Needs review* has warnings only, and *Blocked* has one or more blockers,
+including missing required property setup.
+_Avoid_: setup percentage, completion percentage, closed year
+
 ## Relationships
 
 - A **Tax Year** scopes records to a filing period and does not compute balances;
   cross-year continuity is preservation of confirmed values and flagging of gaps,
   never a calculated chain.
+- The **Portfolio Dashboard** is scoped to one selected **Tax Year**, with the
+  selection carried in the URL so its financial activity and readiness summaries
+  always share the same explicit period.
+- A property acquired after the selected **Tax Year** is outside that dashboard's
+  active scope: it contributes no totals or readiness counts but remains visible
+  as not active for that year.
 - A **Tax Year** is a thin overlay over independently-dated records: it *selects*
   rent, ledger, and ownership records by date rather than *owning* them.
 - A **Property Tax Year** is always editable; there is no close or lock state.

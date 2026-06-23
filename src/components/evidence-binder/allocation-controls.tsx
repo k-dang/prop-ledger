@@ -11,6 +11,12 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,29 +87,33 @@ export function TransactionAllocationControls({
   const prepaid = isPrepaid(entry);
 
   return (
-    <details className="rounded-md border bg-background">
-      <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-3 py-2 text-sm">
-        <Split className="size-4" aria-hidden="true" />
-        Allocate
-        {entry.splits.length > 0 ? (
-          <Badge variant="outline" className="rounded-md">
-            {entry.splits.length} splits
-          </Badge>
-        ) : null}
-        {prepaid ? (
-          <Badge
-            variant="outline"
-            className="rounded-md border-sky-300 bg-sky-50 text-sky-800"
-          >
-            prepaid
-          </Badge>
-        ) : null}
-      </summary>
-      <div className="grid gap-4 border-t p-3">
-        <PrepaidEditor propertyId={propertyId} entry={entry} />
-        <SplitsEditor propertyId={propertyId} entry={entry} />
-      </div>
-    </details>
+    <Accordion className="rounded-md border bg-background">
+      <AccordionItem value={`allocation-${entry.id}`} className="border-b-0">
+        <AccordionTrigger className="items-center px-3 py-2 hover:no-underline">
+          <span className="flex flex-wrap items-center gap-2">
+            <Split className="size-4" aria-hidden="true" />
+            Allocate
+            {entry.splits.length > 0 ? (
+              <Badge variant="outline" className="rounded-md">
+                {entry.splits.length} splits
+              </Badge>
+            ) : null}
+            {prepaid ? (
+              <Badge
+                variant="outline"
+                className="rounded-md border-sky-300 bg-sky-50 text-sky-800"
+              >
+                prepaid
+              </Badge>
+            ) : null}
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="grid gap-4 border-t p-3 pb-3">
+          <PrepaidEditor propertyId={propertyId} entry={entry} />
+          <SplitsEditor propertyId={propertyId} entry={entry} />
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
