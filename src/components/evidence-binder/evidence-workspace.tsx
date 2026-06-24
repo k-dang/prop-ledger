@@ -41,7 +41,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Sheet,
@@ -290,7 +289,7 @@ function ManualTransactionsPanel({
                 <TableHead className="w-28">Date</TableHead>
                 <TableHead className="min-w-64">Transaction</TableHead>
                 <TableHead className="w-32 text-right">Amount</TableHead>
-                <TableHead className="min-w-96">Evidence</TableHead>
+                <TableHead className="w-48">Evidence</TableHead>
                 <TableHead className="w-10">
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -324,7 +323,7 @@ function ManualTransactionsPanel({
                               : toneSurface.info,
                           )}
                         >
-                          {entry.type}
+                          {entry.type === "income" ? "Income" : "Expense"}
                         </Badge>
                       </div>
                       <p className="mt-1 text-muted-foreground text-xs">
@@ -334,9 +333,10 @@ function ManualTransactionsPanel({
                     <TableCell className="align-top text-right font-semibold">
                       {formatMoney(entry.amount)}
                     </TableCell>
-                    <TableCell className="min-w-96 align-top">
+                    <TableCell className="align-top">
                       <TransactionEvidenceControl
                         documents={linked}
+                        transaction={entry}
                         transactionId={entry.id}
                         capitalAssetControl={
                           entry.type === "expense" ? (
@@ -381,16 +381,21 @@ function AddManualTransactionSheet({
   onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
   const categoryOptions =
     transactionType === "expense"
       ? T776_CATEGORY_OPTIONS
       : RENTAL_INCOME_CATEGORY_OPTIONS;
+  const selectedCategoryLabel =
+    categoryOptions.find((category) => category.value === selectedCategory)
+      ?.label ?? "Select";
   const handleSubmit = createFormSubmit(
     manualTransactionFormSchema,
     async (input) => {
       const saved = await onSubmit(input);
 
       if (saved) {
+        setSelectedCategory("");
         setOpen(false);
       }
 
@@ -423,10 +428,13 @@ function AddManualTransactionSheet({
                   onTransactionTypeChange(
                     value as NewManualTransactionInput["type"],
                   );
+                  setSelectedCategory("");
                 }}
               >
                 <SelectTrigger id="transactionType" className="w-full">
-                  <SelectValue />
+                  <span className="flex flex-1 text-left">
+                    {transactionType === "expense" ? "Expense" : "Income"}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="expense">Expense</SelectItem>
@@ -457,9 +465,23 @@ function AddManualTransactionSheet({
             </Field>
             <Field>
               <FieldLabel htmlFor="category">Category</FieldLabel>
-              <Select key={transactionType} name="category" defaultValue="">
+              <Select
+                key={transactionType}
+                name="category"
+                value={selectedCategory}
+                onValueChange={(value) => {
+                  setSelectedCategory(value ?? "");
+                }}
+              >
                 <SelectTrigger id="category" className="w-full">
-                  <SelectValue placeholder="Select" />
+                  <span
+                    className={cn(
+                      "flex flex-1 text-left",
+                      selectedCategory === "" && "text-muted-foreground",
+                    )}
+                  >
+                    {selectedCategoryLabel}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {categoryOptions.map((category) => (
@@ -555,12 +577,14 @@ function DeleteTransactionButton({
 
 function TransactionEvidenceControl({
   documents,
+  transaction,
   transactionId,
   capitalAssetControl,
   onUploadEvidence,
   onDeleteDocument,
 }: {
   documents: RentalProperty["documents"];
+  transaction: RentalProperty["ledgerEntries"][number];
   transactionId: string;
   capitalAssetControl: ReactNode;
   onUploadEvidence: (
@@ -569,6 +593,7 @@ function TransactionEvidenceControl({
   ) => boolean | Promise<boolean>;
   onDeleteDocument: (documentId: string) => boolean | Promise<boolean>;
 }) {
+  const [open, setOpen] = useState(false);
   const fileInputId = `evidence-${transactionId}`;
   const linkedCount = documents.length;
   const handleSubmit: FormSubmitHandler = (event) => {
@@ -585,81 +610,133 @@ function TransactionEvidenceControl({
   };
 
   return (
-    <div className="grid gap-2">
-      <div className="grid gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Paperclip className="size-3.5 text-muted-foreground" />
-          <Badge
-            variant="outline"
-            className={cn(
-              "w-fit rounded-md",
-              linkedCount > 0 ? toneSurface.ready : toneSurface.review,
-            )}
-          >
-            {linkedCount} linked
-          </Badge>
-          <div className="ml-auto flex min-w-fit items-center gap-2">
-            {capitalAssetControl}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {documents.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
-              No receipt attached.
-            </p>
-          ) : null}
-          {documents.map((document) => (
-            <div
-              className="flex min-w-0 items-center gap-2 rounded-md bg-muted/40 px-2 py-1"
-              key={document.id}
-            >
-              <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="max-w-48 truncate text-xs">
-                {document.fileName}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                className="shrink-0 text-blocked"
-                aria-label={`Delete ${document.fileName}`}
-                onClick={() => {
-                  void onDeleteDocument(document.id);
-                }}
-              >
-                <Trash2 aria-hidden="true" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-      <form
-        className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
-        onSubmit={handleSubmit}
-      >
-        <Field className="gap-1">
-          <FieldLabel className="sr-only" htmlFor={fileInputId}>
-            Receipt or invoice
-          </FieldLabel>
-          <Input
-            id={fileInputId}
-            name="file"
-            type="file"
-            accept="application/pdf,image/*"
-            required
-          />
-        </Field>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Paperclip className="size-3.5 text-muted-foreground" />
+        <Badge
+          variant="outline"
+          className={cn(
+            "w-fit rounded-md",
+            linkedCount > 0 ? toneSurface.ready : toneSurface.review,
+          )}
+        >
+          {linkedCount} linked
+        </Badge>
         <Button
-          type="submit"
+          type="button"
           variant="outline"
           size="sm"
           className="rounded-md"
+          onClick={() => {
+            setOpen(true);
+          }}
         >
-          <Plus data-icon="inline-start" />
-          {linkedCount > 0 ? "Add receipt" : "Attach receipt"}
+          Manage
         </Button>
-      </form>
-    </div>
+      </div>
+      <SheetContent className="overflow-y-auto sm:max-w-md">
+        <SheetHeader className="border-b pr-12">
+          <SheetTitle>Evidence</SheetTitle>
+          <SheetDescription>
+            Attach source documents and classification support for{" "}
+            {transaction.vendor}.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="grid gap-5 px-4 pb-4">
+          <div className="grid gap-2 rounded-md border bg-muted/30 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-medium text-sm">{transaction.vendor}</span>
+              <span className="font-semibold tabular-nums text-sm">
+                {formatMoney(transaction.amount)}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
+              <span>{transaction.date}</span>
+              <span>{formatLedgerCategory(transaction)}</span>
+            </div>
+          </div>
+
+          {capitalAssetControl ? (
+            <section className="grid gap-2">
+              <h3 className="font-medium text-sm">Classification</h3>
+              <div>{capitalAssetControl}</div>
+            </section>
+          ) : null}
+
+          <section className="grid gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-medium text-sm">Linked documents</h3>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "rounded-md",
+                  linkedCount > 0 ? toneSurface.ready : toneSurface.review,
+                )}
+              >
+                {linkedCount} linked
+              </Badge>
+            </div>
+            {documents.length === 0 ? (
+              <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/40 p-3 text-muted-foreground text-sm">
+                <FileText className="size-4 shrink-0" aria-hidden="true" />
+                No receipt attached.
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                {documents.map((document) => (
+                  <div
+                    className="flex min-w-0 items-center gap-2 rounded-md border bg-background px-2 py-1.5"
+                    key={document.id}
+                  >
+                    <FileText
+                      className="size-3.5 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      {document.fileName}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="shrink-0 text-blocked"
+                      aria-label={`Delete ${document.fileName}`}
+                      onClick={() => {
+                        void onDeleteDocument(document.id);
+                      }}
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <form className="grid gap-2" onSubmit={handleSubmit}>
+            <Field className="gap-1">
+              <FieldLabel htmlFor={fileInputId}>Receipt or invoice</FieldLabel>
+              <Input
+                id={fileInputId}
+                name="file"
+                type="file"
+                accept="application/pdf,image/*"
+                required
+              />
+            </Field>
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="w-fit rounded-md"
+            >
+              <Plus data-icon="inline-start" />
+              {linkedCount > 0 ? "Add receipt" : "Attach receipt"}
+            </Button>
+          </form>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

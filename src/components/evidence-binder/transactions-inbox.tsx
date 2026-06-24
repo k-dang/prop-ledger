@@ -20,7 +20,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Table,
@@ -63,9 +62,9 @@ const ALL = "all";
 const UNCATEGORIZED = "__uncategorized";
 
 const ISSUE_LABELS: Record<InboxIssueType, string> = {
-  uncategorized: "category",
-  missing_receipt: "receipt",
-  split_mismatch: "split",
+  uncategorized: "Category",
+  missing_receipt: "Receipt",
+  split_mismatch: "Split",
 };
 
 export function TransactionsInbox({
@@ -266,6 +265,10 @@ export function TransactionsInbox({
                     row.entry.type === "expense"
                       ? (row.entry.expenseCategory ?? "")
                       : (row.entry.incomeCategory ?? "");
+                  const currentCategoryLabel =
+                    categoryOptions.find(
+                      (option) => option.value === currentCategory,
+                    )?.label ?? "Uncategorized";
 
                   return (
                     <TableRow
@@ -311,7 +314,9 @@ export function TransactionsInbox({
                               }}
                               className="h-9 w-full rounded-md"
                             >
-                              <SelectValue />
+                              <span className="flex flex-1 text-left">
+                                {currentCategoryLabel}
+                              </span>
                             </SelectTrigger>
                             <SelectContent align="start">
                               <SelectItem value={UNCATEGORIZED}>
@@ -337,7 +342,7 @@ export function TransactionsInbox({
                               variant="outline"
                               className={cn("rounded-md", toneSurface.ready)}
                             >
-                              clear
+                              Clear
                             </Badge>
                           ) : (
                             row.issues.map((issue) => (
@@ -384,6 +389,10 @@ function FilterSelect({
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
 }) {
+  const selectedLabel =
+    options.find((option) => option.value === value)?.label ??
+    options[0]?.label;
+
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
@@ -394,7 +403,7 @@ function FilterSelect({
         }}
       >
         <SelectTrigger id={id} className="h-9 w-full rounded-md">
-          <SelectValue />
+          <span className="flex flex-1 text-left">{selectedLabel}</span>
         </SelectTrigger>
         <SelectContent align="start">
           {options.map((option) => (

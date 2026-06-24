@@ -273,13 +273,27 @@ function SetupChecklist({ readiness }: { readiness: PropertyReadiness }) {
                 task.status === "warning" && toneSurface.blocked,
               )}
             >
-              {task.status}
+              {formatSetupStatus(task.status)}
             </Badge>
           </div>
         ))}
       </CardContent>
     </Card>
   );
+}
+
+function formatSetupStatus(
+  status: PropertyReadiness["tasks"][number]["status"],
+) {
+  if (status === "complete") {
+    return "Complete";
+  }
+
+  if (status === "missing") {
+    return "Missing";
+  }
+
+  return "Needs review";
 }
 
 function PropertyFacts({ property }: { property: RentalProperty }) {

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { z } from "zod";
 
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -39,7 +39,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -323,6 +322,11 @@ function LeasesPanel({
   ) => boolean | Promise<boolean>;
 }) {
   const hasUnits = ledger.units.length > 0;
+  const [selectedUnitId, setSelectedUnitId] = useState("");
+  const [rentFrequency, setRentFrequency] = useState<RentFrequency>("monthly");
+  const selectedUnitLabel =
+    ledger.units.find((unit) => unit.id === selectedUnitId)?.label ??
+    "Select unit";
   const handleSubmit = createFormSubmit(leaseFormSchema, onCreateLease);
 
   return (
@@ -338,9 +342,23 @@ function LeasesPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="lease-unit">Unit</FieldLabel>
-              <Select name="unitId" disabled={!hasUnits} defaultValue="">
+              <Select
+                name="unitId"
+                disabled={!hasUnits}
+                value={selectedUnitId}
+                onValueChange={(value) => {
+                  setSelectedUnitId(value ?? "");
+                }}
+              >
                 <SelectTrigger id="lease-unit" className="w-full">
-                  <SelectValue placeholder="Select unit" />
+                  <span
+                    className={cn(
+                      "flex flex-1 text-left",
+                      selectedUnitId === "" && "text-muted-foreground",
+                    )}
+                  >
+                    {selectedUnitLabel}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {ledger.units.map((unit) => (
@@ -378,9 +396,17 @@ function LeasesPanel({
             </Field>
             <Field>
               <FieldLabel htmlFor="lease-frequency">Frequency</FieldLabel>
-              <Select name="rentFrequency" defaultValue="monthly">
+              <Select
+                name="rentFrequency"
+                value={rentFrequency}
+                onValueChange={(value) => {
+                  setRentFrequency(value as RentFrequency);
+                }}
+              >
                 <SelectTrigger id="lease-frequency" className="w-full">
-                  <SelectValue />
+                  <span className="flex flex-1 text-left">
+                    {FREQUENCY_LABELS[rentFrequency]}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {RENT_FREQUENCIES.map((frequency) => (
@@ -575,6 +601,11 @@ function RentEventPanel({
   error?: string;
   onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
 }) {
+  const [eventType, setEventType] = useState<RentEventType>("payment");
+  const [selectedLeaseId, setSelectedLeaseId] = useState("");
+  const selectedLeaseLabel =
+    leases.find((lease) => lease.id === selectedLeaseId)?.tenantName ??
+    "Property-level / none";
   const handleSubmit = createFormSubmit(rentEventFormSchema, onRecordEvent);
 
   return (
@@ -590,9 +621,17 @@ function RentEventPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="event-type">Type</FieldLabel>
-              <Select name="type" defaultValue="payment">
+              <Select
+                name="type"
+                value={eventType}
+                onValueChange={(value) => {
+                  setEventType(value as RentEventType);
+                }}
+              >
                 <SelectTrigger id="event-type" className="w-full">
-                  <SelectValue />
+                  <span className="flex flex-1 text-left">
+                    {EVENT_TYPE_LABELS[eventType]}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {RENT_EVENT_TYPES.map((type) => (
@@ -605,9 +644,22 @@ function RentEventPanel({
             </Field>
             <Field>
               <FieldLabel htmlFor="event-lease">Lease</FieldLabel>
-              <Select name="leaseId" defaultValue="">
+              <Select
+                name="leaseId"
+                value={selectedLeaseId}
+                onValueChange={(value) => {
+                  setSelectedLeaseId(value ?? "");
+                }}
+              >
                 <SelectTrigger id="event-lease" className="w-full">
-                  <SelectValue placeholder="Property-level / none" />
+                  <span
+                    className={cn(
+                      "flex flex-1 text-left",
+                      selectedLeaseId === "" && "text-muted-foreground",
+                    )}
+                  >
+                    {selectedLeaseLabel}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {leases.map((lease) => (

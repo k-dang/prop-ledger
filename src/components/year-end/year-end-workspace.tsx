@@ -24,7 +24,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Table,
@@ -94,6 +93,10 @@ function YearEndSelector({
   selectedPropertyId: string;
   selectedYear: number;
 }) {
+  const selectedPropertyName =
+    properties.find((property) => property.id === selectedPropertyId)?.name ??
+    "Select property";
+
   return (
     <Card className="rounded-md">
       <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
@@ -115,7 +118,9 @@ function YearEndSelector({
             <FieldLabel htmlFor="propertyId">Property</FieldLabel>
             <Select name="propertyId" defaultValue={selectedPropertyId}>
               <SelectTrigger id="propertyId" className="w-full">
-                <SelectValue />
+                <span className="flex flex-1 text-left">
+                  {selectedPropertyName}
+                </span>
               </SelectTrigger>
               <SelectContent align="start">
                 {properties.map((property) => (
@@ -336,7 +341,7 @@ function ReadinessBadge({
       variant="outline"
       className={cn("rounded-md", statusClassName(status))}
     >
-      {count} {status}
+      {count} {formatReadinessStatus(status)}
     </Badge>
   );
 }
@@ -353,9 +358,23 @@ function StatusBadge({
       variant="outline"
       className={cn("rounded-md", statusClassName(status))}
     >
-      {status === "clear" ? "clear" : `${count} ${status}`}
+      {status === "clear"
+        ? formatReadinessStatus(status)
+        : `${count} ${formatReadinessStatus(status)}`}
     </Badge>
   );
+}
+
+function formatReadinessStatus(status: ReadinessStatus) {
+  if (status === "clear") {
+    return "Clear";
+  }
+
+  if (status === "warning") {
+    return "Needs review";
+  }
+
+  return "Blocking";
 }
 
 function StatusIcon({ status }: { status: ReadinessStatus }) {
