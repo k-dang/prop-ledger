@@ -102,6 +102,7 @@ export function PropertyWorkspaceDetail({
   onAddUnit,
   onDeleteUnit,
   onAddOwner,
+  onDeleteOwner,
   onCreateManualTransaction,
   onDeleteManualTransaction,
   onUploadTransactionEvidence,
@@ -116,6 +117,7 @@ export function PropertyWorkspaceDetail({
   onAddUnit: (input: NewUnitInput) => boolean | Promise<boolean>;
   onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
   onAddOwner: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
+  onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
   onCreateManualTransaction: (
     input: NewManualTransactionInput,
   ) => boolean | Promise<boolean>;
@@ -145,6 +147,7 @@ export function PropertyWorkspaceDetail({
         property={property}
         error={ownerError}
         onSubmit={onAddOwner}
+        onDeleteOwner={onDeleteOwner}
       />
       <EvidenceBinderPanel
         property={property}
@@ -509,12 +512,26 @@ function OwnershipPanel({
   property,
   error,
   onSubmit,
+  onDeleteOwner,
 }: {
   property: RentalProperty;
   error?: string;
   onSubmit: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
+  onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
 }) {
   const history = getOwnershipHistory(property);
+
+  function handleDelete(ownerId: string, ownerName: string) {
+    if (
+      !window.confirm(
+        `Delete owner "${ownerName}" and their ownership periods?`,
+      )
+    ) {
+      return;
+    }
+
+    void onDeleteOwner(ownerId);
+  }
 
   return (
     <Card className="rounded-md">
@@ -532,6 +549,7 @@ function OwnershipPanel({
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4">
+        <FormErrorAlert message={error} />
         {history.length === 0 ? (
           <EmptyState icon={Users}>No ownership periods recorded.</EmptyState>
         ) : (
@@ -542,6 +560,7 @@ function OwnershipPanel({
                 <TableHead>Email</TableHead>
                 <TableHead>Share</TableHead>
                 <TableHead>Effective dates</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -553,6 +572,20 @@ function OwnershipPanel({
                   </TableCell>
                   <TableCell>{period.percentageLabel}</TableCell>
                   <TableCell>{period.dateRange}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 rounded-md px-2 text-blocked"
+                      onClick={() => {
+                        handleDelete(period.ownerId, period.ownerName);
+                      }}
+                    >
+                      <Trash2 data-icon="inline-start" />
+                      Delete
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

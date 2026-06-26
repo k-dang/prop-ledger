@@ -4,7 +4,12 @@ import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
-import { addOwnerWithOwnership, addUnit, deleteUnit } from "@/lib/actions";
+import {
+  addOwnerWithOwnership,
+  addUnit,
+  deleteOwner,
+  deleteUnit,
+} from "@/lib/actions";
 import {
   createManualTransaction,
   deleteEvidenceDocument,
@@ -52,6 +57,12 @@ export function PropertyWorkspace({
 
   async function handleAddOwner(input: NewOwnerWithOwnershipInput) {
     const result = await addOwnerWithOwnership(selectedId, input);
+    setOwnerError(result.ok ? undefined : result.error);
+    return result.ok;
+  }
+
+  async function handleDeleteOwner(ownerId: string) {
+    const result = await deleteOwner(selectedId, ownerId);
     setOwnerError(result.ok ? undefined : result.error);
     return result.ok;
   }
@@ -106,6 +117,7 @@ export function PropertyWorkspace({
         onAddUnit={handleAddUnit}
         onDeleteUnit={handleDeleteUnit}
         onAddOwner={handleAddOwner}
+        onDeleteOwner={handleDeleteOwner}
         onCreateManualTransaction={handleCreateManualTransaction}
         onDeleteManualTransaction={handleDeleteManualTransaction}
         onUploadTransactionEvidence={handleUploadTransactionEvidence}

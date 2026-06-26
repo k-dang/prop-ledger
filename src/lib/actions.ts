@@ -159,6 +159,43 @@ export async function addOwnerWithOwnership(
   });
 }
 
+export async function deleteOwner(
+  propertyId: string,
+  ownerId: string,
+): Promise<ActionResult> {
+  return runAction("Owner delete mutation", async () => {
+    const owner = await db.query.owners.findFirst({
+      where: and(eq(owners.id, ownerId), eq(owners.propertyId, propertyId)),
+      columns: { id: true },
+    });
+
+    if (owner === undefined) {
+      return { ok: false, error: "That owner no longer exists." };
+    }
+
+    const yearEndPackage = await db.query.yearEndPackages.findFirst({
+      where: and(
+        eq(yearEndPackages.propertyId, propertyId),
+        eq(yearEndPackages.ownerId, ownerId),
+      ),
+      columns: { id: true },
+    });
+
+    if (yearEndPackage !== undefined) {
+      return {
+        ok: false,
+        error: "Owners with year-end packages cannot be deleted from setup.",
+      };
+    }
+
+    await db
+      .delete(owners)
+      .where(and(eq(owners.id, ownerId), eq(owners.propertyId, propertyId)));
+
+    return { ok: true };
+  });
+}
+
 export async function createLease(input: NewLeaseInput): Promise<ActionResult> {
   return runAction("Lease mutation", async () => {
     await db.insert(leases).values(input);
