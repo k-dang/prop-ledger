@@ -1,6 +1,13 @@
 import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import {
+  appDataCacheTags,
+  propertyCacheTag,
+  rentLedgerCacheTag,
+  yearEndCacheTag,
+} from "@/lib/cache-tags";
 import type { DashboardPropertySource } from "@/lib/portfolio-dashboard";
 import type { Portfolio, RentalProperty } from "@/lib/property-workspace";
 import type { RentLedger } from "@/lib/rent-ledger";
@@ -21,6 +28,10 @@ const withProperty = {
 } as const;
 
 export async function getPortfolio(): Promise<Portfolio> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(appDataCacheTags.portfolio);
+
   const rows = await db.query.properties.findMany({
     with: withProperty,
     orderBy: (property, { asc }) => [asc(property.createdAt)],
@@ -32,6 +43,10 @@ export async function getPortfolio(): Promise<Portfolio> {
 export async function getPortfolioDashboardSource(): Promise<
   DashboardPropertySource[]
 > {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(appDataCacheTags.portfolioDashboard);
+
   return db.query.properties.findMany({
     with: { ...withProperty, rentEvents: true },
     orderBy: (property, { asc }) => [asc(property.createdAt)],
@@ -39,6 +54,10 @@ export async function getPortfolioDashboardSource(): Promise<
 }
 
 export async function getPropertyNavigation() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(appDataCacheTags.propertyNavigation);
+
   return db.query.properties.findMany({
     columns: { id: true, name: true },
     orderBy: (property, { asc }) => [
@@ -51,6 +70,10 @@ export async function getPropertyNavigation() {
 export async function getProperty(
   id: string,
 ): Promise<RentalProperty | undefined> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(appDataCacheTags.properties, propertyCacheTag(id));
+
   return db.query.properties.findFirst({
     where: eq(properties.id, id),
     with: withProperty,
@@ -67,6 +90,14 @@ export async function getProperty(
 export async function getPropertyRentLedger(
   propertyId: string,
 ): Promise<RentLedger | undefined> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(
+    appDataCacheTags.rentLedgers,
+    rentLedgerCacheTag(propertyId),
+    propertyCacheTag(propertyId),
+  );
+
   const row = await db.query.properties.findFirst({
     where: eq(properties.id, propertyId),
     with: {
@@ -93,6 +124,10 @@ export async function getPropertyRentLedger(
 }
 
 export async function getAccountantNotes(propertyId: string, taxYear: number) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(yearEndCacheTag(propertyId, taxYear), appDataCacheTags.yearEnd);
+
   return db.query.accountantNotes.findMany({
     where: and(
       eq(accountantNotes.propertyId, propertyId),
@@ -103,6 +138,10 @@ export async function getAccountantNotes(propertyId: string, taxYear: number) {
 }
 
 export async function getYearEndPackages(propertyId: string, taxYear: number) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(yearEndCacheTag(propertyId, taxYear), appDataCacheTags.yearEnd);
+
   return db.query.yearEndPackages.findMany({
     where: and(
       eq(yearEndPackages.propertyId, propertyId),

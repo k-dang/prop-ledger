@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CopyPlus,
   FileText,
   type LucideIcon,
   Paperclip,
@@ -58,9 +59,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  createEmptyManualTransactionDraft,
+  createRecurringRentTransactionDraft,
   formatLedgerCategory,
   getDocumentsForTarget,
   getEvidenceExceptionCounts,
+  getLatestRentTransaction,
+  type ManualTransactionFormDraft,
   type NewManualTransactionInput,
   RENTAL_INCOME_CATEGORY_OPTIONS,
   T776_CATEGORY_OPTIONS,
@@ -237,14 +242,15 @@ function ManualTransactionsPanel({
   ) => boolean | Promise<boolean>;
   onDeleteDocument: (documentId: string) => boolean | Promise<boolean>;
 }) {
-  const [transactionType, setTransactionType] =
-    useState<NewManualTransactionInput["type"]>("expense");
   const incomeTotal = property.ledgerEntries
     .filter((entry) => entry.type === "income")
     .reduce((total, entry) => total + entry.amount, 0);
   const expenseTotal = property.ledgerEntries
     .filter((entry) => entry.type === "expense")
     .reduce((total, entry) => total + entry.amount, 0);
+  const latestRentTransaction = getLatestRentTransaction(
+    property.ledgerEntries,
+  );
 
   return (
     <Card className="rounded-md">
@@ -257,8 +263,7 @@ function ManualTransactionsPanel({
         </div>
         <CardAction>
           <AddManualTransactionSheet
-            transactionType={transactionType}
-            onTransactionTypeChange={setTransactionType}
+            latestRentTransaction={latestRentTransaction}
             onSubmit={onSubmit}
           />
         </CardAction>
@@ -405,24 +410,22 @@ function TransactionTypeLabel({
 }
 
 function AddManualTransactionSheet({
-  transactionType,
-  onTransactionTypeChange,
+  latestRentTransaction,
   onSubmit,
 }: {
-  transactionType: NewManualTransactionInput["type"];
-  onTransactionTypeChange: (
-    transactionType: NewManualTransactionInput["type"],
-  ) => void;
+  latestRentTransaction?: RentalProperty["ledgerEntries"][number];
   onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [formKey, setFormKey] = useState(0);
+  const [draft, setDraft] = useState(createEmptyManualTransactionDraft);
+  const transactionType = draft.type;
   const categoryOptions =
     transactionType === "expense"
       ? T776_CATEGORY_OPTIONS
       : RENTAL_INCOME_CATEGORY_OPTIONS;
   const selectedCategoryLabel =
-    categoryOptions.find((category) => category.value === selectedCategory)
+    categoryOptions.find((category) => category.value === draft.category)
       ?.label ?? "Select";
   const handleSubmit = createFormSubmit(
     manualTransactionFormSchema,
@@ -430,16 +433,40 @@ function AddManualTransactionSheet({
       const saved = await onSubmit(input);
 
       if (saved) {
-        setSelectedCategory("");
+        resetFormState();
         setOpen(false);
       }
 
       return saved;
     },
   );
+  function updateDraft(patch: Partial<ManualTransactionFormDraft>) {
+    setDraft((current) => ({ ...current, ...patch }));
+  }
+
+  function resetFormState() {
+    setDraft(createEmptyManualTransactionDraft());
+    setFormKey((key) => key + 1);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      resetFormState();
+    }
+  }
+
+  function prefillLatestRent() {
+    if (latestRentTransaction === undefined) {
+      return;
+    }
+
+    setDraft(createRecurringRentTransactionDraft(latestRentTransaction));
+  }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <Button type="button" onClick={() => setOpen(true)}>
         <Plus data-icon="inline-start" />
         Add transaction
@@ -452,7 +479,31 @@ function AddManualTransactionSheet({
             review.
           </SheetDescription>
         </SheetHeader>
-        <form className="grid gap-4 px-4 pb-4" onSubmit={handleSubmit}>
+        <form
+          className="grid gap-4 px-4 pb-4"
+          key={formKey}
+          onSubmit={handleSubmit}
+        >
+          {latestRentTransaction !== undefined ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/30 p-3">
+              <div className="min-w-0">
+                <p className="font-medium text-sm">Recurring rent</p>
+                <p className="truncate text-muted-foreground text-xs">
+                  Last rent: {formatMoney(latestRentTransaction.amount)} from{" "}
+                  {latestRentTransaction.vendor} on {latestRentTransaction.date}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-md"
+                onClick={prefillLatestRent}
+              >
+                <CopyPlus data-icon="inline-start" />
+                Use last rent
+              </Button>
+            </div>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="transactionType">Type</FieldLabel>
@@ -460,10 +511,10 @@ function AddManualTransactionSheet({
                 name="type"
                 value={transactionType}
                 onValueChange={(value) => {
-                  onTransactionTypeChange(
-                    value as NewManualTransactionInput["type"],
-                  );
-                  setSelectedCategory("");
+                  updateDraft({
+                    type: value as NewManualTransactionInput["type"],
+                    category: "",
+                  });
                 }}
               >
                 <SelectTrigger id="transactionType" className="w-full">
@@ -479,12 +530,31 @@ function AddManualTransactionSheet({
             </Field>
             <Field>
               <FieldLabel htmlFor="transactionDate">Date</FieldLabel>
-              <Input id="transactionDate" name="date" type="date" required />
+              <Input
+                id="transactionDate"
+                name="date"
+                type="date"
+                required
+                value={draft.date}
+                onChange={(event) => {
+                  updateDraft({ date: event.target.value });
+                }}
+              />
             </Field>
           </div>
           <Field>
-            <FieldLabel htmlFor="vendor">Vendor</FieldLabel>
-            <Input id="vendor" name="vendor" required />
+            <FieldLabel htmlFor="vendor">
+              {transactionType === "income" ? "Payer" : "Vendor"}
+            </FieldLabel>
+            <Input
+              id="vendor"
+              name="vendor"
+              required
+              value={draft.vendor}
+              onChange={(event) => {
+                updateDraft({ vendor: event.target.value });
+              }}
+            />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
@@ -496,6 +566,10 @@ function AddManualTransactionSheet({
                 step="0.01"
                 min="0.01"
                 required
+                value={draft.amount}
+                onChange={(event) => {
+                  updateDraft({ amount: event.target.value });
+                }}
               />
             </Field>
             <Field>
@@ -503,16 +577,16 @@ function AddManualTransactionSheet({
               <Select
                 key={transactionType}
                 name="category"
-                value={selectedCategory}
+                value={draft.category}
                 onValueChange={(value) => {
-                  setSelectedCategory(value ?? "");
+                  updateDraft({ category: value ?? "" });
                 }}
               >
                 <SelectTrigger id="category" className="w-full">
                   <span
                     className={cn(
                       "flex flex-1 text-left",
-                      selectedCategory === "" && "text-muted-foreground",
+                      draft.category === "" && "text-muted-foreground",
                     )}
                   >
                     {selectedCategoryLabel}
@@ -530,11 +604,25 @@ function AddManualTransactionSheet({
           </div>
           <Field>
             <FieldLabel htmlFor="memo">Memo</FieldLabel>
-            <Input id="memo" name="memo" />
+            <Input
+              id="memo"
+              name="memo"
+              value={draft.memo}
+              onChange={(event) => {
+                updateDraft({ memo: event.target.value });
+              }}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="reviewNotes">Review notes</FieldLabel>
-            <Input id="reviewNotes" name="reviewNotes" />
+            <Input
+              id="reviewNotes"
+              name="reviewNotes"
+              value={draft.reviewNotes}
+              onChange={(event) => {
+                updateDraft({ reviewNotes: event.target.value });
+              }}
+            />
           </Field>
           {transactionType === "expense" ? (
             <FieldLabel

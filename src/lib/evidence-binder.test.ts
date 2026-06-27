@@ -6,12 +6,15 @@ import type {
 } from "./evidence-binder";
 import {
   buildSourceDocumentIndex,
+  createEmptyManualTransactionDraft,
+  createRecurringRentTransactionDraft,
   entryMatchesCategory,
   entryYear,
   getCapitalAssetTransactions,
   getDocumentsForTarget,
   getEntryIssues,
   getEvidenceExceptionCounts,
+  getLatestRentTransaction,
   summarizeRentalExpenses,
 } from "./evidence-binder";
 
@@ -358,5 +361,93 @@ describe("capital asset transaction selection", () => {
     expect(
       getCapitalAssetTransactions(entries, 2026).map((entry) => entry.id),
     ).toEqual(["marked-2026-early", "marked-2026-late"]);
+  });
+});
+
+describe("recurring rent transaction drafts", () => {
+  it("selects the latest manual rent transaction only", () => {
+    const entries = [
+      makeEntry({
+        id: "expense",
+        date: "2026-08-01",
+        createdAt: new Date("2026-08-01T10:00:00.000Z"),
+      }),
+      makeEntry({
+        id: "other-income",
+        type: "income",
+        expenseCategory: null,
+        incomeCategory: "parking",
+        date: "2026-08-02",
+        createdAt: new Date("2026-08-02T10:00:00.000Z"),
+      }),
+      makeEntry({
+        id: "older-rent",
+        type: "income",
+        expenseCategory: null,
+        incomeCategory: "rent",
+        date: "2026-06-01",
+        createdAt: new Date("2026-06-01T10:00:00.000Z"),
+      }),
+      makeEntry({
+        id: "newer-rent",
+        type: "income",
+        expenseCategory: null,
+        incomeCategory: "rent",
+        date: "2026-07-01",
+        createdAt: new Date("2026-07-01T10:00:00.000Z"),
+      }),
+    ];
+
+    expect(getLatestRentTransaction(entries)?.id).toBe("newer-rent");
+  });
+
+  it("uses created time to break ties for rent transactions on the same date", () => {
+    const entries = [
+      makeEntry({
+        id: "first",
+        type: "income",
+        expenseCategory: null,
+        incomeCategory: "rent",
+        date: "2026-07-01",
+        createdAt: new Date("2026-07-01T10:00:00.000Z"),
+      }),
+      makeEntry({
+        id: "second",
+        type: "income",
+        expenseCategory: null,
+        incomeCategory: "rent",
+        date: "2026-07-01",
+        createdAt: new Date("2026-07-01T10:01:00.000Z"),
+      }),
+    ];
+
+    expect(getLatestRentTransaction(entries)?.id).toBe("second");
+  });
+
+  it("creates the next rent draft from a prior rent transaction", () => {
+    const draft = createRecurringRentTransactionDraft(
+      makeEntry({
+        id: "rent",
+        type: "income",
+        expenseCategory: null,
+        incomeCategory: "rent",
+        date: "2026-01-31",
+        vendor: "Gian",
+        amount: 1200,
+        memo: "Ack",
+        reviewNotes: "Confirmed",
+      }),
+    );
+
+    expect(draft).toEqual({
+      ...createEmptyManualTransactionDraft(),
+      type: "income",
+      date: "2026-02-28",
+      vendor: "Gian",
+      amount: "1200.00",
+      category: "rent",
+      memo: "Ack",
+      reviewNotes: "Confirmed",
+    });
   });
 });

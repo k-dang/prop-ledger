@@ -1,7 +1,6 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db/index";
@@ -17,6 +16,14 @@ import {
   yearEndPackages,
 } from "@/db/schema";
 import { type ActionResult, runAction } from "@/lib/action-utils";
+import {
+  allAppDataCacheTags,
+  portfolioMutationCacheTags,
+  propertyRentSetupMutationCacheTags,
+  propertySetupMutationCacheTags,
+  rentLedgerMutationCacheTags,
+  transactionMutationCacheTags,
+} from "@/lib/cache-tags";
 import {
   canAddOwnershipPeriod,
   formatDisplayDate,
@@ -54,154 +61,193 @@ const newPropertySchema = z.object({
     .refine((value) => !Number.isNaN(new Date(value).getTime())),
 });
 
+type LeaseMutationSuccess = { ok: true; propertyId: string };
+type RentChargeGenerationSuccess = {
+  ok: true;
+  propertyId: string;
+  insertedChargeCount: number;
+};
+
 export async function createProperty(
   input: NewPropertyInput,
 ): Promise<ActionResult> {
-  return runAction("Property creation mutation", async () => {
-    const parsed = newPropertySchema.safeParse(input);
+  return runAction(
+    "Property creation mutation",
+    async () => {
+      const parsed = newPropertySchema.safeParse(input);
 
-    if (!parsed.success) {
-      return {
-        ok: false,
-        error: "Enter valid property details before saving.",
-      };
-    }
+      if (!parsed.success) {
+        return {
+          ok: false,
+          error: "Enter valid property details before saving.",
+        };
+      }
 
-    await db.insert(properties).values(parsed.data);
-    revalidatePath("/", "layout");
+      await db.insert(properties).values(parsed.data);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+    { invalidate: portfolioMutationCacheTags() },
+  );
 }
 
 export async function addUnit(
   propertyId: string,
   input: NewUnitInput,
 ): Promise<ActionResult> {
-  return runAction("Unit mutation", async () => {
-    await db.insert(units).values({ propertyId, ...input });
+  return runAction(
+    "Unit mutation",
+    async () => {
+      await db.insert(units).values({ propertyId, ...input });
 
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+    { invalidate: propertyRentSetupMutationCacheTags(propertyId) },
+  );
 }
 
 export async function deleteUnit(
   propertyId: string,
   unitId: string,
 ): Promise<ActionResult> {
-  return runAction("Unit delete mutation", async () => {
-    const unit = await db.query.units.findFirst({
-      where: and(eq(units.id, unitId), eq(units.propertyId, propertyId)),
-      columns: { id: true },
-    });
+  return runAction(
+    "Unit delete mutation",
+    async () => {
+      const unit = await db.query.units.findFirst({
+        where: and(eq(units.id, unitId), eq(units.propertyId, propertyId)),
+        columns: { id: true },
+      });
 
-    if (unit === undefined) {
-      return { ok: false, error: "That unit no longer exists." };
-    }
+      if (unit === undefined) {
+        return { ok: false, error: "That unit no longer exists." };
+      }
 
-    const lease = await db.query.leases.findFirst({
-      where: eq(leases.unitId, unitId),
-      columns: { id: true },
-    });
+      const lease = await db.query.leases.findFirst({
+        where: eq(leases.unitId, unitId),
+        columns: { id: true },
+      });
 
-    if (lease !== undefined) {
-      return {
-        ok: false,
-        error: "Units with leases cannot be deleted from setup.",
-      };
-    }
+      if (lease !== undefined) {
+        return {
+          ok: false,
+          error: "Units with leases cannot be deleted from setup.",
+        };
+      }
 
-    await db
-      .delete(units)
-      .where(and(eq(units.id, unitId), eq(units.propertyId, propertyId)));
+      await db
+        .delete(units)
+        .where(and(eq(units.id, unitId), eq(units.propertyId, propertyId)));
 
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+    { invalidate: propertyRentSetupMutationCacheTags(propertyId) },
+  );
 }
 
 export async function addOwnerWithOwnership(
   propertyId: string,
   input: NewOwnerWithOwnershipInput,
 ): Promise<ActionResult> {
-  return runAction("Owner mutation", async () => {
-    const ownerId = crypto.randomUUID();
-    const existing = await db
-      .select()
-      .from(ownershipPeriods)
-      .where(eq(ownershipPeriods.propertyId, propertyId));
-    const nextPeriod = {
-      id: crypto.randomUUID(),
-      propertyId,
-      ownerId,
-      percentage: input.percentage,
-      effectiveFrom: input.effectiveFrom,
-      effectiveTo: input.effectiveTo ?? null,
-    };
-    const validation = canAddOwnershipPeriod(existing, nextPeriod);
+  return runAction(
+    "Owner mutation",
+    async () => {
+      const ownerId = crypto.randomUUID();
+      const existing = await db
+        .select()
+        .from(ownershipPeriods)
+        .where(eq(ownershipPeriods.propertyId, propertyId));
+      const nextPeriod = {
+        id: crypto.randomUUID(),
+        propertyId,
+        ownerId,
+        percentage: input.percentage,
+        effectiveFrom: input.effectiveFrom,
+        effectiveTo: input.effectiveTo ?? null,
+      };
+      const validation = canAddOwnershipPeriod(existing, nextPeriod);
 
-    if (!validation.ok) {
-      return { ok: false, error: formatOwnershipIssue(validation.issues[0]) };
-    }
+      if (!validation.ok) {
+        return { ok: false, error: formatOwnershipIssue(validation.issues[0]) };
+      }
 
-    const owner = {
-      id: ownerId,
-      propertyId,
-      name: input.name,
-      email: input.email,
-    };
+      const owner = {
+        id: ownerId,
+        propertyId,
+        name: input.name,
+        email: input.email,
+      };
 
-    await db.batch([
-      db.insert(owners).values(owner),
-      db.insert(ownershipPeriods).values(nextPeriod),
-    ]);
+      await db.batch([
+        db.insert(owners).values(owner),
+        db.insert(ownershipPeriods).values(nextPeriod),
+      ]);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+    { invalidate: propertySetupMutationCacheTags(propertyId) },
+  );
 }
 
 export async function deleteOwner(
   propertyId: string,
   ownerId: string,
 ): Promise<ActionResult> {
-  return runAction("Owner delete mutation", async () => {
-    const owner = await db.query.owners.findFirst({
-      where: and(eq(owners.id, ownerId), eq(owners.propertyId, propertyId)),
-      columns: { id: true },
-    });
+  return runAction(
+    "Owner delete mutation",
+    async () => {
+      const owner = await db.query.owners.findFirst({
+        where: and(eq(owners.id, ownerId), eq(owners.propertyId, propertyId)),
+        columns: { id: true },
+      });
 
-    if (owner === undefined) {
-      return { ok: false, error: "That owner no longer exists." };
-    }
+      if (owner === undefined) {
+        return { ok: false, error: "That owner no longer exists." };
+      }
 
-    const yearEndPackage = await db.query.yearEndPackages.findFirst({
-      where: and(
-        eq(yearEndPackages.propertyId, propertyId),
-        eq(yearEndPackages.ownerId, ownerId),
-      ),
-      columns: { id: true },
-    });
+      const yearEndPackage = await db.query.yearEndPackages.findFirst({
+        where: and(
+          eq(yearEndPackages.propertyId, propertyId),
+          eq(yearEndPackages.ownerId, ownerId),
+        ),
+        columns: { id: true },
+      });
 
-    if (yearEndPackage !== undefined) {
-      return {
-        ok: false,
-        error: "Owners with year-end packages cannot be deleted from setup.",
-      };
-    }
+      if (yearEndPackage !== undefined) {
+        return {
+          ok: false,
+          error: "Owners with year-end packages cannot be deleted from setup.",
+        };
+      }
 
-    await db
-      .delete(owners)
-      .where(and(eq(owners.id, ownerId), eq(owners.propertyId, propertyId)));
+      await db
+        .delete(owners)
+        .where(and(eq(owners.id, ownerId), eq(owners.propertyId, propertyId)));
 
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+    { invalidate: propertySetupMutationCacheTags(propertyId) },
+  );
 }
 
 export async function createLease(input: NewLeaseInput): Promise<ActionResult> {
-  return runAction("Lease mutation", async () => {
-    await db.insert(leases).values(input);
+  return runAction<LeaseMutationSuccess>(
+    "Lease mutation",
+    async () => {
+      const unit = await db.query.units.findFirst({
+        where: eq(units.id, input.unitId),
+        columns: { propertyId: true },
+      });
 
-    return { ok: true };
-  });
+      if (unit === undefined) {
+        return { ok: false, error: "Select a unit before saving the lease." };
+      }
+
+      await db.insert(leases).values(input);
+
+      return { ok: true, propertyId: unit.propertyId };
+    },
+    { invalidate: ({ propertyId }) => rentLedgerMutationCacheTags(propertyId) },
+  );
 }
 
 /**
@@ -214,113 +260,142 @@ export async function generateLeaseCharges(
   leaseId: string,
   throughDate: string,
 ): Promise<ActionResult> {
-  return runAction("Rent charge generation mutation", async () => {
-    // The lease's unit determines its property, so the charges inherit a
-    // propertyId that cannot disagree with the lease — no separate arg to mismatch.
-    const lease = await db.query.leases.findFirst({
-      where: eq(leases.id, leaseId),
-      with: { unit: { columns: { propertyId: true } } },
-    });
+  return runAction<RentChargeGenerationSuccess>(
+    "Rent charge generation mutation",
+    async () => {
+      // The lease's unit determines its property, so the charges inherit a
+      // propertyId that cannot disagree with the lease — no separate arg to mismatch.
+      const lease = await db.query.leases.findFirst({
+        where: eq(leases.id, leaseId),
+        with: { unit: { columns: { propertyId: true } } },
+      });
 
-    if (lease === undefined) {
-      return { ok: false, error: "That lease no longer exists." };
-    }
+      if (lease === undefined) {
+        return { ok: false, error: "That lease no longer exists." };
+      }
 
-    const propertyId = lease.unit.propertyId;
+      const propertyId = lease.unit.propertyId;
 
-    const existing = await db
-      .select({ periodStart: rentEvents.periodStart })
-      .from(rentEvents)
-      .where(
-        and(eq(rentEvents.leaseId, leaseId), eq(rentEvents.type, "charge")),
+      const existing = await db
+        .select({ periodStart: rentEvents.periodStart })
+        .from(rentEvents)
+        .where(
+          and(eq(rentEvents.leaseId, leaseId), eq(rentEvents.type, "charge")),
+        );
+      const chargedPeriods = new Set(
+        existing
+          .map((row) => row.periodStart)
+          .filter((start) => start !== null),
       );
-    const chargedPeriods = new Set(
-      existing.map((row) => row.periodStart).filter((start) => start !== null),
-    );
 
-    const newCharges = generateRentCharges(lease, throughDate).filter(
-      (charge) => !chargedPeriods.has(charge.periodStart),
-    );
+      const newCharges = generateRentCharges(lease, throughDate).filter(
+        (charge) => !chargedPeriods.has(charge.periodStart),
+      );
 
-    if (newCharges.length === 0) {
-      return { ok: true };
-    }
+      const insertedChargeCount = newCharges.length;
 
-    await db.insert(rentEvents).values(
-      newCharges.map((charge) => ({
+      if (insertedChargeCount === 0) {
+        return { ok: true, propertyId, insertedChargeCount };
+      }
+
+      await db.insert(rentEvents).values(
+        newCharges.map((charge) => ({
+          propertyId,
+          leaseId,
+          type: "charge" as const,
+          date: charge.date,
+          amount: charge.amount,
+          periodStart: charge.periodStart,
+          periodEnd: charge.periodEnd,
+        })),
+      );
+      return {
+        ok: true,
         propertyId,
-        leaseId,
-        type: "charge" as const,
-        date: charge.date,
-        amount: charge.amount,
-        periodStart: charge.periodStart,
-        periodEnd: charge.periodEnd,
-      })),
-    );
-    return { ok: true };
-  });
+        insertedChargeCount,
+      };
+    },
+    {
+      invalidate: ({ propertyId, insertedChargeCount }) =>
+        insertedChargeCount > 0 ? rentLedgerMutationCacheTags(propertyId) : [],
+    },
+  );
 }
 
 export async function recordRentEvent(
   propertyId: string,
   input: NewRentEventInput,
 ): Promise<ActionResult> {
-  return runAction("Rent event mutation", async () => {
-    // Only property-level other income may be lease-less. A charge, payment,
-    // credit, or write-off with no lease would vanish from every balance, so
-    // the rule is enforced here at the boundary rather than trusting callers.
-    if (input.type !== "other_income" && input.leaseId === null) {
-      return { ok: false, error: "Select a lease for this rent ledger entry." };
-    }
+  return runAction(
+    "Rent event mutation",
+    async () => {
+      // Only property-level other income may be lease-less. A charge, payment,
+      // credit, or write-off with no lease would vanish from every balance, so
+      // the rule is enforced here at the boundary rather than trusting callers.
+      if (input.type !== "other_income" && input.leaseId === null) {
+        return {
+          ok: false,
+          error: "Select a lease for this rent ledger entry.",
+        };
+      }
 
-    await db.insert(rentEvents).values({ propertyId, ...input });
+      await db.insert(rentEvents).values({ propertyId, ...input });
 
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+    { invalidate: rentLedgerMutationCacheTags(propertyId) },
+  );
 }
 
 export async function addLeaseDocument(
   propertyId: string,
   input: NewLeaseDocumentInput,
 ): Promise<ActionResult> {
-  return runAction("Lease document mutation", async () => {
-    const { leaseId, ...documentInput } = input;
-    const documentId = crypto.randomUUID();
+  return runAction(
+    "Lease document mutation",
+    async () => {
+      const { leaseId, ...documentInput } = input;
+      const documentId = crypto.randomUUID();
 
-    await db.batch([
-      db
-        .insert(documents)
-        .values({ id: documentId, propertyId, ...documentInput }),
-      db.insert(documentLinks).values({
-        documentId,
-        targetType: "lease",
-        targetId: leaseId,
-      }),
-    ]);
-    return { ok: true };
-  });
+      await db.batch([
+        db
+          .insert(documents)
+          .values({ id: documentId, propertyId, ...documentInput }),
+        db.insert(documentLinks).values({
+          documentId,
+          targetType: "lease",
+          targetId: leaseId,
+        }),
+      ]);
+      return { ok: true };
+    },
+    { invalidate: transactionMutationCacheTags(propertyId) },
+  );
 }
 
 export async function resetPortfolio(
   confirmation: string,
 ): Promise<ActionResult> {
-  return runAction("Portfolio reset mutation", async () => {
-    // Re-check the typed confirmation on the server: the client gate is just a
-    // UX affordance and a direct caller would otherwise wipe everything.
-    if (confirmation !== "RESET") {
-      return { ok: false, error: "Type RESET to confirm." };
-    }
+  return runAction(
+    "Portfolio reset mutation",
+    async () => {
+      // Re-check the typed confirmation on the server: the client gate is just a
+      // UX affordance and a direct caller would otherwise wipe everything.
+      if (confirmation !== "RESET") {
+        return { ok: false, error: "Type RESET to confirm." };
+      }
 
-    // Delete year-end packages before properties. Deleting a property cascades
-    // to both its owners and its packages, but `yearEndPackages.ownerId` has an
-    // onDelete: "restrict" edge to owners, so an owner-scoped package would
-    // abort the whole cascade. Clearing packages first removes that edge.
-    // db.batch runs the statements in order inside one transaction (neon-http
-    // has no interactive transactions, so we cannot use db.transaction here).
-    await db.batch([db.delete(yearEndPackages), db.delete(properties)]);
-    revalidatePath("/", "layout");
-    return { ok: true };
-  });
+      // Delete year-end packages before properties. Deleting a property cascades
+      // to both its owners and its packages, but `yearEndPackages.ownerId` has an
+      // onDelete: "restrict" edge to owners, so an owner-scoped package would
+      // abort the whole cascade. Clearing packages first removes that edge.
+      // db.batch runs the statements in order inside one transaction (neon-http
+      // has no interactive transactions, so we cannot use db.transaction here).
+      await db.batch([db.delete(yearEndPackages), db.delete(properties)]);
+      return { ok: true };
+    },
+    { invalidate: allAppDataCacheTags },
+  );
 }
 
 function formatOwnershipIssue(issue: OwnershipValidationIssue | undefined) {

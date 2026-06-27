@@ -63,6 +63,65 @@ export type NewManualTransactionInput = {
   reviewNotes?: string;
 };
 
+export type ManualTransactionFormDraft = {
+  type: LedgerEntryType;
+  date: string;
+  vendor: string;
+  amount: string;
+  category: string;
+  memo: string;
+  reviewNotes: string;
+};
+
+type RecurringRentSource = Pick<
+  LedgerEntry,
+  | "amount"
+  | "createdAt"
+  | "date"
+  | "incomeCategory"
+  | "memo"
+  | "reviewNotes"
+  | "type"
+  | "vendor"
+>;
+
+export function createEmptyManualTransactionDraft(): ManualTransactionFormDraft {
+  return {
+    type: "expense",
+    date: "",
+    vendor: "",
+    amount: "",
+    category: "",
+    memo: "",
+    reviewNotes: "",
+  };
+}
+
+export function getLatestRentTransaction<Entry extends RecurringRentSource>(
+  entries: Entry[],
+): Entry | undefined {
+  return entries
+    .filter(
+      (entry) => entry.type === "income" && entry.incomeCategory === "rent",
+    )
+    .toSorted(compareRecurringRentEntries)
+    .at(-1);
+}
+
+export function createRecurringRentTransactionDraft(
+  entry: RecurringRentSource,
+): ManualTransactionFormDraft {
+  return {
+    type: "income",
+    date: nextMonthlyDate(entry.date),
+    vendor: entry.vendor,
+    amount: formatFormAmount(entry.amount),
+    category: "rent",
+    memo: entry.memo ?? "",
+    reviewNotes: entry.reviewNotes ?? "",
+  };
+}
+
 export const INBOX_ISSUE_TYPES = [
   "uncategorized",
   "missing_receipt",
@@ -285,4 +344,44 @@ function hasDocumentLink(
 
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function compareRecurringRentEntries(
+  a: RecurringRentSource,
+  b: RecurringRentSource,
+) {
+  const dateCompare = a.date.localeCompare(b.date);
+
+  if (dateCompare !== 0) {
+    return dateCompare;
+  }
+
+  return a.createdAt.getTime() - b.createdAt.getTime();
+}
+
+function formatFormAmount(value: number) {
+  return value.toFixed(2);
+}
+
+function nextMonthlyDate(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return "";
+  }
+
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const lastDayOfNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+  const nextDay = Math.min(day, lastDayOfNextMonth);
+
+  return [
+    String(nextYear).padStart(4, "0"),
+    String(nextMonth).padStart(2, "0"),
+    String(nextDay).padStart(2, "0"),
+  ].join("-");
 }
