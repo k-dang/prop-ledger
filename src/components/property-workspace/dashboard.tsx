@@ -183,7 +183,7 @@ function FinancialKpis({
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
 
@@ -208,12 +208,12 @@ function FinancialKpis({
               </span>
             </CardHeader>
             <CardContent className="border-t px-5 pt-4 text-muted-foreground text-xs">
-              <div className="flex items-center justify-between gap-3">
-                <span>{card.hint}</span>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <span className="min-w-0 flex-1 basis-36">{card.hint}</span>
                 {card.incomplete ? (
                   <Badge
                     variant="outline"
-                    className={cn("rounded-md", toneSurface.review)}
+                    className={cn("max-w-full rounded-md", toneSurface.review)}
                   >
                     Incomplete
                   </Badge>
