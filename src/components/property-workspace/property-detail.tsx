@@ -133,10 +133,7 @@ export function PropertyWorkspaceDetail({
   return (
     <>
       <PropertySummary property={property} readiness={readiness} />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <SetupChecklist readiness={readiness} />
-        <PropertyFacts property={property} />
-      </div>
+      <SetupChecklist readiness={readiness} />
       <UnitsPanel
         property={property}
         error={unitError}
@@ -171,7 +168,7 @@ function PropertySummary({
 }) {
   return (
     <Card className="rounded-md">
-      <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
+      <CardHeader className="gap-3 pb-3 lg:grid-cols-[1fr_auto]">
         <div className="min-w-0">
           <CardTitle as="h1" className="truncate text-xl">
             {property.name}
@@ -179,7 +176,8 @@ function PropertySummary({
           <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3.5" aria-hidden="true" />
-              {property.line1}, {property.municipality}
+              {property.line1}, {property.municipality}, {property.province}{" "}
+              {property.postalCode}
             </span>
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="size-3.5" aria-hidden="true" />
@@ -206,23 +204,23 @@ function PropertySummary({
           </Link>
         </CardAction>
       </CardHeader>
-      <CardContent>
-        <dl className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <div className="py-3 first:pt-0 sm:px-5 sm:py-0 sm:first:pt-0 sm:first:pl-0">
+      <CardContent className="pt-0">
+        <dl className="grid divide-y rounded-md border bg-muted/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="px-3 py-2">
             <dt className="text-muted-foreground text-xs">Units</dt>
-            <dd className="mt-1 font-semibold text-2xl tabular-nums">
+            <dd className="font-semibold text-lg tabular-nums">
               {property.units.length}
             </dd>
           </div>
-          <div className="py-3 sm:px-5 sm:py-0">
+          <div className="px-3 py-2">
             <dt className="text-muted-foreground text-xs">Owners</dt>
-            <dd className="mt-1 font-semibold text-2xl tabular-nums">
+            <dd className="font-semibold text-lg tabular-nums">
               {property.owners.length}
             </dd>
           </div>
-          <div className="py-3 last:pb-0 sm:px-5 sm:py-0 sm:last:pb-0">
+          <div className="px-3 py-2">
             <dt className="text-muted-foreground text-xs">Ownership periods</dt>
-            <dd className="mt-1 font-semibold text-2xl tabular-nums">
+            <dd className="font-semibold text-lg tabular-nums">
               {property.ownershipPeriods.length}
             </dd>
           </div>
@@ -235,42 +233,39 @@ function PropertySummary({
 function SetupChecklist({ readiness }: { readiness: PropertyReadiness }) {
   return (
     <Card className="rounded-md">
-      <CardHeader>
+      <CardHeader className="pb-2">
         <CardTitle as="h2">Setup checklist</CardTitle>
-        <CardDescription>Property readiness</CardDescription>
+        <CardDescription>
+          {readiness.readinessPercent}% ready with {readiness.setupGapCount}{" "}
+          setup gaps.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-2">
+      <CardContent className="grid gap-2 sm:grid-cols-2">
         {readiness.tasks.map((task) => (
           <div
-            className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-start gap-3 rounded-md border bg-background p-3"
+            className="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-2 rounded-md border bg-background px-3 py-2"
             key={task.id}
           >
             {task.status === "complete" ? (
-              <CheckCircle2
-                className="mt-0.5 size-5 text-ready"
-                aria-hidden="true"
-              />
+              <CheckCircle2 className="size-4 text-ready" aria-hidden="true" />
             ) : task.status === "warning" ? (
               <AlertTriangle
-                className="mt-0.5 size-5 text-blocked"
+                className="size-4 text-blocked"
                 aria-hidden="true"
               />
             ) : (
-              <CircleDot
-                className="mt-0.5 size-5 text-review"
-                aria-hidden="true"
-              />
+              <CircleDot className="size-4 text-review" aria-hidden="true" />
             )}
             <div className="min-w-0">
               <p className="font-medium text-sm">{task.label}</p>
-              <p className="mt-1 text-muted-foreground text-sm">
+              <p className="truncate text-muted-foreground text-xs">
                 {task.detail}
               </p>
             </div>
             <Badge
               variant="outline"
               className={cn(
-                "rounded-md",
+                "rounded-md text-xs",
                 task.status === "complete" && toneSurface.ready,
                 task.status === "missing" && toneSurface.review,
                 task.status === "warning" && toneSurface.blocked,
@@ -297,39 +292,6 @@ function formatSetupStatus(
   }
 
   return "Needs review";
-}
-
-function PropertyFacts({ property }: { property: RentalProperty }) {
-  return (
-    <Card className="rounded-md">
-      <CardHeader>
-        <CardTitle as="h2">Property facts</CardTitle>
-        <CardDescription>Details used across annual records.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <p className="text-muted-foreground text-xs">Municipality</p>
-            <p className="mt-1 font-medium text-sm">{property.municipality}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Province</p>
-            <p className="mt-1 font-medium text-sm">{property.province}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Postal code</p>
-            <p className="mt-1 font-medium text-sm">{property.postalCode}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Acquisition date</p>
-            <p className="mt-1 font-medium text-sm">
-              {property.acquisitionDate}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 function UnitsPanel({

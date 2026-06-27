@@ -66,7 +66,7 @@ import {
   T776_CATEGORY_OPTIONS,
 } from "@/lib/evidence-binder";
 import type { RentalProperty } from "@/lib/property-workspace";
-import { toneSurface } from "@/lib/status-styles";
+import { toneIcon, toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 const manualTransactionFormSchema = z
@@ -283,14 +283,25 @@ function ManualTransactionsPanel({
             No manual transactions recorded.
           </EmptyState>
         ) : (
-          <Table>
+          <Table className="min-w-[920px] table-fixed">
+            <colgroup>
+              <col className="w-28" />
+              <col className="w-[18rem]" />
+              <col className="w-24" />
+              <col className="w-48" />
+              <col className="w-28" />
+              <col className="w-36" />
+              <col className="w-10" />
+            </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-28">Date</TableHead>
-                <TableHead className="min-w-64">Transaction</TableHead>
-                <TableHead className="w-32 text-right">Amount</TableHead>
-                <TableHead className="w-48">Evidence</TableHead>
-                <TableHead className="w-10">
+                <TableHead className="px-3">Date</TableHead>
+                <TableHead className="px-3">Transaction</TableHead>
+                <TableHead className="px-3">Type</TableHead>
+                <TableHead className="px-3">Tags</TableHead>
+                <TableHead className="px-3 text-right">Amount</TableHead>
+                <TableHead className="px-3">Evidence</TableHead>
+                <TableHead className="px-3">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -305,35 +316,25 @@ function ManualTransactionsPanel({
 
                 return (
                   <TableRow key={entry.id}>
-                    <TableCell className="align-top text-muted-foreground text-sm">
+                    <TableCell className="px-3 py-3 align-top text-muted-foreground text-sm">
                       {entry.date}
                     </TableCell>
-                    <TableCell className="align-top">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{entry.vendor}</span>
-                        <Badge variant="outline" className="rounded-md">
-                          {formatLedgerCategory(entry)}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "rounded-md",
-                            entry.type === "income"
-                              ? toneSurface.ready
-                              : toneSurface.info,
-                          )}
-                        >
-                          {entry.type === "income" ? "Income" : "Expense"}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-muted-foreground text-xs">
+                    <TableCell className="px-3 py-3 align-top">
+                      <p className="truncate font-medium">{entry.vendor}</p>
+                      <p className="mt-1 truncate text-muted-foreground text-xs">
                         {entry.reviewNotes || entry.memo || "No notes"}
                       </p>
                     </TableCell>
-                    <TableCell className="align-top text-right font-semibold">
+                    <TableCell className="px-3 py-3 align-top">
+                      <TransactionTypeLabel entry={entry} />
+                    </TableCell>
+                    <TableCell className="px-3 py-3 align-top">
+                      <TransactionTags entry={entry} />
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-right align-top font-semibold tabular-nums">
                       {formatMoney(entry.amount)}
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell className="px-3 py-3 align-top">
                       <TransactionEvidenceControl
                         documents={linked}
                         transaction={entry}
@@ -351,7 +352,7 @@ function ManualTransactionsPanel({
                         onDeleteDocument={onDeleteDocument}
                       />
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell className="px-3 py-3 align-top">
                       <DeleteTransactionButton
                         transactionId={entry.id}
                         vendor={entry.vendor}
@@ -366,6 +367,40 @@ function ManualTransactionsPanel({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function TransactionTags({
+  entry,
+}: {
+  entry: RentalProperty["ledgerEntries"][number];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Badge variant="outline" className="rounded-md">
+        {formatLedgerCategory(entry)}
+      </Badge>
+    </div>
+  );
+}
+
+function TransactionTypeLabel({
+  entry,
+}: {
+  entry: RentalProperty["ledgerEntries"][number];
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 font-medium text-sm",
+        entry.type === "income" ? toneIcon.ready : toneIcon.info,
+      )}
+    >
+      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+      <span className="text-foreground">
+        {entry.type === "income" ? "Income" : "Expense"}
+      </span>
+    </span>
   );
 }
 
@@ -611,29 +646,22 @@ function TransactionEvidenceControl({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Paperclip className="size-3.5 text-muted-foreground" />
-        <Badge
-          variant="outline"
-          className={cn(
-            "w-fit rounded-md",
-            linkedCount > 0 ? toneSurface.ready : toneSurface.review,
-          )}
-        >
-          {linkedCount} linked
-        </Badge>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="rounded-md"
-          onClick={() => {
-            setOpen(true);
-          }}
-        >
-          Manage
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className={cn(
+          "h-7 rounded-md px-2",
+          linkedCount > 0 ? toneSurface.ready : toneSurface.review,
+        )}
+        title="Manage evidence"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        <Paperclip data-icon="inline-start" />
+        {linkedCount} linked
+      </Button>
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader className="border-b pr-12">
           <SheetTitle>Evidence</SheetTitle>
