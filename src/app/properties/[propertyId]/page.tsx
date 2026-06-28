@@ -3,7 +3,8 @@ import { Suspense } from "react";
 
 import { PropertyWorkspace } from "@/components/property-workspace/property-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getProperty } from "@/db/queries";
+import { getPropertyWorkspace } from "@/db/queries";
+import { getDefaultTaxYear } from "@/lib/year-end-readiness";
 
 export const metadata: Metadata = {
   title: "Property Workspace",
@@ -12,27 +13,45 @@ export const metadata: Metadata = {
 
 export default function PropertyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ propertyId: string }>;
+  searchParams: Promise<{ year?: string }>;
 }) {
   // `params` and the DB read are both request-time work under Cache Components,
   // so they stream in behind a Suspense boundary.
   return (
     <Suspense fallback={<PropertySkeleton />}>
-      <PropertyContent params={params} />
+      <PropertyContent params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
 async function PropertyContent({
   params,
+  searchParams,
 }: {
   params: Promise<{ propertyId: string }>;
+  searchParams: Promise<{ year?: string }>;
 }) {
-  const { propertyId } = await params;
-  const property = await getProperty(propertyId);
+  const [{ propertyId }, { year }] = await Promise.all([params, searchParams]);
+  const workspace = await getPropertyWorkspace(propertyId);
 
-  return <PropertyWorkspace propertyId={propertyId} property={property} />;
+  return (
+    <PropertyWorkspace
+      propertyId={propertyId}
+      workspace={workspace}
+      year={parseYear(year)}
+    />
+  );
+}
+
+function parseYear(raw: string | undefined): number {
+  const parsed = Number(raw);
+
+  return Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100
+    ? parsed
+    : getDefaultTaxYear();
 }
 
 function PropertySkeleton() {

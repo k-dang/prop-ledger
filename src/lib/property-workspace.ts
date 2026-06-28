@@ -11,6 +11,7 @@ import type {
 import type { LedgerEntryWithSplits } from "./allocations";
 import type { DocumentWithLinks } from "./evidence-binder";
 import type { MortgagePayment } from "./mortgage-payments";
+import type { RentLedger } from "./rent-ledger";
 
 export type { OwnershipPeriod };
 export type RentalUnit = Unit;
@@ -48,6 +49,11 @@ export type RentalProperty = Property & {
 
 export type Portfolio = {
   properties: RentalProperty[];
+};
+
+export type PropertyWorkspaceData = {
+  property: RentalProperty;
+  rentLedger: RentLedger;
 };
 
 export type OwnershipValidationIssue = {

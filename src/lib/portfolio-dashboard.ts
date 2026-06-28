@@ -12,6 +12,7 @@ import {
   type RentalProperty,
 } from "./property-workspace";
 import { summarizeRentLedger } from "./rent-ledger";
+import { summarizeManualIncomeForTax } from "./rental-income";
 import { getYearEndReadiness } from "./year-end-readiness";
 
 export type DashboardPropertySource = RentalProperty & {
@@ -207,12 +208,14 @@ function summarizePropertyFinancials(
   }
 
   const rent = summarizeRentLedger(property.rentEvents, taxYear);
-  const manualIncome = roundMoney(
-    entries
-      .filter((entry) => entry.type === "income")
-      .reduce((total, entry) => total + entry.amount, 0),
+  const { taxableManualIncome } = summarizeManualIncomeForTax(
+    entries,
+    property.rentEvents,
+    taxYear,
   );
-  const grossRentalIncome = roundMoney(rent.grossRentalIncome + manualIncome);
+  const grossRentalIncome = roundMoney(
+    rent.grossRentalIncome + taxableManualIncome,
+  );
   const deductibleExpenses = roundMoney(
     [...expenseSummary.values()].reduce((total, amount) => total + amount, 0),
   );

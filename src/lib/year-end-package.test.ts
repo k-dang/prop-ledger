@@ -188,6 +188,34 @@ describe("year-end package snapshots", () => {
     expect(golden(snapshot)).toEqual(fixture("year-end-owner"));
   });
 
+  it("does not add manual rent income on top of rent-ledger charges", () => {
+    const manualIncomeSource = property.ledgerEntries.find(
+      (entry) => entry.id === "income-1",
+    );
+    if (manualIncomeSource === undefined) {
+      throw new Error("Expected fixture manual income transaction.");
+    }
+    const manualRentIncome = {
+      ...manualIncomeSource,
+      id: "manual-rent-1",
+      vendor: "Tenant",
+      amount: 24000,
+      incomeCategory: "rent" as const,
+    };
+    const snapshot = buildYearEndPackageSnapshot({
+      source: {
+        ...property,
+        ledgerEntries: [...property.ledgerEntries, manualRentIncome],
+      },
+      taxYear: 2026,
+      scope: { type: "property" },
+      generatedAt: "2027-02-01T00:00:00.000Z",
+    });
+
+    expect(snapshot.t776Summary.manualIncome).toBe(1000);
+    expect(snapshot.t776Summary.totalIncome).toBe(25000);
+  });
+
   it("returns detached data that does not change after live records are edited", () => {
     const snapshot = buildYearEndPackageSnapshot({
       source: property,

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowLeft,
   CalendarRange,
   ChevronLeft,
   ChevronRight,
@@ -131,6 +130,7 @@ const leaseDocumentFormSchema = z.object({
 export function RentLedgerDetail({
   ledger,
   year,
+  yearHref,
   leaseError,
   eventError,
   documentError,
@@ -141,6 +141,7 @@ export function RentLedgerDetail({
 }: {
   ledger: RentLedger;
   year: number;
+  yearHref: (target: number) => string;
   leaseError?: string;
   eventError?: string;
   documentError?: string;
@@ -157,8 +158,8 @@ export function RentLedgerDetail({
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
 
   return (
-    <>
-      <LedgerHeader property={ledger.property} year={year} />
+    <div className="grid gap-4">
+      <LedgerHeader year={year} yearHref={yearHref} />
       <SummaryCard summary={summary} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <LeasesPanel
@@ -181,41 +182,29 @@ export function RentLedgerDetail({
         </div>
       </div>
       <RentLedgerTable ledger={ledger} unitLabels={unitLabels} year={year} />
-    </>
+    </div>
   );
 }
 
 function LedgerHeader({
-  property,
   year,
+  yearHref,
 }: {
-  property: RentLedger["property"];
   year: number;
+  yearHref: (target: number) => string;
 }) {
-  const ledgerHref = (target: number) =>
-    `/properties/${property.id}/rent-ledger?year=${target}`;
-
   return (
     <Card className="rounded-md">
       <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
         <div className="min-w-0">
-          <Link
-            href={`/properties/${property.id}`}
-            className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
-          >
-            <ArrowLeft className="size-3.5" aria-hidden="true" />
-            {property.name}
-          </Link>
-          <CardTitle as="h1" className="mt-1 text-xl">
-            Rent ledger
-          </CardTitle>
+          <CardTitle as="h2">Rent tracking</CardTitle>
           <CardDescription className="mt-1">
-            Accrual rent charges, payments, and arrears for {year}.
+            Leases, accrual rent, payments, and arrears for {year}.
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href={ledgerHref(year - 1)}
+            href={yearHref(year - 1)}
             aria-label={`View ${year - 1}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),
@@ -229,7 +218,7 @@ function LedgerHeader({
             {year}
           </Badge>
           <Link
-            href={ledgerHref(year + 1)}
+            href={yearHref(year + 1)}
             aria-label={`View ${year + 1}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),
@@ -774,10 +763,8 @@ function RentLedgerTable({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle as="h2">Ledger entries</CardTitle>
-        <CardDescription>
-          All {year} rent activity, newest first.
-        </CardDescription>
+        <CardTitle as="h2">Rent activity</CardTitle>
+        <CardDescription>All {year} rent events, newest first.</CardDescription>
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (

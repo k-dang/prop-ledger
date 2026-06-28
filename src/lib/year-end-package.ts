@@ -16,6 +16,7 @@ import {
 } from "./evidence-binder";
 import type { RentalProperty } from "./property-workspace";
 import { summarizeRentLedger } from "./rent-ledger";
+import { summarizeManualIncomeForTax } from "./rental-income";
 import { getYearEndReadiness } from "./year-end-readiness";
 
 export type PackageScope =
@@ -65,10 +66,10 @@ export function buildYearEndPackageSnapshot({
     allocatedMortgagePayments,
   );
   const rentSummary = summarizeRentLedger(allocatedRentEvents, taxYear);
-  const manualIncome = round(
-    allocatedEntries
-      .filter((entry) => entry.type === "income")
-      .reduce((sum, entry) => sum + entry.amount, 0),
+  const { taxableManualIncome } = summarizeManualIncomeForTax(
+    allocatedEntries,
+    allocatedRentEvents,
+    taxYear,
   );
 
   return {
@@ -77,7 +78,11 @@ export function buildYearEndPackageSnapshot({
     taxYear,
     scope: allocation.snapshotScope,
     property: propertyIdentity(source),
-    t776Summary: buildT776Summary(rentSummary, manualIncome, expenseSummary),
+    t776Summary: buildT776Summary(
+      rentSummary,
+      taxableManualIncome,
+      expenseSummary,
+    ),
     ownerShareWorksheet: buildOwnerShareWorksheet(source, taxYear, scope),
     rentLedger: {
       grossRent: rentSummary.grossRent,

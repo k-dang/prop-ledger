@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   CircleDot,
+  FileText,
   Home,
   type LucideIcon,
   MapPin,
@@ -13,7 +14,6 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { z } from "zod";
 import { EvidenceBinderPanel } from "@/components/evidence-binder/evidence-workspace";
@@ -24,6 +24,7 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
+import { RentLedgerDetail } from "@/components/rent-ledger/rent-ledger-detail";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -59,6 +60,12 @@ import {
   type PropertyReadiness,
   type RentalProperty,
 } from "@/lib/property-workspace";
+import type {
+  NewLeaseDocumentInput,
+  NewLeaseInput,
+  NewRentEventInput,
+  RentLedger,
+} from "@/lib/rent-ledger";
 import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
@@ -94,30 +101,50 @@ const ownerFormSchema = z
 
 export function PropertyWorkspaceDetail({
   property,
+  rentLedger,
+  year,
   readiness,
   unitError,
   ownerError,
+  leaseError,
+  rentEventError,
   transactionError,
-  documentError,
+  leaseDocumentError,
+  transactionDocumentError,
   onAddUnit,
   onDeleteUnit,
   onAddOwner,
   onDeleteOwner,
+  onCreateLease,
+  onGenerateRentCharges,
+  onRecordRentEvent,
+  onAddLeaseDocument,
   onCreateManualTransaction,
   onDeleteManualTransaction,
   onUploadTransactionEvidence,
   onDeleteEvidenceDocument,
 }: {
   property: RentalProperty;
+  rentLedger: RentLedger;
+  year: number;
   readiness: PropertyReadiness;
   unitError?: string;
   ownerError?: string;
+  leaseError?: string;
+  rentEventError?: string;
   transactionError?: string;
-  documentError?: string;
+  leaseDocumentError?: string;
+  transactionDocumentError?: string;
   onAddUnit: (input: NewUnitInput) => boolean | Promise<boolean>;
   onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
   onAddOwner: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
   onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
+  onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
+  onGenerateRentCharges: (leaseId: string) => boolean | Promise<boolean>;
+  onRecordRentEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
+  onAddLeaseDocument: (
+    input: NewLeaseDocumentInput,
+  ) => boolean | Promise<boolean>;
   onCreateManualTransaction: (
     input: NewManualTransactionInput,
   ) => boolean | Promise<boolean>;
@@ -133,29 +160,83 @@ export function PropertyWorkspaceDetail({
   return (
     <>
       <PropertySummary property={property} readiness={readiness} />
-      <SetupChecklist readiness={readiness} />
-      <UnitsPanel
-        property={property}
-        error={unitError}
-        onSubmit={onAddUnit}
-        onDeleteUnit={onDeleteUnit}
-      />
-      <OwnershipPanel
-        property={property}
-        error={ownerError}
-        onSubmit={onAddOwner}
-        onDeleteOwner={onDeleteOwner}
-      />
-      <EvidenceBinderPanel
-        property={property}
-        transactionError={transactionError}
-        documentError={documentError}
-        onCreateManualTransaction={onCreateManualTransaction}
-        onDeleteManualTransaction={onDeleteManualTransaction}
-        onUploadTransactionEvidence={onUploadTransactionEvidence}
-        onDeleteEvidenceDocument={onDeleteEvidenceDocument}
-      />
+      <WorkspaceNav />
+      <section id="rent" className="scroll-mt-4">
+        <RentLedgerDetail
+          ledger={rentLedger}
+          year={year}
+          yearHref={(target) =>
+            `/properties/${property.id}?year=${target}#rent`
+          }
+          leaseError={leaseError}
+          eventError={rentEventError}
+          documentError={leaseDocumentError}
+          onCreateLease={onCreateLease}
+          onGenerateCharges={onGenerateRentCharges}
+          onRecordEvent={onRecordRentEvent}
+          onAddLeaseDocument={onAddLeaseDocument}
+        />
+      </section>
+      <section id="transactions" className="scroll-mt-4">
+        <EvidenceBinderPanel
+          property={property}
+          transactionError={transactionError}
+          documentError={transactionDocumentError}
+          onCreateManualTransaction={onCreateManualTransaction}
+          onDeleteManualTransaction={onDeleteManualTransaction}
+          onUploadTransactionEvidence={onUploadTransactionEvidence}
+          onDeleteEvidenceDocument={onDeleteEvidenceDocument}
+        />
+      </section>
+      <section id="setup" className="grid scroll-mt-4 gap-4">
+        <SetupChecklist readiness={readiness} />
+        <UnitsPanel
+          property={property}
+          error={unitError}
+          onSubmit={onAddUnit}
+          onDeleteUnit={onDeleteUnit}
+        />
+        <OwnershipPanel
+          property={property}
+          error={ownerError}
+          onSubmit={onAddOwner}
+          onDeleteOwner={onDeleteOwner}
+        />
+      </section>
     </>
+  );
+}
+
+function WorkspaceNav() {
+  const sections: {
+    href: string;
+    label: string;
+    icon: LucideIcon;
+  }[] = [
+    { href: "#rent", label: "Rent", icon: Receipt },
+    { href: "#transactions", label: "Transactions", icon: FileText },
+    { href: "#setup", label: "Setup", icon: Home },
+  ];
+
+  return (
+    <nav
+      aria-label="Property workspace sections"
+      className="flex flex-wrap gap-2"
+    >
+      {sections.map(({ href, label, icon: Icon }) => (
+        <a
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "rounded-md",
+          )}
+          href={href}
+          key={href}
+        >
+          <Icon data-icon="inline-start" />
+          {label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -195,13 +276,6 @@ function PropertySummary({
           >
             {readiness.setupGapCount} setup gaps
           </Badge>
-          <Link
-            href={`/properties/${property.id}/rent-ledger`}
-            className={cn(buttonVariants({ variant: "outline" }), "rounded-md")}
-          >
-            <Receipt data-icon="inline-start" />
-            Rent ledger
-          </Link>
         </CardAction>
       </CardHeader>
       <CardContent className="pt-0">

@@ -2,13 +2,17 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useReducer } from "react";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
 import {
+  addLeaseDocument,
   addOwnerWithOwnership,
   addUnit,
+  createLease,
   deleteOwner,
   deleteUnit,
+  generateLeaseCharges,
+  recordRentEvent,
 } from "@/lib/actions";
 import {
   createManualTransaction,
@@ -21,103 +25,169 @@ import {
   getPropertyReadiness,
   type NewOwnerWithOwnershipInput,
   type NewUnitInput,
-  type RentalProperty,
+  type PropertyWorkspaceData,
 } from "@/lib/property-workspace";
+import type {
+  NewLeaseDocumentInput,
+  NewLeaseInput,
+  NewRentEventInput,
+} from "@/lib/rent-ledger";
+
+type WorkspaceErrorKey =
+  | "leaseDocument"
+  | "lease"
+  | "owner"
+  | "rentEvent"
+  | "transaction"
+  | "transactionDocument"
+  | "unit";
+
+type WorkspaceErrors = Partial<Record<WorkspaceErrorKey, string>>;
+
+function workspaceErrorReducer(
+  state: WorkspaceErrors,
+  {
+    error,
+    key,
+  }: {
+    error?: string;
+    key: WorkspaceErrorKey;
+  },
+): WorkspaceErrors {
+  if (state[key] === error) {
+    return state;
+  }
+
+  return { ...state, [key]: error };
+}
 
 export function PropertyWorkspace({
   propertyId,
-  property,
+  workspace,
+  year,
 }: {
   propertyId: string;
-  property: RentalProperty | undefined;
+  workspace: PropertyWorkspaceData | undefined;
+  year: number;
 }) {
   const router = useRouter();
-  const [unitError, setUnitError] = useState<string>();
-  const [ownerError, setOwnerError] = useState<string>();
-  const [transactionError, setTransactionError] = useState<string>();
-  const [documentError, setDocumentError] = useState<string>();
+  const [errors, dispatchError] = useReducer(workspaceErrorReducer, {});
 
-  if (property === undefined) {
+  if (workspace === undefined) {
     return <PropertyNotFound propertyId={propertyId} />;
   }
 
+  const { property, rentLedger } = workspace;
   const selectedId = property.id;
 
-  async function handleAddUnit(input: NewUnitInput) {
-    const result = await addUnit(selectedId, input);
-    setUnitError(result.ok ? undefined : result.error);
+  async function runWorkspaceMutation(
+    key: WorkspaceErrorKey,
+    mutate: () => Promise<{ ok: boolean; error?: string }>,
+  ) {
+    const result = await mutate();
+    dispatchError({ key, error: result.ok ? undefined : result.error });
     return result.ok;
+  }
+
+  async function handleAddUnit(input: NewUnitInput) {
+    return runWorkspaceMutation("unit", () => addUnit(selectedId, input));
   }
 
   async function handleDeleteUnit(unitId: string) {
-    const result = await deleteUnit(selectedId, unitId);
-    setUnitError(result.ok ? undefined : result.error);
-    return result.ok;
+    return runWorkspaceMutation("unit", () => deleteUnit(selectedId, unitId));
   }
 
   async function handleAddOwner(input: NewOwnerWithOwnershipInput) {
-    const result = await addOwnerWithOwnership(selectedId, input);
-    setOwnerError(result.ok ? undefined : result.error);
-    return result.ok;
+    return runWorkspaceMutation("owner", () =>
+      addOwnerWithOwnership(selectedId, input),
+    );
   }
 
   async function handleDeleteOwner(ownerId: string) {
-    const result = await deleteOwner(selectedId, ownerId);
-    setOwnerError(result.ok ? undefined : result.error);
-    return result.ok;
+    return runWorkspaceMutation("owner", () =>
+      deleteOwner(selectedId, ownerId),
+    );
+  }
+
+  async function handleCreateLease(input: NewLeaseInput) {
+    return runWorkspaceMutation("lease", () => createLease(input));
+  }
+
+  async function handleGenerateCharges(leaseId: string) {
+    return runWorkspaceMutation("lease", () =>
+      generateLeaseCharges(leaseId, `${year}-12-31`),
+    );
+  }
+
+  async function handleRecordRentEvent(input: NewRentEventInput) {
+    return runWorkspaceMutation("rentEvent", () =>
+      recordRentEvent(selectedId, input),
+    );
+  }
+
+  async function handleAddLeaseDocument(input: NewLeaseDocumentInput) {
+    return runWorkspaceMutation("leaseDocument", () =>
+      addLeaseDocument(selectedId, input),
+    );
   }
 
   async function handleCreateManualTransaction(
     input: NewManualTransactionInput,
   ) {
-    const result = await createManualTransaction(selectedId, input);
-    setTransactionError(result.ok ? undefined : result.error);
-    return result.ok;
+    return runWorkspaceMutation("transaction", () =>
+      createManualTransaction(selectedId, input),
+    );
   }
 
   async function handleUploadTransactionEvidence(
     transactionId: string,
     formData: FormData,
   ) {
-    const result = await uploadTransactionEvidence(
-      selectedId,
-      transactionId,
-      formData,
+    return runWorkspaceMutation("transactionDocument", () =>
+      uploadTransactionEvidence(selectedId, transactionId, formData),
     );
-    setDocumentError(result.ok ? undefined : result.error);
-    return result.ok;
   }
 
   async function handleDeleteManualTransaction(transactionId: string) {
-    const result = await deleteManualTransaction(selectedId, transactionId);
-    setTransactionError(result.ok ? undefined : result.error);
+    const saved = await runWorkspaceMutation("transaction", () =>
+      deleteManualTransaction(selectedId, transactionId),
+    );
 
-    if (result.ok) {
+    if (saved) {
       router.refresh();
     }
 
-    return result.ok;
+    return saved;
   }
 
   async function handleDeleteEvidenceDocument(documentId: string) {
-    const result = await deleteEvidenceDocument(selectedId, documentId);
-    setDocumentError(result.ok ? undefined : result.error);
-    return result.ok;
+    return runWorkspaceMutation("transactionDocument", () =>
+      deleteEvidenceDocument(selectedId, documentId),
+    );
   }
 
   return (
     <section className="flex min-w-0 flex-col gap-4">
       <PropertyWorkspaceDetail
         property={property}
+        rentLedger={rentLedger}
+        year={year}
         readiness={getPropertyReadiness(property)}
-        unitError={unitError}
-        ownerError={ownerError}
-        transactionError={transactionError}
-        documentError={documentError}
+        unitError={errors.unit}
+        ownerError={errors.owner}
+        leaseError={errors.lease}
+        rentEventError={errors.rentEvent}
+        transactionError={errors.transaction}
+        leaseDocumentError={errors.leaseDocument}
+        transactionDocumentError={errors.transactionDocument}
         onAddUnit={handleAddUnit}
         onDeleteUnit={handleDeleteUnit}
         onAddOwner={handleAddOwner}
         onDeleteOwner={handleDeleteOwner}
+        onCreateLease={handleCreateLease}
+        onGenerateRentCharges={handleGenerateCharges}
+        onRecordRentEvent={handleRecordRentEvent}
+        onAddLeaseDocument={handleAddLeaseDocument}
         onCreateManualTransaction={handleCreateManualTransaction}
         onDeleteManualTransaction={handleDeleteManualTransaction}
         onUploadTransactionEvidence={handleUploadTransactionEvidence}

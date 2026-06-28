@@ -173,6 +173,88 @@ describe("portfolio dashboard summary", () => {
     expect(summary.properties[0]?.status).toBe("ready");
   });
 
+  it("does not double count manual rent income when rent charges exist", () => {
+    const manualRentIncome = makeEntry("manual-rent-1", {
+      type: "income",
+      date: "2026-01-02",
+      amount: 2400,
+      expenseCategory: null,
+      incomeCategory: "rent",
+    });
+    const property = makeProperty({
+      ledgerEntries: [manualRentIncome],
+      rentEvents: [
+        {
+          id: "charge-1",
+          propertyId: "property-1",
+          leaseId: null,
+          type: "charge",
+          date: "2026-01-01",
+          amount: 2400,
+          periodStart: "2026-01-01",
+          periodEnd: "2026-01-31",
+          memo: null,
+        },
+      ],
+    });
+
+    const summary = buildPortfolioDashboard([property], 2026, 2026);
+
+    expect(summary.totals.grossRentalIncome).toBe(2400);
+    expect(summary.properties[0]?.grossRentalIncome).toBe(2400);
+  });
+
+  it("counts manual rent income for months without generated rent charges", () => {
+    const januaryManualRent = makeEntry("manual-rent-jan", {
+      type: "income",
+      date: "2026-01-02",
+      amount: 2400,
+      expenseCategory: null,
+      incomeCategory: "rent",
+    });
+    const februaryManualRent = makeEntry("manual-rent-feb", {
+      type: "income",
+      date: "2026-02-02",
+      amount: 2400,
+      expenseCategory: null,
+      incomeCategory: "rent",
+    });
+    const property = makeProperty({
+      ledgerEntries: [januaryManualRent, februaryManualRent],
+      rentEvents: [
+        {
+          id: "charge-1",
+          propertyId: "property-1",
+          leaseId: null,
+          type: "charge",
+          date: "2026-01-01",
+          amount: 2400,
+          periodStart: "2026-01-01",
+          periodEnd: "2026-01-31",
+          memo: null,
+        },
+      ],
+    });
+
+    const summary = buildPortfolioDashboard([property], 2026, 2026);
+
+    expect(summary.totals.grossRentalIncome).toBe(4800);
+  });
+
+  it("counts manual rent income when no rent charges exist", () => {
+    const manualRentIncome = makeEntry("manual-rent-1", {
+      type: "income",
+      amount: 2400,
+      expenseCategory: null,
+      incomeCategory: "rent",
+    });
+    const property = makeProperty({ ledgerEntries: [manualRentIncome] });
+
+    const summary = buildPortfolioDashboard([property], 2026, 2026);
+
+    expect(summary.totals.grossRentalIncome).toBe(2400);
+  });
+
   it("allocates a prepaid expense to the overlapping portion of the year", () => {
     const prepaid = makeEntry("prepaid-insurance", {
       amount: 1200,
