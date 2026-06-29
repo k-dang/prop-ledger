@@ -34,6 +34,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -490,14 +491,13 @@ function AddManualTransactionSheet({
             </Field>
             <Field>
               <FieldLabel htmlFor="transactionDate">Date</FieldLabel>
-              <Input
+              <DatePickerField
                 id="transactionDate"
                 name="date"
-                type="date"
                 required
                 value={draft.date}
-                onChange={(event) => {
-                  updateDraft({ date: event.target.value });
+                onChange={(date) => {
+                  updateDraft({ date });
                 }}
               />
             </Field>

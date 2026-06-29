@@ -26,6 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -158,19 +159,17 @@ function PrepaidEditor({
         <FieldLabel htmlFor={`prepaid-start-${entry.id}`}>
           Prepaid from
         </FieldLabel>
-        <Input
+        <DatePickerField
           id={`prepaid-start-${entry.id}`}
           name="prepaidStart"
-          type="date"
           defaultValue={entry.prepaidStartDate ?? ""}
         />
       </Field>
       <Field>
         <FieldLabel htmlFor={`prepaid-end-${entry.id}`}>Prepaid to</FieldLabel>
-        <Input
+        <DatePickerField
           id={`prepaid-end-${entry.id}`}
           name="prepaidEnd"
-          type="date"
           defaultValue={entry.prepaidEndDate ?? ""}
         />
       </Field>
@@ -609,15 +608,12 @@ function MortgagePaymentForm({
       <div className="grid gap-3 lg:grid-cols-[1fr_1.4fr_1fr]">
         <Field>
           <FieldLabel htmlFor="mortgage-date">Payment date</FieldLabel>
-          <Input
+          <DatePickerField
             id="mortgage-date"
             name="date"
-            type="date"
             required
             value={date}
-            onChange={(event) => {
-              setDate(event.target.value);
-            }}
+            onChange={setDate}
           />
         </Field>
         <Field>

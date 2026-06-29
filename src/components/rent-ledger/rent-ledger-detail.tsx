@@ -28,6 +28,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -313,11 +314,11 @@ function LeasesPanel({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field>
               <FieldLabel htmlFor="lease-start">Start date</FieldLabel>
-              <Input id="lease-start" name="startDate" type="date" required />
+              <DatePickerField id="lease-start" name="startDate" required />
             </Field>
             <Field>
               <FieldLabel htmlFor="lease-end">End date</FieldLabel>
-              <Input id="lease-end" name="endDate" type="date" />
+              <DatePickerField id="lease-end" name="endDate" />
             </Field>
             <Field>
               <FieldLabel htmlFor="lease-rent">Rent</FieldLabel>
@@ -610,7 +611,7 @@ function RentEventPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="event-date">Date</FieldLabel>
-              <Input id="event-date" name="date" type="date" required />
+              <DatePickerField id="event-date" name="date" required />
             </Field>
             <Field>
               <FieldLabel htmlFor="event-amount">Amount</FieldLabel>

@@ -36,6 +36,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -515,17 +516,16 @@ function AddOwnerSheet({
               <FieldLabel htmlFor="ownerEffectiveFrom">
                 Effective from
               </FieldLabel>
-              <Input
+              <DatePickerField
                 id="ownerEffectiveFrom"
                 name="effectiveFrom"
-                type="date"
                 defaultValue={acquisitionDate}
                 required
               />
             </Field>
             <Field>
               <FieldLabel htmlFor="ownerEffectiveTo">Effective to</FieldLabel>
-              <Input id="ownerEffectiveTo" name="effectiveTo" type="date" />
+              <DatePickerField id="ownerEffectiveTo" name="effectiveTo" />
             </Field>
           </div>
           <Button type="submit" className="justify-self-start">

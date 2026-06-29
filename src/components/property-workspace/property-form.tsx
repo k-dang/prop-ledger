@@ -21,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { NewPropertyInput } from "@/lib/property-workspace";
@@ -149,10 +150,9 @@ export function PropertyForm({
               <FieldLabel htmlFor="acquisitionDate">
                 Acquisition date
               </FieldLabel>
-              <Input
+              <DatePickerField
                 id="acquisitionDate"
                 name="acquisitionDate"
-                type="date"
                 required
                 defaultValue={SAMPLE_PROPERTY_FORM.acquisitionDate}
               />
