@@ -98,6 +98,11 @@ describe("transaction splits", () => {
         { amount: 25, incomeCategory: "utilities" },
       ]),
     ).toBe("Choose valid income split categories.");
+    expect(
+      validateTransactionSplits("income", [
+        { amount: 25, incomeCategory: "rent" },
+      ]),
+    ).toBe("Choose valid income split categories.");
   });
 });
 
@@ -109,6 +114,9 @@ describe("category validation", () => {
       "Choose a valid expense category.",
     );
     expect(validateLedgerCategory("income", "utilities")).toBe(
+      "Choose a valid income category.",
+    );
+    expect(validateLedgerCategory("income", "rent")).toBe(
       "Choose a valid income category.",
     );
   });

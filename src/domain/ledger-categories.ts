@@ -14,7 +14,6 @@ export const T776_CATEGORIES = [
 export type T776Category = (typeof T776_CATEGORIES)[number];
 
 export const RENTAL_INCOME_CATEGORIES = [
-  "rent",
   "other_income",
   "laundry",
   "parking",

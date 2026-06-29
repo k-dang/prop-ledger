@@ -26,6 +26,6 @@ async function RentLedgerRedirect({
   const yearQuery =
     year === undefined ? "" : `?year=${encodeURIComponent(year)}`;
 
-  redirect(`/properties/${propertyId}${yearQuery}#rent`);
+  redirect(`/properties/${propertyId}${yearQuery}`);
   return null;
 }

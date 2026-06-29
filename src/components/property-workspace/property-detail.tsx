@@ -4,16 +4,17 @@ import {
   AlertTriangle,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleDot,
-  FileText,
   Home,
   type LucideIcon,
   MapPin,
   Plus,
-  Receipt,
   Trash2,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { z } from "zod";
 import { EvidenceBinderPanel } from "@/components/evidence-binder/evidence-workspace";
@@ -159,15 +160,28 @@ export function PropertyWorkspaceDetail({
 }) {
   return (
     <>
-      <PropertySummary property={property} readiness={readiness} />
-      <WorkspaceNav />
+      <PropertySummary property={property} readiness={readiness} year={year} />
+      <section id="setup" className="grid scroll-mt-4 gap-4">
+        <SetupChecklist readiness={readiness} />
+        <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
+          <UnitsPanel
+            property={property}
+            error={unitError}
+            onSubmit={onAddUnit}
+            onDeleteUnit={onDeleteUnit}
+          />
+          <OwnershipPanel
+            property={property}
+            error={ownerError}
+            onSubmit={onAddOwner}
+            onDeleteOwner={onDeleteOwner}
+          />
+        </div>
+      </section>
       <section id="rent" className="scroll-mt-4">
         <RentLedgerDetail
           ledger={rentLedger}
           year={year}
-          yearHref={(target) =>
-            `/properties/${property.id}?year=${target}#rent`
-          }
           leaseError={leaseError}
           eventError={rentEventError}
           documentError={leaseDocumentError}
@@ -188,64 +202,18 @@ export function PropertyWorkspaceDetail({
           onDeleteEvidenceDocument={onDeleteEvidenceDocument}
         />
       </section>
-      <section id="setup" className="grid scroll-mt-4 gap-4">
-        <SetupChecklist readiness={readiness} />
-        <UnitsPanel
-          property={property}
-          error={unitError}
-          onSubmit={onAddUnit}
-          onDeleteUnit={onDeleteUnit}
-        />
-        <OwnershipPanel
-          property={property}
-          error={ownerError}
-          onSubmit={onAddOwner}
-          onDeleteOwner={onDeleteOwner}
-        />
-      </section>
     </>
-  );
-}
-
-function WorkspaceNav() {
-  const sections: {
-    href: string;
-    label: string;
-    icon: LucideIcon;
-  }[] = [
-    { href: "#rent", label: "Rent", icon: Receipt },
-    { href: "#transactions", label: "Transactions", icon: FileText },
-    { href: "#setup", label: "Setup", icon: Home },
-  ];
-
-  return (
-    <nav
-      aria-label="Property workspace sections"
-      className="flex flex-wrap gap-2"
-    >
-      {sections.map(({ href, label, icon: Icon }) => (
-        <a
-          className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "rounded-md",
-          )}
-          href={href}
-          key={href}
-        >
-          <Icon data-icon="inline-start" />
-          {label}
-        </a>
-      ))}
-    </nav>
   );
 }
 
 function PropertySummary({
   property,
   readiness,
+  year,
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
+  year: number;
 }) {
   return (
     <Card className="rounded-md">
@@ -267,6 +235,32 @@ function PropertySummary({
           </CardDescription>
         </div>
         <CardAction className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center gap-1 rounded-md border bg-background p-1">
+            <span className="sr-only">Tax year</span>
+            <Link
+              href={`/properties/${property.id}?year=${year - 1}`}
+              aria-label={`View ${year - 1}`}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "size-7 rounded-sm",
+              )}
+            >
+              <ChevronLeft aria-hidden="true" />
+            </Link>
+            <span className="px-2 font-medium text-sm tabular-nums">
+              {year}
+            </span>
+            <Link
+              href={`/properties/${property.id}?year=${year + 1}`}
+              aria-label={`View ${year + 1}`}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "size-7 rounded-sm",
+              )}
+            >
+              <ChevronRight aria-hidden="true" />
+            </Link>
+          </div>
           <Badge className="rounded-md bg-ready text-ready-foreground">
             {readiness.readinessPercent}% ready
           </Badge>

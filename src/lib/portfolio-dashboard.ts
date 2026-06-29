@@ -208,11 +208,7 @@ function summarizePropertyFinancials(
   }
 
   const rent = summarizeRentLedger(property.rentEvents, taxYear);
-  const { taxableManualIncome } = summarizeManualIncomeForTax(
-    entries,
-    property.rentEvents,
-    taxYear,
-  );
+  const { taxableManualIncome } = summarizeManualIncomeForTax(entries);
   const grossRentalIncome = roundMoney(
     rent.grossRentalIncome + taxableManualIncome,
   );

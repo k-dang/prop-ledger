@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db/index";
 import { documentLinks, documents, ledgerEntries } from "@/db/schema";
 import { type ActionResult, runAction } from "@/lib/action-utils";
+import { validateLedgerCategory } from "@/lib/allocations";
 import { transactionMutationCacheTags } from "@/lib/cache-tags";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
@@ -26,6 +27,17 @@ export async function createManualTransaction(
           ok: false,
           error: "Enter an expense amount greater than zero.",
         };
+      }
+
+      const categoryError = validateLedgerCategory(
+        input.type,
+        input.type === "expense"
+          ? (input.expenseCategory ?? null)
+          : (input.incomeCategory ?? null),
+      );
+
+      if (categoryError !== undefined) {
+        return { ok: false, error: categoryError };
       }
 
       const { isCapitalAsset, ...transactionInput } = input;

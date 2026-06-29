@@ -66,11 +66,7 @@ export function buildYearEndPackageSnapshot({
     allocatedMortgagePayments,
   );
   const rentSummary = summarizeRentLedger(allocatedRentEvents, taxYear);
-  const { taxableManualIncome } = summarizeManualIncomeForTax(
-    allocatedEntries,
-    allocatedRentEvents,
-    taxYear,
-  );
+  const { taxableManualIncome } = summarizeManualIncomeForTax(allocatedEntries);
 
   return {
     version: 1,

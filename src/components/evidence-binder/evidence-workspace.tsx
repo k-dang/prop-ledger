@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CopyPlus,
   FileText,
   type LucideIcon,
   Paperclip,
@@ -60,11 +59,9 @@ import {
 } from "@/components/ui/table";
 import {
   createEmptyManualTransactionDraft,
-  createRecurringRentTransactionDraft,
   formatLedgerCategory,
   getDocumentsForTarget,
   getEvidenceExceptionCounts,
-  getLatestRentTransaction,
   type ManualTransactionFormDraft,
   type NewManualTransactionInput,
   RENTAL_INCOME_CATEGORY_OPTIONS,
@@ -248,10 +245,6 @@ function ManualTransactionsPanel({
   const expenseTotal = property.ledgerEntries
     .filter((entry) => entry.type === "expense")
     .reduce((total, entry) => total + entry.amount, 0);
-  const latestRentTransaction = getLatestRentTransaction(
-    property.ledgerEntries,
-  );
-
   return (
     <Card className="rounded-md">
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
@@ -262,10 +255,7 @@ function ManualTransactionsPanel({
           </CardDescription>
         </div>
         <CardAction>
-          <AddManualTransactionSheet
-            latestRentTransaction={latestRentTransaction}
-            onSubmit={onSubmit}
-          />
+          <AddManualTransactionSheet onSubmit={onSubmit} />
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -410,10 +400,8 @@ function TransactionTypeLabel({
 }
 
 function AddManualTransactionSheet({
-  latestRentTransaction,
   onSubmit,
 }: {
-  latestRentTransaction?: RentalProperty["ledgerEntries"][number];
   onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
@@ -427,6 +415,10 @@ function AddManualTransactionSheet({
   const selectedCategoryLabel =
     categoryOptions.find((category) => category.value === draft.category)
       ?.label ?? "Select";
+  const resetFormState = () => {
+    setDraft(createEmptyManualTransactionDraft());
+    setFormKey((key) => key + 1);
+  };
   const handleSubmit = createFormSubmit(
     manualTransactionFormSchema,
     async (input) => {
@@ -440,13 +432,9 @@ function AddManualTransactionSheet({
       return saved;
     },
   );
+
   function updateDraft(patch: Partial<ManualTransactionFormDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
-  }
-
-  function resetFormState() {
-    setDraft(createEmptyManualTransactionDraft());
-    setFormKey((key) => key + 1);
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -455,14 +443,6 @@ function AddManualTransactionSheet({
     if (!nextOpen) {
       resetFormState();
     }
-  }
-
-  function prefillLatestRent() {
-    if (latestRentTransaction === undefined) {
-      return;
-    }
-
-    setDraft(createRecurringRentTransactionDraft(latestRentTransaction));
   }
 
   return (
@@ -475,8 +455,8 @@ function AddManualTransactionSheet({
         <SheetHeader className="border-b pr-12">
           <SheetTitle>Add manual transaction</SheetTitle>
           <SheetDescription>
-            Record one income or expense line and classify it for year-end
-            review.
+            Record one expense or non-rent income line. Use the rent ledger for
+            rent charges and payments.
           </SheetDescription>
         </SheetHeader>
         <form
@@ -484,26 +464,6 @@ function AddManualTransactionSheet({
           key={formKey}
           onSubmit={handleSubmit}
         >
-          {latestRentTransaction !== undefined ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/30 p-3">
-              <div className="min-w-0">
-                <p className="font-medium text-sm">Recurring rent</p>
-                <p className="truncate text-muted-foreground text-xs">
-                  Last rent: {formatMoney(latestRentTransaction.amount)} from{" "}
-                  {latestRentTransaction.vendor} on {latestRentTransaction.date}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-md"
-                onClick={prefillLatestRent}
-              >
-                <CopyPlus data-icon="inline-start" />
-                Use last rent
-              </Button>
-            </div>
-          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="transactionType">Type</FieldLabel>

@@ -2,15 +2,12 @@
 
 import {
   CalendarRange,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   type LucideIcon,
   Plus,
   Receipt,
   Users,
 } from "lucide-react";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { z } from "zod";
@@ -23,7 +20,7 @@ import {
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -130,7 +127,6 @@ const leaseDocumentFormSchema = z.object({
 export function RentLedgerDetail({
   ledger,
   year,
-  yearHref,
   leaseError,
   eventError,
   documentError,
@@ -141,7 +137,6 @@ export function RentLedgerDetail({
 }: {
   ledger: RentLedger;
   year: number;
-  yearHref: (target: number) => string;
   leaseError?: string;
   eventError?: string;
   documentError?: string;
@@ -159,7 +154,6 @@ export function RentLedgerDetail({
 
   return (
     <div className="grid gap-4">
-      <LedgerHeader year={year} yearHref={yearHref} />
       <SummaryCard summary={summary} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <LeasesPanel
@@ -183,53 +177,6 @@ export function RentLedgerDetail({
       </div>
       <RentLedgerTable ledger={ledger} unitLabels={unitLabels} year={year} />
     </div>
-  );
-}
-
-function LedgerHeader({
-  year,
-  yearHref,
-}: {
-  year: number;
-  yearHref: (target: number) => string;
-}) {
-  return (
-    <Card className="rounded-md">
-      <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
-        <div className="min-w-0">
-          <CardTitle as="h2">Rent tracking</CardTitle>
-          <CardDescription className="mt-1">
-            Leases, accrual rent, payments, and arrears for {year}.
-          </CardDescription>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={yearHref(year - 1)}
-            aria-label={`View ${year - 1}`}
-            className={cn(
-              buttonVariants({ variant: "outline", size: "icon" }),
-              "rounded-md",
-            )}
-          >
-            <ChevronLeft aria-hidden="true" />
-          </Link>
-          <Badge className="rounded-md bg-ready text-ready-foreground">
-            <CalendarRange data-icon="inline-start" />
-            {year}
-          </Badge>
-          <Link
-            href={yearHref(year + 1)}
-            aria-label={`View ${year + 1}`}
-            className={cn(
-              buttonVariants({ variant: "outline", size: "icon" }),
-              "rounded-md",
-            )}
-          >
-            <ChevronRight aria-hidden="true" />
-          </Link>
-        </div>
-      </CardHeader>
-    </Card>
   );
 }
 
