@@ -167,8 +167,7 @@ export function TransactionsInbox({
       <CardHeader>
         <CardTitle as="h1">Transactions</CardTitle>
         <CardDescription>
-          Rental records that need category or evidence review. Use j/k to move
-          between rows and Enter to jump to the category control.
+          Tax transaction records that need category or receipt review.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">

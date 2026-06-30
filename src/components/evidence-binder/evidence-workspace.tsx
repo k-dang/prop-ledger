@@ -142,9 +142,9 @@ export function EvidenceBinderPanel({
       <Card className="rounded-md">
         <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
           <div>
-            <CardTitle as="h2">Transactions and evidence</CardTitle>
+            <CardTitle as="h2">Tax transactions and evidence</CardTitle>
             <CardDescription>
-              Manual records, source documents, and open review exceptions.
+              Tax transactions, source documents, and open review exceptions.
             </CardDescription>
           </div>
           <CardAction className="flex flex-wrap gap-2">
@@ -250,9 +250,10 @@ function ManualTransactionsPanel({
     <Card className="rounded-md">
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle as="h2">Manual transactions</CardTitle>
+          <CardTitle as="h2">Tax transactions</CardTitle>
           <CardDescription>
-            Review records, categorization, and attached source evidence.
+            Expense deductions and income lines that need categories, receipts,
+            or review notes.
           </CardDescription>
         </div>
         <CardAction>
@@ -275,9 +276,7 @@ function ManualTransactionsPanel({
           />
         </div>
         {property.ledgerEntries.length === 0 ? (
-          <EmptyState icon={Receipt}>
-            No manual transactions recorded.
-          </EmptyState>
+          <EmptyState icon={Receipt}>No tax transactions recorded.</EmptyState>
         ) : (
           <Table className="min-w-[920px] table-fixed">
             <colgroup>
@@ -450,14 +449,15 @@ function AddManualTransactionSheet({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <Button type="button" onClick={() => setOpen(true)}>
         <Plus data-icon="inline-start" />
-        Add transaction
+        Add tax transaction
       </Button>
       <SheetContent className="overflow-y-auto sm:max-w-xl">
         <SheetHeader className="border-b pr-12">
-          <SheetTitle>Add manual transaction</SheetTitle>
+          <SheetTitle>Add tax transaction</SheetTitle>
           <SheetDescription>
-            Record one expense or non-rent income line. Use the rent ledger for
-            rent charges and payments.
+            Record one expense or income line that needs a tax category or
+            receipt. Use the rent ledger for rent charges, tenant payments,
+            credits, and write-offs.
           </SheetDescription>
         </SheetHeader>
         <form
@@ -595,7 +595,7 @@ function AddManualTransactionSheet({
           ) : null}
           <Button type="submit" className="justify-self-start">
             <Plus data-icon="inline-start" />
-            Add transaction
+            Add tax transaction
           </Button>
         </form>
       </SheetContent>
@@ -632,7 +632,7 @@ function DeleteTransactionButton({
   function handleDelete() {
     if (
       !window.confirm(
-        "Delete this transaction? Linked documents will remain in Documents.",
+        "Delete this tax transaction? Linked documents will remain in Documents.",
       )
     ) {
       return;

@@ -78,7 +78,7 @@ const EVENT_TYPE_LABELS: Record<RentEventType, string> = {
   payment: "Payment",
   credit: "Credit",
   writeoff: "Write-off",
-  other_income: "Other income",
+  other_income: "Other rent income",
 };
 
 const leaseFormSchema = z
@@ -189,7 +189,7 @@ function SummaryCard({
   const figures = [
     { label: "Gross rent", value: summary.grossRent, hint: "Charges accrued" },
     {
-      label: "Other income",
+      label: "Other rent income",
       value: summary.otherIncome,
       hint: "Laundry, parking, fees",
     },
@@ -548,9 +548,10 @@ function RentEventPanel({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle as="h2">Record activity</CardTitle>
+        <CardTitle as="h2">Record rent event</CardTitle>
         <CardDescription>
-          Payments, credits, write-offs, and other income.
+          Rent charges, tenant payments, credits, write-offs, and other income
+          that belongs in the rent ledger.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -632,7 +633,7 @@ function RentEventPanel({
           <div className="flex justify-end">
             <Button type="submit">
               <Plus data-icon="inline-start" />
-              Record
+              Record rent event
             </Button>
           </div>
         </form>
