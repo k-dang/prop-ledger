@@ -79,7 +79,6 @@ function makeProperty(property: Partial<RentalProperty> = {}): RentalProperty {
         id: "owner-1",
         propertyId: "property-1",
         name: "Avery Chen",
-        email: null,
       },
     ],
     ownershipPeriods: [

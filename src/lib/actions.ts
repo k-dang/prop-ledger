@@ -174,7 +174,6 @@ export async function addOwnerWithOwnership(
         id: ownerId,
         propertyId,
         name: input.name,
-        email: input.email,
       };
 
       await db.batch([

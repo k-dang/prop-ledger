@@ -1,0 +1,1 @@
+ALTER TABLE "rental"."owners" DROP COLUMN "email";

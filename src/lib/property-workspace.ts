@@ -168,7 +168,6 @@ export function getOwnershipHistory(property: RentalProperty) {
     return {
       ...period,
       ownerName: owner?.name ?? "Unknown owner",
-      ownerEmail: owner?.email ?? null,
       dateRange: formatDateRange(period.effectiveFrom, period.effectiveTo),
       percentageLabel: `${formatPercent(period.percentage)}%`,
     };

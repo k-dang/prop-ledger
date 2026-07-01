@@ -76,7 +76,7 @@ import type {
   NewRentEventInput,
   RentLedger,
 } from "@/lib/rent-ledger";
-import { toneSurface } from "@/lib/status-styles";
+import { toneIcon, toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 const unitFormSchema = z
@@ -94,7 +94,6 @@ const unitFormSchema = z
 const ownerFormSchema = z
   .object({
     ownerName: requiredFormString,
-    ownerEmail: optionalFormString,
     percentage: finiteFormNumber,
     effectiveFrom: requiredFormString,
     effectiveTo: optionalFormString,
@@ -102,7 +101,6 @@ const ownerFormSchema = z
   .transform(
     (data): NewOwnerWithOwnershipInput => ({
       name: data.ownerName,
-      email: data.ownerEmail,
       percentage: data.percentage,
       effectiveFrom: data.effectiveFrom,
       effectiveTo: data.effectiveTo,
@@ -173,9 +171,12 @@ export function PropertyWorkspaceDetail({
 }) {
   return (
     <>
-      <PropertySummary property={property} readiness={readiness} year={year} />
       <section id="setup" className="grid scroll-mt-4 gap-4">
-        <SetupChecklist readiness={readiness} />
+        <PropertySetupOverview
+          property={property}
+          readiness={readiness}
+          year={year}
+        />
         <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
           <UnitsPanel
             property={property}
@@ -260,7 +261,7 @@ export function PropertyWorkspaceDetail({
   );
 }
 
-function PropertySummary({
+function PropertySetupOverview({
   property,
   readiness,
   year,
@@ -269,137 +270,182 @@ function PropertySummary({
   readiness: PropertyReadiness;
   year: number;
 }) {
+  const readinessTone =
+    readiness.setupGapCount === 0 ? toneSurface.ready : toneSurface.review;
+  const setupGapLabel = `${readiness.setupGapCount} setup gap${
+    readiness.setupGapCount === 1 ? "" : "s"
+  }`;
+  const setupFacts = [
+    { label: "Units", value: property.units.length },
+    { label: "Owners", value: property.owners.length },
+    { label: "Ownership periods", value: property.ownershipPeriods.length },
+  ];
+
   return (
     <Card className="rounded-md">
-      <CardHeader className="gap-3 pb-3 lg:grid-cols-[1fr_auto]">
-        <div className="min-w-0">
-          <CardTitle as="h1" className="truncate text-xl">
-            {property.name}
-          </CardTitle>
-          <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="size-3.5" aria-hidden="true" />
-              {property.line1}, {property.municipality}, {property.province}{" "}
-              {property.postalCode}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <CalendarDays className="size-3.5" aria-hidden="true" />
-              Acquired {property.acquisitionDate}
-            </span>
-          </CardDescription>
+      <CardHeader className="pb-4">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <CardTitle as="h1" className="truncate text-xl">
+              {property.name}
+            </CardTitle>
+            <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="size-3.5" aria-hidden="true" />
+                {property.line1}, {property.municipality}, {property.province}{" "}
+                {property.postalCode}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="size-3.5" aria-hidden="true" />
+                Acquired {property.acquisitionDate}
+              </span>
+            </CardDescription>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+            <div className="flex items-center gap-1 rounded-md border bg-background p-1">
+              <span className="sr-only">Tax year</span>
+              <Link
+                href={`/properties/${property.id}?year=${year - 1}`}
+                aria-label={`View ${year - 1}`}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon" }),
+                  "size-7 rounded-sm",
+                )}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </Link>
+              <span className="px-2 font-medium text-sm tabular-nums">
+                {year}
+              </span>
+              <Link
+                href={`/properties/${property.id}?year=${year + 1}`}
+                aria-label={`View ${year + 1}`}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon" }),
+                  "size-7 rounded-sm",
+                )}
+              >
+                <ChevronRight aria-hidden="true" />
+              </Link>
+            </div>
+            <Badge className="rounded-md bg-ready text-ready-foreground">
+              {readiness.readinessPercent}% ready
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn("rounded-md", readinessTone)}
+            >
+              {setupGapLabel}
+            </Badge>
+          </div>
         </div>
-        <CardAction className="flex flex-wrap items-center justify-end gap-2">
-          <div className="flex items-center gap-1 rounded-md border bg-background p-1">
-            <span className="sr-only">Tax year</span>
-            <Link
-              href={`/properties/${property.id}?year=${year - 1}`}
-              aria-label={`View ${year - 1}`}
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "icon" }),
-                "size-7 rounded-sm",
-              )}
-            >
-              <ChevronLeft aria-hidden="true" />
-            </Link>
-            <span className="px-2 font-medium text-sm tabular-nums">
-              {year}
-            </span>
-            <Link
-              href={`/properties/${property.id}?year=${year + 1}`}
-              aria-label={`View ${year + 1}`}
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "icon" }),
-                "size-7 rounded-sm",
-              )}
-            >
-              <ChevronRight aria-hidden="true" />
-            </Link>
-          </div>
-          <Badge className="rounded-md bg-ready text-ready-foreground">
-            {readiness.readinessPercent}% ready
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn("rounded-md", toneSurface.info)}
-          >
-            {readiness.setupGapCount} setup gaps
-          </Badge>
-        </CardAction>
       </CardHeader>
-      <CardContent className="pt-0">
-        <dl className="grid divide-y rounded-md border bg-muted/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <div className="px-3 py-2">
-            <dt className="text-muted-foreground text-xs">Units</dt>
-            <dd className="font-semibold text-lg tabular-nums">
-              {property.units.length}
-            </dd>
+      <CardContent className="border-t p-0">
+        <div className="grid divide-y lg:grid-cols-[minmax(16rem,0.36fr)_minmax(0,1fr)] lg:divide-x lg:divide-y-0">
+          <div className="grid content-start gap-4 p-4">
+            <div>
+              <p className="font-medium text-sm">Setup readiness</p>
+              <p className="text-muted-foreground text-sm">
+                {readiness.completedCount} of {readiness.totalCount} setup items
+                complete.
+              </p>
+            </div>
+            <div
+              className="h-2 overflow-hidden rounded-full bg-muted"
+              aria-label={`${readiness.readinessPercent}% setup ready`}
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={readiness.readinessPercent}
+              role="progressbar"
+            >
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  readiness.setupGapCount === 0 ? "bg-ready" : "bg-review",
+                )}
+                style={{ width: `${readiness.readinessPercent}%` }}
+              />
+            </div>
+            <dl className="grid divide-y border-t">
+              {setupFacts.map((fact) => (
+                <div
+                  className="flex items-center justify-between gap-3 py-2"
+                  key={fact.label}
+                >
+                  <dt className="text-muted-foreground text-xs">
+                    {fact.label}
+                  </dt>
+                  <dd className="font-semibold text-base tabular-nums">
+                    {fact.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
-          <div className="px-3 py-2">
-            <dt className="text-muted-foreground text-xs">Owners</dt>
-            <dd className="font-semibold text-lg tabular-nums">
-              {property.owners.length}
-            </dd>
+          <div className="grid divide-y">
+            {readiness.tasks.map((task) => (
+              <SetupTaskRow key={task.id} task={task} />
+            ))}
           </div>
-          <div className="px-3 py-2">
-            <dt className="text-muted-foreground text-xs">Ownership periods</dt>
-            <dd className="font-semibold text-lg tabular-nums">
-              {property.ownershipPeriods.length}
-            </dd>
-          </div>
-        </dl>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function SetupChecklist({ readiness }: { readiness: PropertyReadiness }) {
+function SetupTaskRow({ task }: { task: PropertyReadiness["tasks"][number] }) {
+  const tone = getSetupTaskTone(task.status);
+  const Icon = getSetupTaskIcon(task.status);
+
   return (
-    <Card className="rounded-md">
-      <CardHeader className="pb-2">
-        <CardTitle as="h2">Setup checklist</CardTitle>
-        <CardDescription>
-          {readiness.readinessPercent}% ready with {readiness.setupGapCount}{" "}
-          setup gaps.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-2 sm:grid-cols-2">
-        {readiness.tasks.map((task) => (
-          <div
-            className="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-2 rounded-md border bg-background px-3 py-2"
-            key={task.id}
-          >
-            {task.status === "complete" ? (
-              <CheckCircle2 className="size-4 text-ready" aria-hidden="true" />
-            ) : task.status === "warning" ? (
-              <AlertTriangle
-                className="size-4 text-blocked"
-                aria-hidden="true"
-              />
-            ) : (
-              <CircleDot className="size-4 text-review" aria-hidden="true" />
-            )}
-            <div className="min-w-0">
-              <p className="font-medium text-sm">{task.label}</p>
-              <p className="truncate text-muted-foreground text-xs">
-                {task.detail}
-              </p>
-            </div>
-            <Badge
-              variant="outline"
-              className={cn(
-                "rounded-md text-xs",
-                task.status === "complete" && toneSurface.ready,
-                task.status === "missing" && toneSurface.review,
-                task.status === "warning" && toneSurface.blocked,
-              )}
-            >
-              {formatSetupStatus(task.status)}
-            </Badge>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="grid grid-cols-[20px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[20px_minmax(0,1fr)_auto]">
+      <Icon
+        className={cn("mt-0.5 size-4", toneIcon[tone])}
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <p className="font-medium text-sm">{task.label}</p>
+        <p className="text-muted-foreground text-xs">{task.detail}</p>
+      </div>
+      <Badge
+        variant="outline"
+        className={cn(
+          "col-start-2 justify-self-start rounded-md text-xs sm:col-start-auto sm:justify-self-end",
+          toneSurface[tone],
+        )}
+      >
+        {formatSetupStatus(task.status)}
+      </Badge>
+    </div>
   );
+}
+
+function getSetupTaskTone(
+  status: PropertyReadiness["tasks"][number]["status"],
+) {
+  if (status === "complete") {
+    return "ready";
+  }
+
+  if (status === "warning") {
+    return "blocked";
+  }
+
+  return "review";
+}
+
+function getSetupTaskIcon(
+  status: PropertyReadiness["tasks"][number]["status"],
+) {
+  if (status === "complete") {
+    return CheckCircle2;
+  }
+
+  if (status === "warning") {
+    return AlertTriangle;
+  }
+
+  return CircleDot;
 }
 
 function formatSetupStatus(
@@ -549,10 +595,6 @@ function AddOwnerSheet({
             <Input id="ownerName" name="ownerName" required />
           </Field>
           <Field>
-            <FieldLabel htmlFor="ownerEmail">Email</FieldLabel>
-            <Input id="ownerEmail" name="ownerEmail" type="email" />
-          </Field>
-          <Field>
             <FieldLabel htmlFor="ownerPercentage">Share %</FieldLabel>
             <Input
               id="ownerPercentage"
@@ -640,7 +682,6 @@ function OwnershipPanel({
             <TableHeader>
               <TableRow>
                 <TableHead>Owner</TableHead>
-                <TableHead>Email</TableHead>
                 <TableHead>Share</TableHead>
                 <TableHead>Effective dates</TableHead>
                 <TableHead className="text-right">Action</TableHead>
@@ -650,9 +691,6 @@ function OwnershipPanel({
               {history.map((period) => (
                 <TableRow key={period.id}>
                   <TableCell>{period.ownerName}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {period.ownerEmail || "Not recorded"}
-                  </TableCell>
                   <TableCell>{period.percentageLabel}</TableCell>
                   <TableCell>{period.dateRange}</TableCell>
                   <TableCell className="text-right">

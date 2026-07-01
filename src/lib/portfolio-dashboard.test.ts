@@ -28,7 +28,6 @@ function makeProperty(
         id: `${id}-owner`,
         propertyId: id,
         name: "Avery Chen",
-        email: null,
       },
     ],
     ownershipPeriods: [

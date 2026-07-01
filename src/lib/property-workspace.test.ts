@@ -45,13 +45,11 @@ const baseProperty: RentalProperty = {
       id: "owner-1",
       propertyId: "property-1",
       name: "Avery Chen",
-      email: null,
     },
     {
       id: "owner-2",
       propertyId: "property-1",
       name: "Jordan Patel",
-      email: null,
     },
   ],
   ownershipPeriods: [],

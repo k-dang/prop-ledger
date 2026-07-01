@@ -57,7 +57,6 @@ export const owners = pgTable("owners", {
     .notNull()
     .references(() => properties.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  email: text("email"),
 });
 
 export const ownershipPeriods = pgTable("ownership_periods", {

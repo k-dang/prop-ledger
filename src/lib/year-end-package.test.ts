@@ -22,13 +22,11 @@ const property: YearEndPackageSource = {
       id: "owner-a",
       propertyId: "property-1",
       name: "Avery Chen",
-      email: "avery@example.test",
     },
     {
       id: "owner-b",
       propertyId: "property-1",
       name: "Morgan Lee",
-      email: null,
     },
   ],
   ownershipPeriods: [
