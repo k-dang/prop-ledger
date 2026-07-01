@@ -23,6 +23,7 @@ import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -610,22 +611,23 @@ function RentEventPanel({
         <CardDescription>
           Record the rent amount received during the selected tax year.
         </CardDescription>
+        {latestPayment !== undefined ? (
+          <CardAction>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-md"
+              onClick={prefillLatestPayment}
+            >
+              <CopyPlus data-icon="inline-start" />
+              Use last payment
+            </Button>
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent className="grid gap-4">
         <form className="grid gap-3" onSubmit={handleSubmit}>
-          {latestPayment !== undefined ? (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-md"
-                onClick={prefillLatestPayment}
-              >
-                <CopyPlus data-icon="inline-start" />
-                Use last payment
-              </Button>
-            </div>
-          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="event-lease">Lease</FieldLabel>
@@ -656,8 +658,6 @@ function RentEventPanel({
                 </SelectContent>
               </Select>
             </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="event-date">Date</FieldLabel>
               <DatePickerField
@@ -668,6 +668,8 @@ function RentEventPanel({
                 onChange={setPaymentDate}
               />
             </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="event-amount">Amount</FieldLabel>
               <Input
@@ -683,19 +685,19 @@ function RentEventPanel({
                 }}
               />
             </Field>
+            <Field>
+              <FieldLabel htmlFor="event-memo">Memo</FieldLabel>
+              <Input
+                id="event-memo"
+                name="memo"
+                placeholder="Optional note"
+                value={memo}
+                onChange={(event) => {
+                  setMemo(event.target.value);
+                }}
+              />
+            </Field>
           </div>
-          <Field>
-            <FieldLabel htmlFor="event-memo">Memo</FieldLabel>
-            <Input
-              id="event-memo"
-              name="memo"
-              placeholder="Optional note"
-              value={memo}
-              onChange={(event) => {
-                setMemo(event.target.value);
-              }}
-            />
-          </Field>
           <div className="flex justify-end">
             <Button type="submit" disabled={selectedLeaseId === ""}>
               <Plus data-icon="inline-start" />
