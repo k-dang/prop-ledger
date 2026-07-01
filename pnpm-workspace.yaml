@@ -1,5 +1,13 @@
 trustPolicy: no-downgrade
 
+overrides:
+  semver: ^7.7.3
+
 ignoredBuiltDependencies:
+  - esbuild
   - sharp
   - unrs-resolver
+
+allowBuilds:
+  esbuild: false
+  sharp: false

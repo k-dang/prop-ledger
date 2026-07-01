@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CopyPlus,
   FileText,
   type LucideIcon,
   Plus,
@@ -53,6 +54,7 @@ import {
   type NewLeaseDocumentInput,
   type NewLeaseInput,
   type NewRentEventInput,
+  type RentEvent,
   type RentLedger,
   summarizeRentLedger,
 } from "@/lib/rent-ledger";
@@ -198,6 +200,7 @@ export function RentActivityTools({
     <div className={cn("flex min-w-0 flex-col gap-4", className)}>
       <RentEventPanel
         leases={ledger.leases}
+        latestPayment={getLatestRentPayment(ledger.rentEvents)}
         error={error}
         onRecordEvent={onRecordEvent}
       />
@@ -559,19 +562,46 @@ function LeaseCard({
 
 function RentEventPanel({
   leases,
+  latestPayment,
   error,
   onRecordEvent,
 }: {
   leases: Lease[];
+  latestPayment?: RentEvent;
   error?: string;
   onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
 }) {
   const [selectedLeaseId, setSelectedLeaseId] = useState("");
+  const [paymentDate, setPaymentDate] = useState("");
+  const [amount, setAmount] = useState("");
+  const [memo, setMemo] = useState("");
   const hasLeases = leases.length > 0;
   const selectedLeaseLabel =
     leases.find((lease) => lease.id === selectedLeaseId)?.tenantName ??
     "Select lease";
-  const handleSubmit = createFormSubmit(rentEventFormSchema, onRecordEvent);
+  const handleSubmit = createFormSubmit(rentEventFormSchema, async (input) => {
+    const saved = await onRecordEvent(input);
+
+    if (saved) {
+      setSelectedLeaseId("");
+      setPaymentDate("");
+      setAmount("");
+      setMemo("");
+    }
+
+    return saved;
+  });
+
+  function prefillLatestPayment() {
+    if (latestPayment === undefined) {
+      return;
+    }
+
+    setSelectedLeaseId(latestPayment.leaseId ?? "");
+    setPaymentDate(nextMonthlyPaymentDate(latestPayment.date));
+    setAmount(formatFormAmount(latestPayment.amount));
+    setMemo(latestPayment.memo ?? "");
+  }
 
   return (
     <Card className="rounded-md">
@@ -583,6 +613,19 @@ function RentEventPanel({
       </CardHeader>
       <CardContent className="grid gap-4">
         <form className="grid gap-3" onSubmit={handleSubmit}>
+          {latestPayment !== undefined ? (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-md"
+                onClick={prefillLatestPayment}
+              >
+                <CopyPlus data-icon="inline-start" />
+                Use last payment
+              </Button>
+            </div>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="event-lease">Lease</FieldLabel>
@@ -617,7 +660,13 @@ function RentEventPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="event-date">Date</FieldLabel>
-              <DatePickerField id="event-date" name="date" required />
+              <DatePickerField
+                id="event-date"
+                name="date"
+                required
+                value={paymentDate}
+                onChange={setPaymentDate}
+              />
             </Field>
             <Field>
               <FieldLabel htmlFor="event-amount">Amount</FieldLabel>
@@ -628,12 +677,24 @@ function RentEventPanel({
                 min="0.01"
                 step="0.01"
                 required
+                value={amount}
+                onChange={(event) => {
+                  setAmount(event.target.value);
+                }}
               />
             </Field>
           </div>
           <Field>
             <FieldLabel htmlFor="event-memo">Memo</FieldLabel>
-            <Input id="event-memo" name="memo" placeholder="Optional note" />
+            <Input
+              id="event-memo"
+              name="memo"
+              placeholder="Optional note"
+              value={memo}
+              onChange={(event) => {
+                setMemo(event.target.value);
+              }}
+            />
           </Field>
           <div className="flex justify-end">
             <Button type="submit" disabled={selectedLeaseId === ""}>
@@ -788,6 +849,40 @@ export function RentActivityCard({
       </CardContent>
     </Card>
   );
+}
+
+function getLatestRentPayment(events: RentEvent[]): RentEvent | undefined {
+  return events
+    .filter((event) => event.type === "payment")
+    .toSorted((a, b) => a.date.localeCompare(b.date))
+    .at(-1);
+}
+
+function formatFormAmount(value: number) {
+  return value.toFixed(2);
+}
+
+function nextMonthlyPaymentDate(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return "";
+  }
+
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const lastDayOfNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+  const nextDay = Math.min(day, lastDayOfNextMonth);
+
+  return [
+    String(nextYear).padStart(4, "0"),
+    String(nextMonth).padStart(2, "0"),
+    String(nextDay).padStart(2, "0"),
+  ].join("-");
 }
 
 function EmptyState({
