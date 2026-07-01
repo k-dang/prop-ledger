@@ -13,7 +13,6 @@ import {
   deleteOwner,
   deleteRentEvent,
   deleteUnit,
-  generateLeaseCharges,
   recordRentEvent,
 } from "@/lib/actions";
 import {
@@ -119,12 +118,6 @@ export function PropertyWorkspace({
     return runWorkspaceMutation("lease", () => deleteLease(leaseId));
   }
 
-  async function handleGenerateCharges(leaseId: string) {
-    return runWorkspaceMutation("lease", () =>
-      generateLeaseCharges(leaseId, `${year}-12-31`),
-    );
-  }
-
   async function handleRecordRentEvent(input: NewRentEventInput) {
     return runWorkspaceMutation("rentEvent", () =>
       recordRentEvent(selectedId, input),
@@ -198,7 +191,6 @@ export function PropertyWorkspace({
         onDeleteOwner={handleDeleteOwner}
         onCreateLease={handleCreateLease}
         onDeleteLease={handleDeleteLease}
-        onGenerateRentCharges={handleGenerateCharges}
         onRecordRentEvent={handleRecordRentEvent}
         onDeleteRentEvent={handleDeleteRentEvent}
         onAddLeaseDocument={handleAddLeaseDocument}

@@ -88,19 +88,11 @@ export const leases = pgTable("leases", {
 });
 
 /**
- * Every entry in the rent ledger. `charge` accrues earned rent; `payment`,
- * `credit`, and `writeoff` reduce a tenant's outstanding balance; `other_income`
- * is rental income (laundry, parking, fees) that does not affect arrears. Charges
- * and payments are deliberately separate rows so accrual income is never confused
- * with cash received. `leaseId` is null only for property-level other income.
+ * Every rent ledger entry records cash received from a tenant. Other rental
+ * income, such as laundry, parking, or recoveries, is recorded through
+ * categorized income transactions instead.
  */
-export const RENT_EVENT_TYPES = [
-  "charge",
-  "payment",
-  "credit",
-  "writeoff",
-  "other_income",
-] as const;
+export const RENT_EVENT_TYPES = ["payment"] as const;
 export type RentEventType = (typeof RENT_EVENT_TYPES)[number];
 
 export const rentEvents = pgTable("rent_events", {

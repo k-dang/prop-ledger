@@ -11,7 +11,6 @@ import {
 import Link from "next/link";
 import { type ReactNode, useState, useTransition } from "react";
 import { z } from "zod";
-import { MortgagePaymentsPanel } from "@/components/evidence-binder/allocation-controls";
 import { CapitalAssetControl } from "@/components/evidence-binder/capital-asset-control";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -111,58 +110,56 @@ export function EvidenceBinderPanel({
   const hasOpenReview =
     exceptions.uncategorizedTransactions > 0 || exceptions.missingReceipts > 0;
 
+  if (!hasOpenReview) {
+    return null;
+  }
+
   return (
-    <div className="grid gap-4">
-      {hasOpenReview ? (
-        <Card className="rounded-md">
-          <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
-            <div>
-              <CardTitle as="h2">Review needed</CardTitle>
-              <CardDescription>
-                Tax records that still need categories or receipts before
-                year-end.
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap gap-2 lg:justify-self-end">
-              <Link
-                href="/transactions"
-                className={cn(
-                  buttonVariants({ variant: "outline" }),
-                  "rounded-md",
-                )}
-              >
-                <Receipt data-icon="inline-start" />
-                Review
-              </Link>
-              <Link
-                href="/documents"
-                className={cn(
-                  buttonVariants({ variant: "outline" }),
-                  "rounded-md",
-                )}
-              >
-                <FileText data-icon="inline-start" />
-                Documents
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <ExceptionTile
-              label="Uncategorized"
-              value={exceptions.uncategorizedTransactions}
-            />
-            <ExceptionTile
-              label="Missing receipts"
-              value={exceptions.missingReceipts}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-      <MortgagePaymentsPanel
-        propertyId={property.id}
-        payments={property.mortgagePayments}
-      />
-    </div>
+    <section id="transactions" className="scroll-mt-4">
+      <Card className="rounded-md">
+        <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
+          <div>
+            <CardTitle as="h2">Review needed</CardTitle>
+            <CardDescription>
+              Tax records that still need categories or receipts before
+              year-end.
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:justify-self-end">
+            <Link
+              href="/transactions"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "rounded-md",
+              )}
+            >
+              <Receipt data-icon="inline-start" />
+              Review
+            </Link>
+            <Link
+              href="/documents"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "rounded-md",
+              )}
+            >
+              <FileText data-icon="inline-start" />
+              Documents
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <ExceptionTile
+            label="Uncategorized"
+            value={exceptions.uncategorizedTransactions}
+          />
+          <ExceptionTile
+            label="Missing receipts"
+            value={exceptions.missingReceipts}
+          />
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -395,8 +392,7 @@ function AddManualTransactionSheet({
           <SheetTitle>Add expense or non-rent income</SheetTitle>
           <SheetDescription>
             Use this for deductible expenses, capital assets, laundry, parking,
-            fees, or recoveries. Rent charges and tenant payments stay under
-            Rental income.
+            fees, or recoveries. Tenant rent payments stay under Rental income.
           </SheetDescription>
         </SheetHeader>
         <form

@@ -96,16 +96,16 @@ function makeEntry(
 }
 
 describe("portfolio dashboard summary", () => {
-  it("aggregates accrual income, cash received, expenses, and net income", () => {
+  it("aggregates rent received, non-rent income, expenses, and net income", () => {
     const expense = makeEntry("expense-1", { amount: 800 });
-    const manualIncome = makeEntry("income-1", {
+    const nonRentIncome = makeEntry("income-1", {
       type: "income",
       amount: 120,
       expenseCategory: null,
       incomeCategory: "laundry",
     });
     const property = makeProperty({
-      ledgerEntries: [expense, manualIncome],
+      ledgerEntries: [expense, nonRentIncome],
       documents: [makeDocument("expense-1")],
       mortgagePayments: [
         {
@@ -121,17 +121,6 @@ describe("portfolio dashboard summary", () => {
         },
       ],
       rentEvents: [
-        {
-          id: "charge-1",
-          propertyId: "property-1",
-          leaseId: null,
-          type: "charge",
-          date: "2026-01-01",
-          amount: 2400,
-          periodStart: "2026-01-01",
-          periodEnd: "2026-01-31",
-          memo: null,
-        },
         {
           id: "payment-1",
           propertyId: "property-1",
@@ -149,10 +138,10 @@ describe("portfolio dashboard summary", () => {
     const summary = buildPortfolioDashboard([property], 2026, 2026);
 
     expect(summary.totals).toEqual({
-      grossRentalIncome: 2520,
+      grossRentalIncome: 2120,
       paymentsReceived: 2000,
       deductibleExpenses: 1300,
-      netRecordedRentalIncome: 1220,
+      netRecordedRentalIncome: 820,
       incompleteTransactionCount: 0,
     });
     expect(summary.expenseCategories).toEqual([
@@ -184,14 +173,14 @@ describe("portfolio dashboard summary", () => {
       ledgerEntries: [parkingIncome],
       rentEvents: [
         {
-          id: "charge-1",
+          id: "payment-1",
           propertyId: "property-1",
           leaseId: null,
-          type: "charge",
-          date: "2026-01-01",
+          type: "payment",
+          date: "2026-01-05",
           amount: 2400,
-          periodStart: "2026-01-01",
-          periodEnd: "2026-01-31",
+          periodStart: null,
+          periodEnd: null,
           memo: null,
         },
       ],
@@ -298,14 +287,14 @@ describe("portfolio dashboard summary", () => {
       ],
       rentEvents: [
         {
-          id: "charge-2025",
+          id: "payment-2025",
           propertyId: "property-1",
           leaseId: null,
-          type: "charge",
-          date: "2025-03-01",
+          type: "payment",
+          date: "2025-03-05",
           amount: 1000,
-          periodStart: "2025-03-01",
-          periodEnd: "2025-03-31",
+          periodStart: null,
+          periodEnd: null,
           memo: null,
         },
       ],
@@ -323,14 +312,14 @@ describe("portfolio dashboard summary", () => {
       name: "Active Property",
       rentEvents: [
         {
-          id: "charge-1",
+          id: "payment-1",
           propertyId: "active",
           leaseId: null,
-          type: "charge",
-          date: "2026-01-01",
+          type: "payment",
+          date: "2026-01-05",
           amount: 1000,
-          periodStart: "2026-01-01",
-          periodEnd: "2026-01-31",
+          periodStart: null,
+          periodEnd: null,
           memo: null,
         },
       ],
@@ -341,14 +330,14 @@ describe("portfolio dashboard summary", () => {
       acquisitionDate: "2027-01-01",
       rentEvents: [
         {
-          id: "future-charge",
+          id: "future-payment",
           propertyId: "future",
           leaseId: null,
-          type: "charge",
-          date: "2027-01-01",
+          type: "payment",
+          date: "2027-01-05",
           amount: 9000,
-          periodStart: "2027-01-01",
-          periodEnd: "2027-01-31",
+          periodStart: null,
+          periodEnd: null,
           memo: null,
         },
       ],

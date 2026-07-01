@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { z } from "zod";
+import { MortgagePaymentsPanel } from "@/components/evidence-binder/allocation-controls";
 import {
   DeductionsAndIncomePanel,
   EvidenceBinderPanel,
@@ -31,7 +32,7 @@ import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import {
   RentActivityCard,
   RentActivityTools,
-  RentArrearsCard,
+  RentIncomeSummaryStrip,
   RentLedgerDetail,
 } from "@/components/rent-ledger/rent-ledger-detail";
 import { Badge } from "@/components/ui/badge";
@@ -125,7 +126,6 @@ export function PropertyWorkspaceDetail({
   onDeleteOwner,
   onCreateLease,
   onDeleteLease,
-  onGenerateRentCharges,
   onRecordRentEvent,
   onDeleteRentEvent,
   onAddLeaseDocument,
@@ -151,7 +151,6 @@ export function PropertyWorkspaceDetail({
   onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
   onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onGenerateRentCharges: (leaseId: string) => boolean | Promise<boolean>;
   onRecordRentEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
   onDeleteRentEvent: (rentEventId: string) => boolean | Promise<boolean>;
   onAddLeaseDocument: (
@@ -192,6 +191,28 @@ export function PropertyWorkspaceDetail({
           />
         </div>
       </section>
+      <section id="rent" className="scroll-mt-4">
+        <RentLedgerDetail
+          ledger={rentLedger}
+          year={year}
+          leaseError={leaseError}
+          eventError={rentEventError}
+          documentError={leaseDocumentError}
+          onCreateLease={onCreateLease}
+          onDeleteLease={onDeleteLease}
+          onRecordEvent={onRecordRentEvent}
+          onDeleteEvent={onDeleteRentEvent}
+          onAddLeaseDocument={onAddLeaseDocument}
+          showActivityTools={false}
+          showActivityTable={false}
+        />
+      </section>
+      <section id="mortgage-payments" className="scroll-mt-4">
+        <MortgagePaymentsPanel
+          propertyId={property.id}
+          payments={property.mortgagePayments}
+        />
+      </section>
       <section
         id="tax-activity"
         aria-labelledby="tax-activity-title"
@@ -205,9 +226,10 @@ export function PropertyWorkspaceDetail({
             Record taxable activity
           </h2>
           <p className="text-muted-foreground text-sm">
-            Rent items, arrears, deductions, and non-rent income for {year}.
+            Rent payments, deductions, and non-rent income for {year}.
           </p>
         </div>
+        <RentIncomeSummaryStrip ledger={rentLedger} year={year} />
         <div className="grid gap-4 xl:grid-cols-[minmax(21rem,0.42fr)_minmax(0,1fr)] xl:items-start">
           <RentActivityTools
             ledger={rentLedger}
@@ -216,7 +238,6 @@ export function PropertyWorkspaceDetail({
             onRecordEvent={onRecordRentEvent}
             onDeleteEvent={onDeleteRentEvent}
             showActivity={false}
-            showArrears={false}
           />
           <DeductionsAndIncomePanel
             property={property}
@@ -234,29 +255,9 @@ export function PropertyWorkspaceDetail({
             className="xl:col-span-2"
             onDeleteEvent={onDeleteRentEvent}
           />
-          <RentArrearsCard ledger={rentLedger} className="xl:col-span-2" />
         </div>
       </section>
-      <section id="rent" className="scroll-mt-4">
-        <RentLedgerDetail
-          ledger={rentLedger}
-          year={year}
-          leaseError={leaseError}
-          eventError={rentEventError}
-          documentError={leaseDocumentError}
-          onCreateLease={onCreateLease}
-          onDeleteLease={onDeleteLease}
-          onGenerateCharges={onGenerateRentCharges}
-          onRecordEvent={onRecordRentEvent}
-          onDeleteEvent={onDeleteRentEvent}
-          onAddLeaseDocument={onAddLeaseDocument}
-          showActivityTools={false}
-          showActivityTable={false}
-        />
-      </section>
-      <section id="transactions" className="scroll-mt-4">
-        <EvidenceBinderPanel property={property} />
-      </section>
+      <EvidenceBinderPanel property={property} />
     </>
   );
 }

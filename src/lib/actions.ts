@@ -33,11 +33,10 @@ import {
   type NewUnitInput,
   type OwnershipValidationIssue,
 } from "@/lib/property-workspace";
-import {
-  generateRentCharges,
-  type NewLeaseDocumentInput,
-  type NewLeaseInput,
-  type NewRentEventInput,
+import type {
+  NewLeaseDocumentInput,
+  NewLeaseInput,
+  NewRentEventInput,
 } from "@/lib/rent-ledger";
 
 // Server-side contract for a new property. A server action is a public
@@ -62,11 +61,32 @@ const newPropertySchema = z.object({
 });
 
 type LeaseMutationSuccess = { ok: true; propertyId: string };
-type RentChargeGenerationSuccess = {
-  ok: true;
-  propertyId: string;
-  insertedChargeCount: number;
-};
+const isoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => !Number.isNaN(new Date(value).getTime()));
+
+const rentPaymentInputSchema = z
+  .object({
+    type: z.literal("payment"),
+    leaseId: z.string().trim().min(1),
+    date: isoDateSchema,
+    amount: z.number().positive(),
+    memo: z
+      .string()
+      .trim()
+      .transform((value) => (value.length > 0 ? value : null))
+      .nullish(),
+  })
+  .transform(
+    (data): NewRentEventInput => ({
+      type: data.type,
+      leaseId: data.leaseId,
+      date: data.date,
+      amount: data.amount,
+      memo: data.memo ?? null,
+    }),
+  );
 
 export async function createProperty(
   input: NewPropertyInput,
@@ -264,7 +284,10 @@ export async function deleteLease(leaseId: string): Promise<ActionResult> {
       }
 
       const event = await db.query.rentEvents.findFirst({
-        where: eq(rentEvents.leaseId, leaseId),
+        where: and(
+          eq(rentEvents.leaseId, leaseId),
+          eq(rentEvents.type, "payment"),
+        ),
         columns: { id: true },
       });
 
@@ -272,7 +295,7 @@ export async function deleteLease(leaseId: string): Promise<ActionResult> {
         return {
           ok: false,
           error:
-            "Leases with rent ledger activity cannot be deleted. Delete the related charges, payments, credits, or write-offs first.",
+            "Leases with recorded rent payments cannot be deleted. Delete the related payments first.",
         };
       }
 
@@ -294,78 +317,6 @@ export async function deleteLease(leaseId: string): Promise<ActionResult> {
   );
 }
 
-/**
- * Materialize a lease's accrual schedule into `charge` rent events up to
- * `throughDate`. Charges are keyed by their period start, so re-running this
- * after the lease has already been charged only inserts the periods that are
- * still missing — generating twice never double-bills a month.
- */
-export async function generateLeaseCharges(
-  leaseId: string,
-  throughDate: string,
-): Promise<ActionResult> {
-  return runAction<RentChargeGenerationSuccess>(
-    "Rent charge generation mutation",
-    async () => {
-      // The lease's unit determines its property, so the charges inherit a
-      // propertyId that cannot disagree with the lease — no separate arg to mismatch.
-      const lease = await db.query.leases.findFirst({
-        where: eq(leases.id, leaseId),
-        with: { unit: { columns: { propertyId: true } } },
-      });
-
-      if (lease === undefined) {
-        return { ok: false, error: "That lease no longer exists." };
-      }
-
-      const propertyId = lease.unit.propertyId;
-
-      const existing = await db
-        .select({ periodStart: rentEvents.periodStart })
-        .from(rentEvents)
-        .where(
-          and(eq(rentEvents.leaseId, leaseId), eq(rentEvents.type, "charge")),
-        );
-      const chargedPeriods = new Set(
-        existing
-          .map((row) => row.periodStart)
-          .filter((start) => start !== null),
-      );
-
-      const newCharges = generateRentCharges(lease, throughDate).filter(
-        (charge) => !chargedPeriods.has(charge.periodStart),
-      );
-
-      const insertedChargeCount = newCharges.length;
-
-      if (insertedChargeCount === 0) {
-        return { ok: true, propertyId, insertedChargeCount };
-      }
-
-      await db.insert(rentEvents).values(
-        newCharges.map((charge) => ({
-          propertyId,
-          leaseId,
-          type: "charge" as const,
-          date: charge.date,
-          amount: charge.amount,
-          periodStart: charge.periodStart,
-          periodEnd: charge.periodEnd,
-        })),
-      );
-      return {
-        ok: true,
-        propertyId,
-        insertedChargeCount,
-      };
-    },
-    {
-      invalidate: ({ propertyId, insertedChargeCount }) =>
-        insertedChargeCount > 0 ? rentLedgerMutationCacheTags(propertyId) : [],
-    },
-  );
-}
-
 export async function recordRentEvent(
   propertyId: string,
   input: NewRentEventInput,
@@ -373,25 +324,29 @@ export async function recordRentEvent(
   return runAction(
     "Rent event mutation",
     async () => {
-      if (input.type === "other_income") {
+      const parsed = rentPaymentInputSchema.safeParse(input);
+
+      if (!parsed.success) {
         return {
           ok: false,
-          error:
-            "Record non-rent income as an income record so it can be categorized for tax.",
+          error: "Enter a valid rent payment before saving.",
         };
       }
 
-      // A charge, payment, credit, or write-off with no lease would vanish from
-      // every balance, so enforce the rule at the boundary rather than trusting
-      // callers.
-      if (input.leaseId === null) {
+      const lease = await db.query.leases.findFirst({
+        where: eq(leases.id, parsed.data.leaseId),
+        columns: { id: true },
+        with: { unit: { columns: { propertyId: true } } },
+      });
+
+      if (lease === undefined || lease.unit.propertyId !== propertyId) {
         return {
           ok: false,
-          error: "Select a lease for this rent ledger entry.",
+          error: "Select a lease for this rent payment.",
         };
       }
 
-      await db.insert(rentEvents).values({ propertyId, ...input });
+      await db.insert(rentEvents).values({ propertyId, ...parsed.data });
 
       return { ok: true };
     },

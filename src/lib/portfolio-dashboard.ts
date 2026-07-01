@@ -388,7 +388,9 @@ function getAvailableTaxYears(
   for (const property of properties) {
     years.add(Number(property.acquisitionDate.slice(0, 4)));
 
-    for (const event of property.rentEvents) {
+    for (const event of property.rentEvents.filter(
+      (candidate) => candidate.type === "payment",
+    )) {
       years.add(Number(event.date.slice(0, 4)));
     }
 

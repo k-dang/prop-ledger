@@ -149,7 +149,7 @@ function FinancialKpis({
     {
       label: "Gross rental income",
       value: totals.grossRentalIncome,
-      hint: "Income earned on an accrual basis",
+      hint: "Rent payments plus non-rent income",
       icon: BanknoteArrowUp,
       accent: toneChip.ready,
       // Uncategorized entries can be recorded income, so gross income is as
@@ -159,7 +159,7 @@ function FinancialKpis({
     {
       label: "Payments received",
       value: totals.paymentsReceived,
-      hint: "Rent cash received",
+      hint: "Tenant rent payments recorded",
       icon: WalletCards,
       accent: toneChip.info,
       incomplete: false,
@@ -410,7 +410,7 @@ function PropertyComparison({
               <TableHead>Property</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Gross income</TableHead>
-              <TableHead className="text-right">Payments</TableHead>
+              <TableHead className="text-right">Rent payments</TableHead>
               <TableHead className="text-right">Expenses</TableHead>
               <TableHead className="text-right">Net recorded</TableHead>
               <TableHead className="text-right">Exceptions</TableHead>

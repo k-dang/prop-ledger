@@ -69,7 +69,7 @@ export function buildYearEndPackageSnapshot({
   const { taxableManualIncome } = summarizeManualIncomeForTax(allocatedEntries);
 
   return {
-    version: 1,
+    version: 2,
     generatedAt,
     taxYear,
     scope: allocation.snapshotScope,
@@ -81,12 +81,8 @@ export function buildYearEndPackageSnapshot({
     ),
     ownerShareWorksheet: buildOwnerShareWorksheet(source, taxYear, scope),
     rentLedger: {
-      grossRent: rentSummary.grossRent,
-      otherIncome: rentSummary.otherIncome,
-      paymentsReceived: rentSummary.paymentsReceived,
-      credits: rentSummary.credits,
-      writeoffs: rentSummary.writeoffs,
-      arrearsAtYearEnd: rentSummary.arrearsAtYearEnd,
+      rentReceived: rentSummary.paymentsReceived,
+      paymentCount: rentSummary.paymentCount,
     },
     expenseDetail: buildExpenseDetail(source, entries, allocatedEntries),
     capitalAssetTransactions: buildCapitalTransactions(
@@ -153,7 +149,7 @@ function allocateEntry(
 
 function buildT776Summary(
   rent: ReturnType<typeof summarizeRentLedger>,
-  manualIncome: number,
+  nonRentIncome: number,
   expenseSummary: Map<T776Category, number>,
 ) {
   const expenses = T776_CATEGORIES.flatMap((category) => {
@@ -165,9 +161,8 @@ function buildT776Summary(
 
   return {
     grossRent: rent.grossRent,
-    otherRentalIncome: rent.otherIncome,
-    manualIncome,
-    totalIncome: round(rent.grossRentalIncome + manualIncome),
+    otherRentalIncome: nonRentIncome,
+    totalIncome: round(rent.grossRentalIncome + nonRentIncome),
     expenses,
     totalExpenses: round(expenses.reduce((sum, row) => sum + row.amount, 0)),
   };

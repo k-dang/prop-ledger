@@ -124,11 +124,11 @@ const property: YearEndPackageSource = {
       id: "rent-1",
       propertyId: "property-1",
       leaseId: "lease-1",
-      type: "charge",
-      date: "2026-01-01",
+      type: "payment",
+      date: "2026-01-05",
       amount: 24000,
-      periodStart: "2026-01-01",
-      periodEnd: "2026-12-31",
+      periodStart: null,
+      periodEnd: null,
       memo: null,
     },
   ],
@@ -186,7 +186,7 @@ describe("year-end package snapshots", () => {
     expect(golden(snapshot)).toEqual(fixture("year-end-owner"));
   });
 
-  it("adds non-rent manual income to rent-ledger income", () => {
+  it("adds non-rent income to received rent", () => {
     const snapshot = buildYearEndPackageSnapshot({
       source: property,
       taxYear: 2026,
@@ -194,7 +194,7 @@ describe("year-end package snapshots", () => {
       generatedAt: "2027-02-01T00:00:00.000Z",
     });
 
-    expect(snapshot.t776Summary.manualIncome).toBe(1000);
+    expect(snapshot.t776Summary.otherRentalIncome).toBe(1000);
     expect(snapshot.t776Summary.totalIncome).toBe(25000);
   });
 

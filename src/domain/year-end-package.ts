@@ -1,7 +1,7 @@
 import type { T776Category } from "./ledger-categories";
 
 export type YearEndPackageSnapshot = {
-  version: 1;
+  version: 2;
   generatedAt: string;
   taxYear: number;
   scope:
@@ -11,7 +11,6 @@ export type YearEndPackageSnapshot = {
   t776Summary: {
     grossRent: number;
     otherRentalIncome: number;
-    manualIncome: number;
     totalIncome: number;
     expenses: { category: T776Category; label: string; amount: number }[];
     totalExpenses: number;
@@ -22,12 +21,8 @@ export type YearEndPackageSnapshot = {
     periods: { from: string; to: string | null; percentage: number }[];
   }[];
   rentLedger: {
-    grossRent: number;
-    otherIncome: number;
-    paymentsReceived: number;
-    credits: number;
-    writeoffs: number;
-    arrearsAtYearEnd: number;
+    rentReceived: number;
+    paymentCount: number;
   };
   expenseDetail: {
     transactionId: string;

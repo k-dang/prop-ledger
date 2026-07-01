@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CalendarRange,
   FileText,
   type LucideIcon,
   Plus,
@@ -20,7 +19,6 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -47,13 +45,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { RENT_FREQUENCIES, type RentFrequency } from "@/db/schema";
 import {
-  RENT_FREQUENCIES,
-  type RentEventType,
-  type RentFrequency,
-} from "@/db/schema";
-import {
-  computeLeaseBalances,
   formatMoney,
   getLeaseDocuments,
   type Lease,
@@ -61,10 +54,8 @@ import {
   type NewLeaseInput,
   type NewRentEventInput,
   type RentLedger,
-  summarizeArrears,
   summarizeRentLedger,
 } from "@/lib/rent-ledger";
-import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 const FREQUENCY_LABELS: Record<RentFrequency, string> = {
@@ -72,22 +63,6 @@ const FREQUENCY_LABELS: Record<RentFrequency, string> = {
   biweekly: "Biweekly",
   weekly: "Weekly",
 };
-
-const EVENT_TYPE_LABELS: Record<RentEventType, string> = {
-  charge: "Rent charge",
-  payment: "Payment",
-  credit: "Credit",
-  writeoff: "Write-off",
-  other_income: "Other rent income",
-};
-
-const RENT_EVENT_FORM_TYPES = [
-  "charge",
-  "payment",
-  "credit",
-  "writeoff",
-] as const satisfies readonly RentEventType[];
-type RentEventFormType = (typeof RENT_EVENT_FORM_TYPES)[number];
 
 const leaseFormSchema = z
   .object({
@@ -111,7 +86,6 @@ const leaseFormSchema = z
 
 const rentEventFormSchema = z
   .object({
-    type: z.enum(RENT_EVENT_FORM_TYPES),
     leaseId: requiredFormString,
     date: requiredFormString,
     amount: finiteFormNumber,
@@ -119,7 +93,7 @@ const rentEventFormSchema = z
   })
   .transform(
     (data): NewRentEventInput => ({
-      type: data.type,
+      type: "payment",
       leaseId: data.leaseId,
       date: data.date,
       amount: data.amount,
@@ -141,7 +115,6 @@ export function RentLedgerDetail({
   documentError,
   onCreateLease,
   onDeleteLease,
-  onGenerateCharges,
   onRecordEvent,
   onDeleteEvent,
   onAddLeaseDocument,
@@ -155,7 +128,6 @@ export function RentLedgerDetail({
   documentError?: string;
   onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onGenerateCharges: (leaseId: string) => boolean | Promise<boolean>;
   onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
   onDeleteEvent: (rentEventId: string) => boolean | Promise<boolean>;
   onAddLeaseDocument: (
@@ -164,13 +136,10 @@ export function RentLedgerDetail({
   showActivityTools?: boolean;
   showActivityTable?: boolean;
 }) {
-  const summary = summarizeRentLedger(ledger.rentEvents, year);
-  const balances = computeLeaseBalances(ledger.rentEvents);
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
 
   return (
     <div className="grid gap-4">
-      <SummaryCard summary={summary} />
       <div
         className={cn(
           "grid gap-4",
@@ -179,13 +148,11 @@ export function RentLedgerDetail({
       >
         <LeasesPanel
           ledger={ledger}
-          balances={balances}
           unitLabels={unitLabels}
           leaseError={leaseError}
           documentError={documentError}
           onCreateLease={onCreateLease}
           onDeleteLease={onDeleteLease}
-          onGenerateCharges={onGenerateCharges}
           onAddLeaseDocument={onAddLeaseDocument}
         />
         {showActivityTools ? (
@@ -218,7 +185,6 @@ export function RentActivityTools({
   onDeleteEvent,
   className,
   showActivity = true,
-  showArrears = true,
 }: {
   ledger: RentLedger;
   year: number;
@@ -227,7 +193,6 @@ export function RentActivityTools({
   onDeleteEvent: (rentEventId: string) => boolean | Promise<boolean>;
   className?: string;
   showActivity?: boolean;
-  showArrears?: boolean;
 }) {
   return (
     <div className={cn("flex min-w-0 flex-col gap-4", className)}>
@@ -244,106 +209,86 @@ export function RentActivityTools({
           onDeleteEvent={onDeleteEvent}
         />
       ) : null}
-      {showArrears ? <RentArrearsCard ledger={ledger} /> : null}
     </div>
   );
 }
 
-export function RentArrearsCard({
+export function RentIncomeSummaryStrip({
   ledger,
+  year,
   className,
 }: {
   ledger: RentLedger;
+  year: number;
   className?: string;
 }) {
-  const arrears = summarizeArrears(ledger.leases, ledger.rentEvents);
-  const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
-
-  return (
-    <ArrearsPanel
-      arrears={arrears}
-      className={className}
-      unitLabels={unitLabels}
-    />
-  );
-}
-
-function SummaryCard({
-  summary,
-}: {
-  summary: ReturnType<typeof summarizeRentLedger>;
-}) {
+  const summary = summarizeRentLedger(ledger.rentEvents, year);
+  const payments = ledger.rentEvents
+    .filter(
+      (event) => event.type === "payment" && event.date.startsWith(`${year}-`),
+    )
+    .toSorted((a, b) => b.date.localeCompare(a.date));
+  const latestPayment = payments[0];
   const figures = [
-    { label: "Gross rent", value: summary.grossRent, hint: "Charges accrued" },
     {
-      label: "Other rent income",
-      value: summary.otherIncome,
-      hint: "Laundry, parking, fees",
+      label: "Rent received",
+      value: formatMoney(summary.paymentsReceived),
+      hint: `Gross rent for ${year}`,
     },
     {
-      label: "Payments received",
-      value: summary.paymentsReceived,
-      hint: "Cash applied",
+      label: "Payments recorded",
+      value: String(summary.paymentCount),
+      hint: "Saved rent payment records",
     },
-    { label: "Credits", value: summary.credits, hint: "Concessions" },
-    { label: "Write-offs", value: summary.writeoffs, hint: "Uncollectible" },
     {
-      label: "Arrears at year end",
-      value: summary.arrearsAtYearEnd,
-      hint: "Outstanding balance",
+      label: "Latest payment",
+      value:
+        latestPayment === undefined
+          ? "No payments"
+          : formatMoney(latestPayment.amount),
+      hint: latestPayment?.date ?? "Record payments as they are received",
     },
   ];
 
   return (
-    <Card className="rounded-md">
-      <CardHeader>
-        <CardTitle as="h2">Rental income</CardTitle>
-        <CardDescription>
-          Accrued rent, payments, credits, write-offs, and arrears for this tax
-          year.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {figures.map((figure) => (
-            <div
-              className="rounded-md border bg-background p-3"
-              key={figure.label}
-            >
-              <p className="text-muted-foreground text-xs">{figure.label}</p>
-              <p className="mt-1 font-semibold text-2xl">
-                {formatMoney(figure.value)}
-              </p>
-              <p className="mt-1 text-muted-foreground text-xs">
-                {figure.hint}
-              </p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div
+      className={cn(
+        "overflow-hidden rounded-md border bg-card text-card-foreground",
+        className,
+      )}
+    >
+      <dl className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        {figures.map((figure) => (
+          <div className="min-w-0 p-3" key={figure.label}>
+            <dt className="text-muted-foreground text-xs">{figure.label}</dt>
+            <dd className="mt-1 truncate font-semibold text-lg tabular-nums">
+              {figure.value}
+            </dd>
+            <dd className="mt-1 truncate text-muted-foreground text-xs">
+              {figure.hint}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
 function LeasesPanel({
   ledger,
-  balances,
   unitLabels,
   leaseError,
   documentError,
   onCreateLease,
   onDeleteLease,
-  onGenerateCharges,
   onAddLeaseDocument,
 }: {
   ledger: RentLedger;
-  balances: ReturnType<typeof computeLeaseBalances>;
   unitLabels: Map<string, string>;
   leaseError?: string;
   documentError?: string;
   onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onGenerateCharges: (leaseId: string) => boolean | Promise<boolean>;
   onAddLeaseDocument: (
     input: NewLeaseDocumentInput,
   ) => boolean | Promise<boolean>;
@@ -361,7 +306,7 @@ function LeasesPanel({
       <CardHeader>
         <CardTitle as="h2">Leases</CardTitle>
         <CardDescription>
-          Lease terms generate rent charges and keep arrears support.
+          Tenant, unit, rent amount, and lease documents for payment records.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -467,10 +412,8 @@ function LeasesPanel({
                 key={lease.id}
                 lease={lease}
                 unitLabel={unitLabels.get(lease.unitId) ?? "Unknown unit"}
-                balance={balances.get(lease.id)?.balance ?? 0}
                 documents={getLeaseDocuments(ledger.documents, lease.id)}
                 onDeleteLease={onDeleteLease}
-                onGenerateCharges={onGenerateCharges}
                 onAddLeaseDocument={onAddLeaseDocument}
               />
             ))}
@@ -484,23 +427,18 @@ function LeasesPanel({
 function LeaseCard({
   lease,
   unitLabel,
-  balance,
   documents,
   onDeleteLease,
-  onGenerateCharges,
   onAddLeaseDocument,
 }: {
   lease: Lease;
   unitLabel: string;
-  balance: number;
   documents: RentLedger["documents"];
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onGenerateCharges: (leaseId: string) => boolean | Promise<boolean>;
   onAddLeaseDocument: (
     input: NewLeaseDocumentInput,
   ) => boolean | Promise<boolean>;
 }) {
-  const [isGenerating, startGenerate] = useTransition();
   const [isDeleting, startDelete] = useTransition();
 
   const handleDocumentSubmit = createFormSubmit(
@@ -527,15 +465,6 @@ function LeaseCard({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className={cn(
-              "rounded-md",
-              balance > 0 ? toneSurface.blocked : toneSurface.ready,
-            )}
-          >
-            {balance > 0 ? `${formatMoney(balance)} owing` : "Paid up"}
-          </Badge>
           <Button
             type="button"
             variant="ghost"
@@ -545,7 +474,7 @@ function LeaseCard({
             onClick={() => {
               if (
                 window.confirm(
-                  `Delete the lease for ${lease.tenantName}? This is only allowed before rent ledger activity is recorded.`,
+                  `Delete the lease for ${lease.tenantName}? Recorded rent payments must be deleted first.`,
                 )
               ) {
                 startDelete(() => void onDeleteLease(lease.id));
@@ -555,21 +484,6 @@ function LeaseCard({
             <Trash2 aria-hidden="true" />
           </Button>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={isGenerating}
-          onClick={() => startGenerate(() => void onGenerateCharges(lease.id))}
-        >
-          <CalendarRange data-icon="inline-start" />
-          Generate charges
-        </Button>
-        <span className="text-muted-foreground text-xs">
-          Accrues monthly rent through year end.
-        </span>
       </div>
       <Separator />
       <div className="grid gap-2">
@@ -652,7 +566,6 @@ function RentEventPanel({
   error?: string;
   onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
 }) {
-  const [eventType, setEventType] = useState<RentEventFormType>("payment");
   const [selectedLeaseId, setSelectedLeaseId] = useState("");
   const hasLeases = leases.length > 0;
   const selectedLeaseLabel =
@@ -663,38 +576,14 @@ function RentEventPanel({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle as="h2">Record rent item</CardTitle>
+        <CardTitle as="h2">Record rent payment</CardTitle>
         <CardDescription>
-          Use this only for tenant rent balances: charges, payments, credits,
-          and write-offs.
+          Record the rent amount received during the selected tax year.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <form className="grid gap-3" onSubmit={handleSubmit}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="event-type">Type</FieldLabel>
-              <Select
-                name="type"
-                value={eventType}
-                onValueChange={(value) => {
-                  setEventType(value as RentEventFormType);
-                }}
-              >
-                <SelectTrigger id="event-type" className="w-full">
-                  <span className="flex flex-1 text-left">
-                    {EVENT_TYPE_LABELS[eventType]}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {RENT_EVENT_FORM_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {EVENT_TYPE_LABELS[type]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <Field>
               <FieldLabel htmlFor="event-lease">Lease</FieldLabel>
               <Select
@@ -749,60 +638,11 @@ function RentEventPanel({
           <div className="flex justify-end">
             <Button type="submit" disabled={selectedLeaseId === ""}>
               <Plus data-icon="inline-start" />
-              Record rent item
+              Record payment
             </Button>
           </div>
         </form>
         <FormErrorAlert message={error} />
-      </CardContent>
-    </Card>
-  );
-}
-
-function ArrearsPanel({
-  arrears,
-  unitLabels,
-  className,
-}: {
-  arrears: ReturnType<typeof summarizeArrears>;
-  unitLabels: Map<string, string>;
-  className?: string;
-}) {
-  const outstanding = arrears.filter((row) => row.balance > 0);
-
-  return (
-    <Card className={cn("rounded-md", className)}>
-      <CardHeader>
-        <CardTitle as="h2">Arrears</CardTitle>
-        <CardDescription>Outstanding rent by tenant and unit.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {outstanding.length === 0 ? (
-          <EmptyState icon={Receipt}>No outstanding arrears.</EmptyState>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {outstanding.map((row) => (
-                <TableRow key={row.leaseId}>
-                  <TableCell>{row.tenantName}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {unitLabels.get(row.unitId) ?? "Unknown unit"}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatMoney(row.balance)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
       </CardContent>
     </Card>
   );
@@ -830,18 +670,18 @@ export function RentActivityCard({
     ]),
   );
   const events = ledger.rentEvents
-    .filter((event) => event.date.startsWith(`${year}-`))
+    .filter(
+      (event) => event.type === "payment" && event.date.startsWith(`${year}-`),
+    )
     .toSorted((a, b) => b.date.localeCompare(a.date));
 
   const description =
     variant === "compact"
-      ? "Records created from the rent form."
-      : `Saved rental income records for ${year}, newest first.`;
+      ? "Recent rent payments for this tax year."
+      : `Saved rent payments for ${year}, newest first.`;
   const handleDelete = (rentEventId: string) => {
     if (
-      window.confirm(
-        "Delete this rent ledger entry? This will update rent totals and arrears.",
-      )
+      window.confirm("Delete this rent payment? This will update rent totals.")
     ) {
       startDelete(() => void onDeleteEvent(rentEventId));
     }
@@ -850,13 +690,13 @@ export function RentActivityCard({
   return (
     <Card className={cn("rounded-md", className)}>
       <CardHeader>
-        <CardTitle as="h2">Rent activity</CardTitle>
+        <CardTitle as="h2">Rent payments</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
           <EmptyState icon={Receipt}>
-            No rent activity recorded for {year}.
+            No rent payments recorded for {year}.
           </EmptyState>
         ) : variant === "compact" ? (
           <ul className="grid gap-2">
@@ -867,13 +707,13 @@ export function RentActivityCard({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <Badge variant="outline" className="rounded-md">
-                      {EVENT_TYPE_LABELS[event.type]}
-                    </Badge>
-                    <p className="mt-1 truncate text-muted-foreground text-xs">
+                    <p className="truncate font-medium text-sm">
                       {event.leaseId
                         ? (tenantByLease.get(event.leaseId) ?? "-")
                         : "Property-level"}
+                    </p>
+                    <p className="mt-1 text-muted-foreground text-xs">
+                      {event.date}
                     </p>
                   </div>
                   <span className="shrink-0 font-medium tabular-nums text-sm">
@@ -883,7 +723,7 @@ export function RentActivityCard({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label={`Delete ${EVENT_TYPE_LABELS[event.type]} from ${event.date}`}
+                    aria-label={`Delete rent payment from ${event.date}`}
                     disabled={isDeleting}
                     onClick={() => {
                       handleDelete(event.id);
@@ -893,12 +733,7 @@ export function RentActivityCard({
                   </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
-                  <span>{event.date}</span>
-                  <span>
-                    {event.periodStart && event.periodEnd
-                      ? `${event.periodStart} - ${event.periodEnd}`
-                      : "No period"}
-                  </span>
+                  <span>{event.memo ?? "No memo"}</span>
                 </div>
               </li>
             ))}
@@ -908,9 +743,8 @@ export function RentActivityCard({
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Tenant / unit</TableHead>
-                <TableHead>Period</TableHead>
+                <TableHead>Memo</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -921,20 +755,13 @@ export function RentActivityCard({
               {events.map((event) => (
                 <TableRow key={event.id}>
                   <TableCell>{event.date}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="rounded-md">
-                      {EVENT_TYPE_LABELS[event.type]}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {event.leaseId
                       ? (tenantByLease.get(event.leaseId) ?? "—")
                       : "Property-level"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {event.periodStart && event.periodEnd
-                      ? `${event.periodStart} – ${event.periodEnd}`
-                      : "—"}
+                    {event.memo ?? "—"}
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatMoney(event.amount)}
@@ -944,7 +771,7 @@ export function RentActivityCard({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      aria-label={`Delete ${EVENT_TYPE_LABELS[event.type]} from ${event.date}`}
+                      aria-label={`Delete rent payment from ${event.date}`}
                       disabled={isDeleting}
                       onClick={() => {
                         handleDelete(event.id);
