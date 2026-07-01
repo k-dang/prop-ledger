@@ -35,11 +35,16 @@ import {
   RentIncomeSummaryStrip,
   RentLedgerDetail,
 } from "@/components/rent-ledger/rent-ledger-detail";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -107,6 +112,16 @@ const ownerFormSchema = z
       effectiveTo: data.effectiveTo,
     }),
   );
+
+type SetupSectionProps = {
+  property: RentalProperty;
+  unitError?: string;
+  ownerError?: string;
+  onAddUnit: (input: NewUnitInput) => boolean | Promise<boolean>;
+  onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
+  onAddOwner: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
+  onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
+};
 
 export function PropertyWorkspaceDetail({
   property,
@@ -176,20 +191,15 @@ export function PropertyWorkspaceDetail({
           readiness={readiness}
           year={year}
         />
-        <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
-          <UnitsPanel
-            property={property}
-            error={unitError}
-            onSubmit={onAddUnit}
-            onDeleteUnit={onDeleteUnit}
-          />
-          <OwnershipPanel
-            property={property}
-            error={ownerError}
-            onSubmit={onAddOwner}
-            onDeleteOwner={onDeleteOwner}
-          />
-        </div>
+        <SetupSection
+          property={property}
+          unitError={unitError}
+          ownerError={ownerError}
+          onAddUnit={onAddUnit}
+          onDeleteUnit={onDeleteUnit}
+          onAddOwner={onAddOwner}
+          onDeleteOwner={onDeleteOwner}
+        />
       </section>
       <section id="rent" className="scroll-mt-4">
         <RentLedgerDetail
@@ -260,6 +270,390 @@ export function PropertyWorkspaceDetail({
       <EvidenceBinderPanel property={property} />
     </>
   );
+}
+
+function SetupSection({
+  property,
+  unitError,
+  ownerError,
+  onAddUnit,
+  onDeleteUnit,
+  onAddOwner,
+  onDeleteOwner,
+}: SetupSectionProps) {
+  const hasUnits = property.units.length > 0;
+  const hasOwners = getOwnershipHistory(property).length > 0;
+  const complete = hasUnits && hasOwners;
+  const summary = `${pluralize(property.units.length, "unit")} · ${pluralize(
+    property.owners.length,
+    "owner",
+  )}`;
+
+  return (
+    <Card className="rounded-md py-0">
+      <Accordion defaultValue={complete ? [] : ["setup"]}>
+        <AccordionItem value="setup" className="border-b-0">
+          <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
+              {complete ? (
+                <CheckCircle2
+                  className="size-4 shrink-0 text-ready"
+                  aria-hidden="true"
+                />
+              ) : (
+                <CircleDot
+                  className="size-4 shrink-0 text-review"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="font-medium text-sm">Property setup</span>
+              <Badge variant="outline" className="rounded-md tabular-nums">
+                {summary}
+              </Badge>
+              {complete ? (
+                <span className="ml-auto hidden text-muted-foreground text-xs sm:inline">
+                  Complete - edit anytime
+                </span>
+              ) : null}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4">
+            <div className="grid gap-6 border-t pt-4 md:grid-cols-2">
+              <SetupSubsection
+                title="Units"
+                description="Rental spaces under this property."
+                action={<AddUnitSheet error={unitError} onSubmit={onAddUnit} />}
+                error={unitError}
+                empty={
+                  hasUnits ? null : (
+                    <EmptyState icon={Home}>No units recorded yet.</EmptyState>
+                  )
+                }
+              >
+                {hasUnits ? (
+                  <UnitsTable property={property} onDeleteUnit={onDeleteUnit} />
+                ) : null}
+              </SetupSubsection>
+              <SetupSubsection
+                title="Ownership history"
+                description="Effective-dated shares."
+                action={
+                  <AddOwnerSheet
+                    acquisitionDate={property.acquisitionDate}
+                    error={ownerError}
+                    onSubmit={onAddOwner}
+                  />
+                }
+                error={ownerError}
+                empty={
+                  hasOwners ? null : (
+                    <EmptyState icon={Users}>
+                      No ownership periods recorded yet.
+                    </EmptyState>
+                  )
+                }
+              >
+                {hasOwners ? (
+                  <OwnersTable
+                    property={property}
+                    onDeleteOwner={onDeleteOwner}
+                  />
+                ) : null}
+              </SetupSubsection>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </Card>
+  );
+}
+
+function AddUnitSheet({
+  error,
+  onSubmit,
+}: {
+  error?: string;
+  onSubmit: (input: NewUnitInput) => boolean | Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const handleSubmit = createFormSubmit(unitFormSchema, async (input) => {
+    const saved = await onSubmit(input);
+
+    if (saved) {
+      setOpen(false);
+    }
+
+    return saved;
+  });
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <Button type="button" onClick={() => setOpen(true)}>
+        <Plus data-icon="inline-start" />
+        Add unit
+      </Button>
+      <SheetContent className="overflow-y-auto sm:max-w-lg">
+        <SheetHeader className="border-b pr-12">
+          <SheetTitle>Add unit</SheetTitle>
+          <SheetDescription>
+            A rental space under this property.
+          </SheetDescription>
+        </SheetHeader>
+        <form className="grid gap-4 px-4 pb-4" onSubmit={handleSubmit}>
+          <FormErrorAlert message={error} />
+          <Field>
+            <FieldLabel htmlFor="unitLabel">Unit label</FieldLabel>
+            <Input id="unitLabel" name="unitLabel" required />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="unitType">Unit type</FieldLabel>
+            <Input
+              id="unitType"
+              name="unitType"
+              required
+              defaultValue="Apartment"
+            />
+          </Field>
+          <Button type="submit" className="justify-self-start">
+            <Plus data-icon="inline-start" />
+            Add unit
+          </Button>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function AddOwnerSheet({
+  acquisitionDate,
+  error,
+  onSubmit,
+}: {
+  acquisitionDate: string;
+  error?: string;
+  onSubmit: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const handleSubmit = createFormSubmit(ownerFormSchema, async (input) => {
+    const saved = await onSubmit(input);
+
+    if (saved) {
+      setOpen(false);
+    }
+
+    return saved;
+  });
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <Button type="button" onClick={() => setOpen(true)}>
+        <Plus data-icon="inline-start" />
+        Add owner
+      </Button>
+      <SheetContent className="overflow-y-auto sm:max-w-lg">
+        <SheetHeader className="border-b pr-12">
+          <SheetTitle>Add owner</SheetTitle>
+          <SheetDescription>
+            Add an owner and the effective-dated share for this property.
+          </SheetDescription>
+        </SheetHeader>
+        <form className="grid gap-4 px-4 pb-4" onSubmit={handleSubmit}>
+          <FormErrorAlert message={error} />
+          <Field>
+            <FieldLabel htmlFor="ownerName">Owner name</FieldLabel>
+            <Input id="ownerName" name="ownerName" required />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="ownerPercentage">Share %</FieldLabel>
+            <Input
+              id="ownerPercentage"
+              name="percentage"
+              type="number"
+              min="0.01"
+              max="100"
+              step="0.01"
+              required
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="ownerEffectiveFrom">
+                Effective from
+              </FieldLabel>
+              <DatePickerField
+                id="ownerEffectiveFrom"
+                name="effectiveFrom"
+                defaultValue={acquisitionDate}
+                required
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="ownerEffectiveTo">Effective to</FieldLabel>
+              <DatePickerField id="ownerEffectiveTo" name="effectiveTo" />
+            </Field>
+          </div>
+          <Button type="submit" className="justify-self-start">
+            <Plus data-icon="inline-start" />
+            Add owner
+          </Button>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SetupSubsection({
+  title,
+  description,
+  action,
+  error,
+  empty,
+  children,
+}: {
+  title: string;
+  description: string;
+  action: ReactNode;
+  error?: string;
+  empty: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="grid content-start gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-medium text-sm">{title}</h3>
+          <p className="text-muted-foreground text-xs">{description}</p>
+        </div>
+        {action}
+      </div>
+      <FormErrorAlert message={error} />
+      {empty}
+      {children}
+    </section>
+  );
+}
+
+function UnitsTable({
+  property,
+  onDeleteUnit,
+}: {
+  property: RentalProperty;
+  onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
+}) {
+  function handleDelete(unitId: string, label: string) {
+    if (!window.confirm(`Delete unit "${label}"?`)) {
+      return;
+    }
+
+    void onDeleteUnit(unitId);
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Unit</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead className="text-right">Action</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {property.units.map((unit) => (
+          <TableRow key={unit.id}>
+            <TableCell>{unit.label}</TableCell>
+            <TableCell>{unit.unitType}</TableCell>
+            <TableCell className="text-right">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md px-2 text-blocked"
+                onClick={() => handleDelete(unit.id, unit.label)}
+              >
+                <Trash2 data-icon="inline-start" />
+                Delete
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function OwnersTable({
+  property,
+  onDeleteOwner,
+}: {
+  property: RentalProperty;
+  onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
+}) {
+  const history = getOwnershipHistory(property);
+
+  function handleDelete(ownerId: string, ownerName: string) {
+    if (
+      !window.confirm(
+        `Delete owner "${ownerName}" and their ownership periods?`,
+      )
+    ) {
+      return;
+    }
+
+    void onDeleteOwner(ownerId);
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Owner</TableHead>
+          <TableHead>Share</TableHead>
+          <TableHead>Effective dates</TableHead>
+          <TableHead className="text-right">Action</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {history.map((period) => (
+          <TableRow key={period.id}>
+            <TableCell>{period.ownerName}</TableCell>
+            <TableCell>{period.percentageLabel}</TableCell>
+            <TableCell>{period.dateRange}</TableCell>
+            <TableCell className="text-right">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-md px-2 text-blocked"
+                onClick={() => handleDelete(period.ownerId, period.ownerName)}
+              >
+                <Trash2 data-icon="inline-start" />
+                Delete
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  children,
+}: {
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/40 p-3 text-muted-foreground text-sm">
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function pluralize(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function PropertySetupOverview({
@@ -461,274 +855,4 @@ function formatSetupStatus(
   }
 
   return "Needs review";
-}
-
-function UnitsPanel({
-  property,
-  error,
-  onSubmit,
-  onDeleteUnit,
-}: {
-  property: RentalProperty;
-  error?: string;
-  onSubmit: (input: NewUnitInput) => boolean | Promise<boolean>;
-  onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
-}) {
-  const handleSubmit = createFormSubmit(unitFormSchema, onSubmit);
-
-  function handleDelete(unitId: string, label: string) {
-    if (!window.confirm(`Delete unit "${label}"?`)) {
-      return;
-    }
-
-    void onDeleteUnit(unitId);
-  }
-
-  return (
-    <Card className="rounded-md">
-      <CardHeader>
-        <CardTitle as="h2">Units</CardTitle>
-        <CardDescription>Rental spaces under this property.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <form
-          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
-          onSubmit={handleSubmit}
-        >
-          <Field>
-            <FieldLabel htmlFor="unitLabel">Unit label</FieldLabel>
-            <Input id="unitLabel" name="unitLabel" required />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="unitType">Unit type</FieldLabel>
-            <Input
-              id="unitType"
-              name="unitType"
-              required
-              defaultValue="Apartment"
-            />
-          </Field>
-          <div className="flex items-end">
-            <Button type="submit" className="w-full sm:w-auto">
-              <Plus data-icon="inline-start" />
-              Add
-            </Button>
-          </div>
-        </form>
-        <FormErrorAlert message={error} />
-        {property.units.length === 0 ? (
-          <EmptyState icon={Home}>No units recorded.</EmptyState>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Unit</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {property.units.map((unit) => (
-                <TableRow key={unit.id}>
-                  <TableCell>{unit.label}</TableCell>
-                  <TableCell>{unit.unitType}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 rounded-md px-2 text-blocked"
-                      onClick={() => {
-                        handleDelete(unit.id, unit.label);
-                      }}
-                    >
-                      <Trash2 data-icon="inline-start" />
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function AddOwnerSheet({
-  acquisitionDate,
-  error,
-  onSubmit,
-}: {
-  acquisitionDate: string;
-  error?: string;
-  onSubmit: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
-}) {
-  const [open, setOpen] = useState(false);
-  const handleSubmit = createFormSubmit(ownerFormSchema, async (input) => {
-    const saved = await onSubmit(input);
-
-    if (saved) {
-      setOpen(false);
-    }
-
-    return saved;
-  });
-
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <Button type="button" onClick={() => setOpen(true)}>
-        <Plus data-icon="inline-start" />
-        Add owner
-      </Button>
-      <SheetContent className="overflow-y-auto sm:max-w-lg">
-        <SheetHeader className="border-b pr-12">
-          <SheetTitle>Add owner</SheetTitle>
-          <SheetDescription>
-            Add an owner and the effective-dated share for this property.
-          </SheetDescription>
-        </SheetHeader>
-        <form className="grid gap-4 px-4 pb-4" onSubmit={handleSubmit}>
-          <FormErrorAlert message={error} />
-          <Field>
-            <FieldLabel htmlFor="ownerName">Owner name</FieldLabel>
-            <Input id="ownerName" name="ownerName" required />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="ownerPercentage">Share %</FieldLabel>
-            <Input
-              id="ownerPercentage"
-              name="percentage"
-              type="number"
-              min="0.01"
-              max="100"
-              step="0.01"
-              required
-            />
-          </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="ownerEffectiveFrom">
-                Effective from
-              </FieldLabel>
-              <DatePickerField
-                id="ownerEffectiveFrom"
-                name="effectiveFrom"
-                defaultValue={acquisitionDate}
-                required
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="ownerEffectiveTo">Effective to</FieldLabel>
-              <DatePickerField id="ownerEffectiveTo" name="effectiveTo" />
-            </Field>
-          </div>
-          <Button type="submit" className="justify-self-start">
-            <Plus data-icon="inline-start" />
-            Add owner
-          </Button>
-        </form>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function OwnershipPanel({
-  property,
-  error,
-  onSubmit,
-  onDeleteOwner,
-}: {
-  property: RentalProperty;
-  error?: string;
-  onSubmit: (input: NewOwnerWithOwnershipInput) => boolean | Promise<boolean>;
-  onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
-}) {
-  const history = getOwnershipHistory(property);
-
-  function handleDelete(ownerId: string, ownerName: string) {
-    if (
-      !window.confirm(
-        `Delete owner "${ownerName}" and their ownership periods?`,
-      )
-    ) {
-      return;
-    }
-
-    void onDeleteOwner(ownerId);
-  }
-
-  return (
-    <Card className="rounded-md">
-      <CardHeader>
-        <div>
-          <CardTitle as="h2">Ownership history</CardTitle>
-          <CardDescription>Effective-dated shares.</CardDescription>
-        </div>
-        <CardAction>
-          <AddOwnerSheet
-            acquisitionDate={property.acquisitionDate}
-            error={error}
-            onSubmit={onSubmit}
-          />
-        </CardAction>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <FormErrorAlert message={error} />
-        {history.length === 0 ? (
-          <EmptyState icon={Users}>No ownership periods recorded.</EmptyState>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Owner</TableHead>
-                <TableHead>Share</TableHead>
-                <TableHead>Effective dates</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.map((period) => (
-                <TableRow key={period.id}>
-                  <TableCell>{period.ownerName}</TableCell>
-                  <TableCell>{period.percentageLabel}</TableCell>
-                  <TableCell>{period.dateRange}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 rounded-md px-2 text-blocked"
-                      onClick={() => {
-                        handleDelete(period.ownerId, period.ownerName);
-                      }}
-                    >
-                      <Trash2 data-icon="inline-start" />
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function EmptyState({
-  icon: Icon,
-  children,
-}: {
-  icon: LucideIcon;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/40 p-3 text-muted-foreground text-sm">
-      <Icon className="size-4 shrink-0" aria-hidden="true" />
-      <span>{children}</span>
-    </div>
-  );
 }
