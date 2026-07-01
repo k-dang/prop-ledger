@@ -64,6 +64,13 @@
       "when": 1782875440618,
       "tag": "0008_dry_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782946758424,
+      "tag": "0009_petite_titania",
+      "breakpoints": true
     }
   ]
 }

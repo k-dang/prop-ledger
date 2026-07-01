@@ -95,7 +95,6 @@ const property: YearEndPackageSource = {
       principal: 1800,
       interest: 1200,
       fees: 0,
-      memo: null,
     },
   ],
   documents: [

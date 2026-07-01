@@ -371,7 +371,6 @@ const mortgagePaymentFormSchema = z
     principal: optionalFormString,
     interest: optionalFormString,
     fees: optionalFormString,
-    memo: optionalFormString,
   })
   .transform(
     (data): NewMortgagePaymentInput => ({
@@ -381,7 +380,6 @@ const mortgagePaymentFormSchema = z
       principal: data.principal !== undefined ? Number(data.principal) : null,
       interest: data.interest !== undefined ? Number(data.interest) : null,
       fees: data.fees !== undefined ? Number(data.fees) : null,
-      memo: data.memo ?? null,
     }),
   );
 
@@ -443,9 +441,6 @@ export function MortgagePaymentsPanel({
                     <TableCell>{payment.date}</TableCell>
                     <TableCell>
                       <div className="font-medium">{payment.lender}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {payment.memo ?? "No notes"}
-                      </div>
                     </TableCell>
                     <TableCell>{formatMoney(payment.totalAmount)}</TableCell>
                     <TableCell>
@@ -525,7 +520,6 @@ function MortgagePaymentForm({
   const [principal, setPrincipal] = useState("");
   const [interest, setInterest] = useState("");
   const [fees, setFees] = useState("");
-  const [memo, setMemo] = useState("");
   const total = Number(totalAmount) || 0;
   const allocated =
     (Number(principal) || 0) + (Number(interest) || 0) + (Number(fees) || 0);
@@ -533,6 +527,11 @@ function MortgagePaymentForm({
   const remaining = total - allocated;
   const isBalanced =
     totalAmount !== "" && hasBreakdown && Math.round(remaining * 100) === 0;
+  const canSubmit =
+    date.trim() !== "" &&
+    lender.trim() !== "" &&
+    totalAmount.trim() !== "" &&
+    Number(totalAmount) > 0;
   const balanceTone =
     totalAmount === "" || !hasBreakdown
       ? "text-muted-foreground"
@@ -552,7 +551,6 @@ function MortgagePaymentForm({
         setPrincipal("");
         setInterest("");
         setFees("");
-        setMemo("");
       }
 
       return result.ok;
@@ -569,7 +567,6 @@ function MortgagePaymentForm({
     setPrincipal(formatOptionalFormAmount(latestPayment.principal));
     setInterest(formatOptionalFormAmount(latestPayment.interest));
     setFees(formatOptionalFormAmount(latestPayment.fees));
-    setMemo(latestPayment.memo ?? "");
     onErrorChange(undefined);
   }
 
@@ -598,10 +595,6 @@ function MortgagePaymentForm({
               Use last payment
             </Button>
           ) : null}
-          <Button type="submit" className="rounded-md">
-            <Plus data-icon="inline-start" />
-            Add payment
-          </Button>
         </div>
       </div>
 
@@ -716,18 +709,12 @@ function MortgagePaymentForm({
         </div>
       </div>
 
-      <Field>
-        <FieldLabel htmlFor="mortgage-memo">Notes</FieldLabel>
-        <Input
-          id="mortgage-memo"
-          name="memo"
-          placeholder="Optional support note"
-          value={memo}
-          onChange={(event) => {
-            setMemo(event.target.value);
-          }}
-        />
-      </Field>
+      <div className="flex justify-end border-t pt-3">
+        <Button type="submit" className="rounded-md" disabled={!canSubmit}>
+          <Plus data-icon="inline-start" />
+          Add payment
+        </Button>
+      </div>
     </form>
   );
 }

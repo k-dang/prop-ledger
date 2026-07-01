@@ -117,7 +117,6 @@ describe("portfolio dashboard summary", () => {
           principal: 1100,
           interest: 500,
           fees: null,
-          memo: null,
         },
       ],
       rentEvents: [
@@ -282,7 +281,6 @@ describe("portfolio dashboard summary", () => {
           principal: 100,
           interest: 0,
           fees: null,
-          memo: null,
         },
       ],
       rentEvents: [

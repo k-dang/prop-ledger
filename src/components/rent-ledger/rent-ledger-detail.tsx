@@ -316,10 +316,7 @@ function LeasesPanel({
   const openEndedLeaseCount = ledger.leases.filter(
     (lease) => lease.endDate === null,
   ).length;
-  const summary = `${pluralize(ledger.leases.length, "lease")} · ${pluralize(
-    openEndedLeaseCount,
-    "open-ended",
-  )} · ${pluralize(linkedDocumentCount, "document")}`;
+  const summary = `${pluralize(ledger.leases.length, "lease")} · ${openEndedLeaseCount} open-ended · ${pluralize(linkedDocumentCount, "document")}`;
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [rentFrequency, setRentFrequency] = useState<RentFrequency>("monthly");
   const selectedUnitLabel =
@@ -329,6 +326,7 @@ function LeasesPanel({
 
   return (
     <Card className="rounded-md py-0">
+      <h2 className="sr-only">Leases</h2>
       <Accordion defaultValue={shouldOpen ? ["leases"] : []}>
         <AccordionItem value="leases" className="border-b-0">
           <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
@@ -345,12 +343,10 @@ function LeasesPanel({
                 />
               )}
               <div className="min-w-0">
-                <CardTitle as="h2" className="text-sm">
-                  Leases
-                </CardTitle>
-                <CardDescription className="truncate text-xs">
+                <span className="block font-medium text-sm">Leases</span>
+                <span className="block truncate text-muted-foreground text-xs">
                   Tenant, unit, rent amount, and lease evidence.
-                </CardDescription>
+                </span>
               </div>
               <span className="ml-auto hidden shrink-0 text-muted-foreground text-xs tabular-nums sm:inline">
                 {summary}
@@ -358,7 +354,7 @@ function LeasesPanel({
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-4">
-            <CardContent className="grid gap-4 border-t px-0 pt-4">
+            <div className="grid gap-4 border-t pt-4">
               <form className="grid gap-3" onSubmit={handleSubmit}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field>
@@ -474,7 +470,7 @@ function LeasesPanel({
                   ))}
                 </div>
               )}
-            </CardContent>
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

@@ -19,7 +19,6 @@ function makePayment(
     principal: 1000,
     interest: 450,
     fees: 50,
-    memo: null,
     ...payment,
   };
 }

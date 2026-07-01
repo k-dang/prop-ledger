@@ -215,7 +215,7 @@ export function DeductionsAndIncomePanel({
       <CardContent className="grid gap-4">
         <FormErrorAlert message={error} />
         <FormErrorAlert message={evidenceError} />
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="grid overflow-hidden rounded-md border bg-muted/30 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x">
           <SummaryMetric
             label="Records"
             value={property.ledgerEntries.length}
@@ -548,7 +548,7 @@ function SummaryMetric({
   value: string | number;
 }) {
   return (
-    <div className="rounded-md border bg-background p-3">
+    <div className="min-w-0 p-3">
       <p className="text-muted-foreground text-xs">{label}</p>
       <p className="mt-1 font-semibold text-lg">{value}</p>
     </div>

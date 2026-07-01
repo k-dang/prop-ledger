@@ -161,7 +161,6 @@ describe("mortgage interest in expense totals", () => {
           principal: 1000,
           interest: 450,
           fees: 50,
-          memo: null,
         },
       ],
     );
