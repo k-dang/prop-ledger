@@ -9,8 +9,8 @@ import { getPortfolio } from "@/db/queries";
 import { getEntryIssues } from "@/lib/evidence-binder";
 
 export const metadata = {
-  title: "Transactions | Rental Property Workspace",
-  description: "Manual transaction review across rental properties.",
+  title: "Review | Rental Property Workspace",
+  description: "Tax record review across rental properties.",
 };
 
 export default function TransactionsPage() {

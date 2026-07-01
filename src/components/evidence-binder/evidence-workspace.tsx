@@ -27,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -50,14 +49,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   createEmptyManualTransactionDraft,
   formatLedgerCategory,
@@ -110,99 +101,63 @@ const currencyFormatter = new Intl.NumberFormat("en-CA", {
 
 export function EvidenceBinderPanel({
   property,
-  transactionError,
-  documentError,
-  onCreateManualTransaction,
-  onDeleteManualTransaction,
-  onUploadTransactionEvidence,
-  onDeleteEvidenceDocument,
 }: {
   property: RentalProperty;
-  transactionError?: string;
-  documentError?: string;
-  onCreateManualTransaction: (
-    input: NewManualTransactionInput,
-  ) => boolean | Promise<boolean>;
-  onDeleteManualTransaction: (
-    transactionId: string,
-  ) => boolean | Promise<boolean>;
-  onUploadTransactionEvidence: (
-    transactionId: string,
-    formData: FormData,
-  ) => boolean | Promise<boolean>;
-  onDeleteEvidenceDocument: (documentId: string) => boolean | Promise<boolean>;
 }) {
   const exceptions = getEvidenceExceptionCounts({
     ledgerEntries: property.ledgerEntries,
     documents: property.documents,
   });
+  const hasOpenReview =
+    exceptions.uncategorizedTransactions > 0 || exceptions.missingReceipts > 0;
 
   return (
     <div className="grid gap-4">
-      <Card className="rounded-md">
-        <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
-          <div>
-            <CardTitle as="h2">Tax transactions and evidence</CardTitle>
-            <CardDescription>
-              Tax transactions, source documents, and open review exceptions.
-            </CardDescription>
-          </div>
-          <CardAction className="flex flex-wrap gap-2">
-            <Link
-              href="/transactions"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "rounded-md",
-              )}
-            >
-              <Receipt data-icon="inline-start" />
-              Transactions
-            </Link>
-            <Link
-              href="/documents"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "rounded-md",
-              )}
-            >
-              <FileText data-icon="inline-start" />
-              Documents
-            </Link>
-          </CardAction>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
-          <ExceptionTile
-            label="Uncategorized"
-            value={exceptions.uncategorizedTransactions}
-          />
-          <ExceptionTile
-            label="Missing receipts"
-            value={exceptions.missingReceipts}
-          />
-          <ExceptionTile
-            label="With evidence"
-            value={
-              property.ledgerEntries.filter(
-                (entry) =>
-                  getDocumentsForTarget(
-                    property.documents,
-                    "transaction",
-                    entry.id,
-                  ).length > 0,
-              ).length
-            }
-          />
-        </CardContent>
-      </Card>
-      <ManualTransactionsPanel
-        property={property}
-        error={transactionError}
-        evidenceError={documentError}
-        onSubmit={onCreateManualTransaction}
-        onDeleteTransaction={onDeleteManualTransaction}
-        onUploadEvidence={onUploadTransactionEvidence}
-        onDeleteDocument={onDeleteEvidenceDocument}
-      />
+      {hasOpenReview ? (
+        <Card className="rounded-md">
+          <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
+            <div>
+              <CardTitle as="h2">Review needed</CardTitle>
+              <CardDescription>
+                Tax records that still need categories or receipts before
+                year-end.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:justify-self-end">
+              <Link
+                href="/transactions"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "rounded-md",
+                )}
+              >
+                <Receipt data-icon="inline-start" />
+                Review
+              </Link>
+              <Link
+                href="/documents"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "rounded-md",
+                )}
+              >
+                <FileText data-icon="inline-start" />
+                Documents
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <ExceptionTile
+              label="Uncategorized"
+              value={exceptions.uncategorizedTransactions}
+            />
+            <ExceptionTile
+              label="Missing receipts"
+              value={exceptions.missingReceipts}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
       <MortgagePaymentsPanel
         propertyId={property.id}
         payments={property.mortgagePayments}
@@ -220,7 +175,7 @@ function ExceptionTile({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ManualTransactionsPanel({
+export function DeductionsAndIncomePanel({
   property,
   error,
   evidenceError,
@@ -250,25 +205,28 @@ function ManualTransactionsPanel({
     <Card className="rounded-md">
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle as="h2">Tax transactions</CardTitle>
+          <CardTitle as="h2">Deductions & non-rent income</CardTitle>
           <CardDescription>
-            Expense deductions and income lines that need categories, receipts,
-            or review notes.
+            Deductible expenses, capital assets, and income that is not tenant
+            rent.
           </CardDescription>
         </div>
-        <CardAction>
+        <div className="sm:justify-self-end">
           <AddManualTransactionSheet onSubmit={onSubmit} />
-        </CardAction>
+        </div>
       </CardHeader>
       <CardContent className="grid gap-4">
         <FormErrorAlert message={error} />
         <FormErrorAlert message={evidenceError} />
-        <div className="grid gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <SummaryMetric
             label="Records"
             value={property.ledgerEntries.length}
           />
-          <SummaryMetric label="Income" value={formatMoney(incomeTotal)} />
+          <SummaryMetric
+            label="Non-rent income"
+            value={formatMoney(incomeTotal)}
+          />
           <SummaryMetric label="Expenses" value={formatMoney(expenseTotal)} />
           <SummaryMetric
             label="Net"
@@ -276,60 +234,38 @@ function ManualTransactionsPanel({
           />
         </div>
         {property.ledgerEntries.length === 0 ? (
-          <EmptyState icon={Receipt}>No tax transactions recorded.</EmptyState>
+          <EmptyState icon={Receipt}>
+            No deductions or non-rent income recorded.
+          </EmptyState>
         ) : (
-          <Table className="min-w-[920px] table-fixed">
-            <colgroup>
-              <col className="w-28" />
-              <col className="w-[18rem]" />
-              <col className="w-24" />
-              <col className="w-48" />
-              <col className="w-28" />
-              <col className="w-36" />
-              <col className="w-10" />
-            </colgroup>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="px-3">Date</TableHead>
-                <TableHead className="px-3">Transaction</TableHead>
-                <TableHead className="px-3">Type</TableHead>
-                <TableHead className="px-3">Tags</TableHead>
-                <TableHead className="px-3 text-right">Amount</TableHead>
-                <TableHead className="px-3">Evidence</TableHead>
-                <TableHead className="px-3">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {property.ledgerEntries.map((entry) => {
-                const linked = getDocumentsForTarget(
-                  property.documents,
-                  "transaction",
-                  entry.id,
-                );
+          <ul className="grid gap-2">
+            {property.ledgerEntries.map((entry) => {
+              const linked = getDocumentsForTarget(
+                property.documents,
+                "transaction",
+                entry.id,
+              );
 
-                return (
-                  <TableRow key={entry.id}>
-                    <TableCell className="px-3 py-3 align-top text-muted-foreground text-sm">
-                      {entry.date}
-                    </TableCell>
-                    <TableCell className="px-3 py-3 align-top">
-                      <p className="truncate font-medium">{entry.vendor}</p>
-                      <p className="mt-1 truncate text-muted-foreground text-xs">
-                        {entry.reviewNotes || entry.memo || "No notes"}
+              return (
+                <li
+                  className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-start"
+                  key={entry.id}
+                >
+                  <div className="text-muted-foreground text-sm tabular-nums">
+                    {entry.date}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <p className="max-w-full truncate font-medium text-sm">
+                        {entry.vendor}
                       </p>
-                    </TableCell>
-                    <TableCell className="px-3 py-3 align-top">
                       <TransactionTypeLabel entry={entry} />
-                    </TableCell>
-                    <TableCell className="px-3 py-3 align-top">
+                    </div>
+                    <p className="mt-1 truncate text-muted-foreground text-xs">
+                      {entry.reviewNotes || entry.memo || "No notes"}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <TransactionTags entry={entry} />
-                    </TableCell>
-                    <TableCell className="px-3 py-3 text-right align-top font-semibold tabular-nums">
-                      {formatMoney(entry.amount)}
-                    </TableCell>
-                    <TableCell className="px-3 py-3 align-top">
                       <TransactionEvidenceControl
                         documents={linked}
                         transaction={entry}
@@ -346,19 +282,22 @@ function ManualTransactionsPanel({
                         onUploadEvidence={onUploadEvidence}
                         onDeleteDocument={onDeleteDocument}
                       />
-                    </TableCell>
-                    <TableCell className="px-3 py-3 align-top">
-                      <DeleteTransactionButton
-                        transactionId={entry.id}
-                        vendor={entry.vendor}
-                        onDelete={onDeleteTransaction}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                    </div>
+                  </div>
+                  <div className="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
+                    <span className="font-semibold tabular-nums text-sm">
+                      {formatMoney(entry.amount)}
+                    </span>
+                    <DeleteTransactionButton
+                      transactionId={entry.id}
+                      vendor={entry.vendor}
+                      onDelete={onDeleteTransaction}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </CardContent>
     </Card>
@@ -393,7 +332,7 @@ function TransactionTypeLabel({
     >
       <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
       <span className="text-foreground">
-        {entry.type === "income" ? "Income" : "Expense"}
+        {entry.type === "income" ? "Non-rent income" : "Expense"}
       </span>
     </span>
   );
@@ -449,15 +388,15 @@ function AddManualTransactionSheet({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <Button type="button" onClick={() => setOpen(true)}>
         <Plus data-icon="inline-start" />
-        Add tax transaction
+        Add expense or income
       </Button>
       <SheetContent className="overflow-y-auto sm:max-w-xl">
         <SheetHeader className="border-b pr-12">
-          <SheetTitle>Add tax transaction</SheetTitle>
+          <SheetTitle>Add expense or non-rent income</SheetTitle>
           <SheetDescription>
-            Record one expense or income line that needs a tax category or
-            receipt. Use the rent ledger for rent charges, tenant payments,
-            credits, and write-offs.
+            Use this for deductible expenses, capital assets, laundry, parking,
+            fees, or recoveries. Rent charges and tenant payments stay under
+            Rental income.
           </SheetDescription>
         </SheetHeader>
         <form
@@ -480,12 +419,14 @@ function AddManualTransactionSheet({
               >
                 <SelectTrigger id="transactionType" className="w-full">
                   <span className="flex flex-1 text-left">
-                    {transactionType === "expense" ? "Expense" : "Income"}
+                    {transactionType === "expense"
+                      ? "Expense"
+                      : "Non-rent income"}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="expense">Expense</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="income">Non-rent income</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -595,7 +536,7 @@ function AddManualTransactionSheet({
           ) : null}
           <Button type="submit" className="justify-self-start">
             <Plus data-icon="inline-start" />
-            Add tax transaction
+            Add record
           </Button>
         </form>
       </SheetContent>
@@ -632,7 +573,7 @@ function DeleteTransactionButton({
   function handleDelete() {
     if (
       !window.confirm(
-        "Delete this tax transaction? Linked documents will remain in Documents.",
+        "Delete this tax record? Linked documents will remain in Documents.",
       )
     ) {
       return;
@@ -648,8 +589,8 @@ function DeleteTransactionButton({
       type="button"
       variant="destructive"
       size="icon-sm"
-      aria-label={`Delete transaction from ${vendor}`}
-      title="Delete transaction"
+      aria-label={`Delete tax record from ${vendor}`}
+      title="Delete tax record"
       disabled={isDeleting}
       onClick={handleDelete}
     >

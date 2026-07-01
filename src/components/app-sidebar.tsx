@@ -33,7 +33,7 @@ const NAV_ITEMS = [
   },
   {
     href: "/transactions",
-    label: "Transactions",
+    label: "Review",
     icon: ReceiptText,
     isActive: (pathname: string) => pathname.startsWith("/transactions"),
   },

@@ -9,7 +9,9 @@ import {
   addOwnerWithOwnership,
   addUnit,
   createLease,
+  deleteLease,
   deleteOwner,
+  deleteRentEvent,
   deleteUnit,
   generateLeaseCharges,
   recordRentEvent,
@@ -113,6 +115,10 @@ export function PropertyWorkspace({
     return runWorkspaceMutation("lease", () => createLease(input));
   }
 
+  async function handleDeleteLease(leaseId: string) {
+    return runWorkspaceMutation("lease", () => deleteLease(leaseId));
+  }
+
   async function handleGenerateCharges(leaseId: string) {
     return runWorkspaceMutation("lease", () =>
       generateLeaseCharges(leaseId, `${year}-12-31`),
@@ -122,6 +128,12 @@ export function PropertyWorkspace({
   async function handleRecordRentEvent(input: NewRentEventInput) {
     return runWorkspaceMutation("rentEvent", () =>
       recordRentEvent(selectedId, input),
+    );
+  }
+
+  async function handleDeleteRentEvent(rentEventId: string) {
+    return runWorkspaceMutation("rentEvent", () =>
+      deleteRentEvent(selectedId, rentEventId),
     );
   }
 
@@ -185,8 +197,10 @@ export function PropertyWorkspace({
         onAddOwner={handleAddOwner}
         onDeleteOwner={handleDeleteOwner}
         onCreateLease={handleCreateLease}
+        onDeleteLease={handleDeleteLease}
         onGenerateRentCharges={handleGenerateCharges}
         onRecordRentEvent={handleRecordRentEvent}
+        onDeleteRentEvent={handleDeleteRentEvent}
         onAddLeaseDocument={handleAddLeaseDocument}
         onCreateManualTransaction={handleCreateManualTransaction}
         onDeleteManualTransaction={handleDeleteManualTransaction}

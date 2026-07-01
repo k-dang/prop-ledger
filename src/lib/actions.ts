@@ -250,6 +250,51 @@ export async function createLease(input: NewLeaseInput): Promise<ActionResult> {
   );
 }
 
+export async function deleteLease(leaseId: string): Promise<ActionResult> {
+  return runAction<LeaseMutationSuccess>(
+    "Lease deletion mutation",
+    async () => {
+      const lease = await db.query.leases.findFirst({
+        where: eq(leases.id, leaseId),
+        columns: { id: true },
+        with: { unit: { columns: { propertyId: true } } },
+      });
+
+      if (lease === undefined) {
+        return { ok: false, error: "That lease no longer exists." };
+      }
+
+      const event = await db.query.rentEvents.findFirst({
+        where: eq(rentEvents.leaseId, leaseId),
+        columns: { id: true },
+      });
+
+      if (event !== undefined) {
+        return {
+          ok: false,
+          error:
+            "Leases with rent ledger activity cannot be deleted. Delete the related charges, payments, credits, or write-offs first.",
+        };
+      }
+
+      await db.batch([
+        db
+          .delete(documentLinks)
+          .where(
+            and(
+              eq(documentLinks.targetType, "lease"),
+              eq(documentLinks.targetId, leaseId),
+            ),
+          ),
+        db.delete(leases).where(eq(leases.id, leaseId)),
+      ]);
+
+      return { ok: true, propertyId: lease.unit.propertyId };
+    },
+    { invalidate: ({ propertyId }) => rentLedgerMutationCacheTags(propertyId) },
+  );
+}
+
 /**
  * Materialize a lease's accrual schedule into `charge` rent events up to
  * `throughDate`. Charges are keyed by their period start, so re-running this
@@ -329,10 +374,18 @@ export async function recordRentEvent(
   return runAction(
     "Rent event mutation",
     async () => {
-      // Only property-level other income may be lease-less. A charge, payment,
-      // credit, or write-off with no lease would vanish from every balance, so
-      // the rule is enforced here at the boundary rather than trusting callers.
-      if (input.type !== "other_income" && input.leaseId === null) {
+      if (input.type === "other_income") {
+        return {
+          ok: false,
+          error:
+            "Record non-rent income as an income record so it can be categorized for tax.",
+        };
+      }
+
+      // A charge, payment, credit, or write-off with no lease would vanish from
+      // every balance, so enforce the rule at the boundary rather than trusting
+      // callers.
+      if (input.leaseId === null) {
         return {
           ok: false,
           error: "Select a lease for this rent ledger entry.",
@@ -340,6 +393,50 @@ export async function recordRentEvent(
       }
 
       await db.insert(rentEvents).values({ propertyId, ...input });
+
+      return { ok: true };
+    },
+    { invalidate: rentLedgerMutationCacheTags(propertyId) },
+  );
+}
+
+export async function deleteRentEvent(
+  propertyId: string,
+  rentEventId: string,
+): Promise<ActionResult> {
+  return runAction(
+    "Rent event deletion mutation",
+    async () => {
+      const event = await db.query.rentEvents.findFirst({
+        where: and(
+          eq(rentEvents.id, rentEventId),
+          eq(rentEvents.propertyId, propertyId),
+        ),
+        columns: { id: true },
+      });
+
+      if (event === undefined) {
+        return { ok: false, error: "That rent ledger entry no longer exists." };
+      }
+
+      await db.batch([
+        db
+          .delete(documentLinks)
+          .where(
+            and(
+              eq(documentLinks.targetType, "rent_event"),
+              eq(documentLinks.targetId, rentEventId),
+            ),
+          ),
+        db
+          .delete(rentEvents)
+          .where(
+            and(
+              eq(rentEvents.id, rentEventId),
+              eq(rentEvents.propertyId, propertyId),
+            ),
+          ),
+      ]);
 
       return { ok: true };
     },

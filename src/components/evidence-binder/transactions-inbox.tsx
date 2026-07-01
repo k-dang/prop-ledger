@@ -165,9 +165,10 @@ export function TransactionsInbox({
   return (
     <Card className="rounded-md">
       <CardHeader>
-        <CardTitle as="h1">Transactions</CardTitle>
+        <CardTitle as="h1">Review</CardTitle>
         <CardDescription>
-          Tax transaction records that need category or receipt review.
+          Tax records that need category, receipt, or split cleanup before
+          year-end.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -235,7 +236,7 @@ export function TransactionsInbox({
         {filtered.length === 0 ? (
           <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/40 p-3 text-muted-foreground text-sm">
             <AlertTriangle className="size-4" aria-hidden="true" />
-            No transactions match these filters.
+            No records match these filters.
           </div>
         ) : (
           <section
