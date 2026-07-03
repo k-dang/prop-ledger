@@ -2,10 +2,14 @@
 
 import {
   AlertTriangle,
+  ArrowRight,
+  BanknoteArrowDown,
+  BanknoteArrowUp,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
   CircleDot,
   Home,
   type LucideIcon,
@@ -13,6 +17,7 @@ import {
   Plus,
   Trash2,
   Users,
+  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
@@ -68,22 +73,47 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
+  allocatePrepaidToYear,
+  isPrepaid,
+  type LedgerEntryWithSplits,
+  summarizeDeductibleExpenses,
+} from "@/lib/allocations";
+import {
+  entryYear,
+  type NewManualTransactionInput,
+} from "@/lib/evidence-binder";
+import {
+  formatPercent,
   getOwnershipHistory,
   type NewOwnerWithOwnershipInput,
   type NewUnitInput,
   type PropertyReadiness,
   type RentalProperty,
 } from "@/lib/property-workspace";
-import type {
-  NewLeaseDocumentInput,
-  NewLeaseInput,
-  NewRentEventInput,
-  RentLedger,
+import {
+  formatMoney,
+  type NewLeaseDocumentInput,
+  type NewLeaseInput,
+  type NewRentEventInput,
+  type RentLedger,
+  summarizeRentLedger,
 } from "@/lib/rent-ledger";
-import { toneIcon, toneSurface } from "@/lib/status-styles";
+import { summarizeManualIncomeForTax } from "@/lib/rental-income";
+import {
+  type StatusTone,
+  toneChip,
+  toneIcon,
+  toneSurface,
+} from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
+import {
+  getYearEndReadiness,
+  type OwnershipReadinessWarning,
+  type ReadinessStatus,
+  type YearEndReadiness,
+  type YearEndReadinessItem,
+} from "@/lib/year-end-readiness";
 
 const unitFormSchema = z
   .object({
@@ -184,16 +214,40 @@ export function PropertyWorkspaceDetail({
   ) => boolean | Promise<boolean>;
   onDeleteEvidenceDocument: (documentId: string) => boolean | Promise<boolean>;
 }) {
+  const yearEndReadiness = getYearEndReadiness(property, year);
+  const summaryRows = getFilingReadinessRows(
+    property.id,
+    year,
+    readiness,
+    yearEndReadiness,
+  );
+  const nextRow = summaryRows.find((row) => row.status !== "clear");
   const deferActivity = readiness.setupGapCount > 0;
+  const openTaxActivity =
+    !deferActivity &&
+    (yearEndReadiness.uncategorizedTransactions > 0 ||
+      yearEndReadiness.missingReceipts > 0);
 
   return (
     <>
-      <section id="setup" className="grid scroll-mt-4 gap-4">
+      <section id="summary" className="grid scroll-mt-4 gap-4">
         <PropertySetupOverview
           property={property}
           readiness={readiness}
           year={year}
-        />
+        >
+          <FilingReadinessOverview
+            property={property}
+            rentLedger={rentLedger}
+            rows={summaryRows}
+            setupReadiness={readiness}
+            taxYear={year}
+            yearEndReadiness={yearEndReadiness}
+            nextRow={nextRow}
+          />
+        </PropertySetupOverview>
+      </section>
+      <section id="setup" className="grid scroll-mt-4 gap-4">
         <SetupSection
           property={property}
           readiness={readiness}
@@ -219,6 +273,7 @@ export function PropertyWorkspaceDetail({
           onAddLeaseDocument={onAddLeaseDocument}
           showActivityTools={false}
           showActivityTable={false}
+          defaultOpenLeases={!deferActivity && Boolean(leaseError)}
         />
       </section>
       <WorkflowDetails
@@ -229,7 +284,7 @@ export function PropertyWorkspaceDetail({
             ? "Available after setup, but secondary to the current readiness gap."
             : "Record deductible interest and supporting principal amounts."
         }
-        open={!deferActivity}
+        open={false}
       >
         <MortgagePaymentsPanel
           propertyId={property.id}
@@ -244,7 +299,7 @@ export function PropertyWorkspaceDetail({
             ? "Rent, deductions, and income are available, but setup should be fixed first."
             : `Rent payments, deductions, and non-rent income for ${year}.`
         }
-        open={!deferActivity}
+        open={openTaxActivity}
       >
         <section
           aria-labelledby="tax-activity-title"
@@ -343,6 +398,274 @@ function WorkflowDetails({
         </div>
       ) : null}
     </section>
+  );
+}
+
+type FilingOverallStatus = "ready" | "needs_review" | "blocked";
+
+type FilingReadinessRow = {
+  id: string;
+  label: string;
+  status: ReadinessStatus;
+  count: number;
+  detail: string;
+  href: string;
+  actionLabel: string;
+};
+
+type PropertyFinancialSummary = {
+  grossRentalIncome: number;
+  paymentsReceived: number;
+  deductibleExpenses: number;
+  netRecordedRentalIncome: number;
+  incompleteTransactionCount: number;
+};
+
+function FilingReadinessOverview({
+  property,
+  rentLedger,
+  rows,
+  setupReadiness,
+  taxYear,
+  yearEndReadiness,
+  nextRow,
+}: {
+  property: RentalProperty;
+  rentLedger: RentLedger;
+  rows: FilingReadinessRow[];
+  setupReadiness: PropertyReadiness;
+  taxYear: number;
+  yearEndReadiness: YearEndReadiness;
+  nextRow: FilingReadinessRow | undefined;
+}) {
+  const status = getOverallFilingStatus(rows);
+  const tone = getOverallFilingTone(status);
+  const StatusIcon = getOverallFilingIcon(status);
+  const counts = getFilingRowCounts(rows);
+  const financials = summarizePropertyFinancials(
+    property,
+    rentLedger,
+    taxYear,
+    yearEndReadiness.uncategorizedTransactions,
+  );
+  const metrics = [
+    {
+      label: "Gross rental income",
+      value: formatMoney(financials.grossRentalIncome),
+      icon: BanknoteArrowUp,
+      accent: toneChip.ready,
+    },
+    {
+      label: "Payments received",
+      value: formatMoney(financials.paymentsReceived),
+      icon: WalletCards,
+      accent: toneChip.info,
+    },
+    {
+      label: "Deductible expenses",
+      value: formatMoney(financials.deductibleExpenses),
+      icon: BanknoteArrowDown,
+      accent: toneChip.review,
+    },
+    {
+      label: "Net recorded income",
+      value: formatMoney(financials.netRecordedRentalIncome),
+      icon: CircleDollarSign,
+      accent: "bg-brand-surface text-brand",
+      incomplete: financials.incompleteTransactionCount > 0,
+    },
+  ];
+
+  return (
+    <section
+      aria-labelledby="filing-readiness-title"
+      className="grid min-w-0 content-start gap-4"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2
+            id="filing-readiness-title"
+            className="font-heading font-medium text-base leading-snug"
+          >
+            Filing readiness for {taxYear}
+          </h2>
+          <p className="mt-1 text-muted-foreground text-sm">
+            {getFilingReadinessMessage(status, rows, taxYear)}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+          <Badge
+            variant="outline"
+            className={cn("rounded-md", toneSurface[tone])}
+          >
+            {formatOverallFilingStatus(status)}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn("rounded-md", toneSurface.blocked)}
+          >
+            {counts.blocking} blocking
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn("rounded-md", toneSurface.review)}
+          >
+            {counts.warning} review
+          </Badge>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "grid gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
+          toneSurface[tone],
+        )}
+      >
+        <div className="flex min-w-0 items-start gap-3">
+          <StatusIcon
+            className={cn("mt-0.5 size-4 shrink-0", toneIcon[tone])}
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <p className="font-medium text-sm">
+              {counts.clear} of {rows.length} checks clear
+            </p>
+            <p className="text-xs">
+              {getFilingReadinessDetail(status, nextRow, setupReadiness)}
+            </p>
+          </div>
+        </div>
+        {nextRow ? (
+          <Link
+            href={nextRow.href}
+            className={cn(
+              buttonVariants({ variant: "default", size: "sm" }),
+              "justify-self-start rounded-md sm:justify-self-end",
+            )}
+          >
+            {status === "blocked" ? "Review next item" : "Open review"}
+            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          </Link>
+        ) : (
+          <Link
+            href={`/year-end?propertyId=${property.id}&year=${taxYear}`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "justify-self-start rounded-md sm:justify-self-end",
+            )}
+          >
+            Open year-end
+            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          </Link>
+        )}
+      </div>
+
+      <ul
+        className="divide-y overflow-hidden rounded-md border"
+        aria-label={`Filing readiness checks for ${taxYear}`}
+      >
+        {rows.map((row) => (
+          <FilingReadinessCheckRow key={row.id} row={row} />
+        ))}
+      </ul>
+
+      <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-2">
+        {metrics.map((metric) => (
+          <FilingFinancialMetric key={metric.label} {...metric} />
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function FilingReadinessCheckRow({ row }: { row: FilingReadinessRow }) {
+  const tone = getReadinessTone(row.status);
+  const StatusIcon = getReadinessIcon(row.status);
+
+  return (
+    <li className="grid gap-3 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center">
+      <span
+        className={cn(
+          "grid size-8 place-items-center rounded-md",
+          row.status === "clear" ? toneChip.ready : toneChip[tone],
+        )}
+      >
+        <StatusIcon className="size-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="font-medium text-sm">{row.label}</p>
+        <p className="text-muted-foreground text-xs">{row.detail}</p>
+      </div>
+      <ReadinessStatusBadge status={row.status} count={row.count} />
+      <Link
+        href={row.href}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "w-fit rounded-md",
+        )}
+      >
+        {row.actionLabel}
+      </Link>
+    </li>
+  );
+}
+
+function FilingFinancialMetric({
+  label,
+  value,
+  icon: Icon,
+  accent,
+  incomplete,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  accent: string;
+  incomplete?: boolean;
+}) {
+  return (
+    <div className="grid min-w-0 gap-2 rounded-md border bg-muted/30 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <dt className="text-muted-foreground text-xs">{label}</dt>
+        <span
+          className={cn("grid size-7 place-items-center rounded-md", accent)}
+        >
+          <Icon className="size-3.5" aria-hidden="true" />
+        </span>
+      </div>
+      <dd className="min-w-0 whitespace-nowrap font-semibold text-lg tabular-nums">
+        {value}
+      </dd>
+      {incomplete ? (
+        <Badge
+          variant="outline"
+          className={cn("w-fit rounded-md", toneSurface.review)}
+        >
+          Incomplete
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
+function ReadinessStatusBadge({
+  status,
+  count,
+}: {
+  status: ReadinessStatus;
+  count: number;
+}) {
+  const tone = getReadinessTone(status);
+  const label =
+    status === "clear"
+      ? "Clear"
+      : status === "blocking"
+        ? `${count} blocking`
+        : `${count} review`;
+
+  return (
+    <Badge variant="outline" className={cn("rounded-md", toneSurface[tone])}>
+      {label}
+    </Badge>
   );
 }
 
@@ -762,10 +1085,12 @@ function PropertySetupOverview({
   property,
   readiness,
   year,
+  children,
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
   year: number;
+  children: ReactNode;
 }) {
   const setupGaps = readiness.tasks.filter(
     (task) => task.status !== "complete",
@@ -853,57 +1178,412 @@ function PropertySetupOverview({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-3 border-t p-4">
-        <div
-          className={cn(
-            "grid gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
-            toneSurface[readinessTone],
-          )}
-        >
-          <div className="flex min-w-0 items-start gap-2.5">
-            <StatusIcon
-              className={cn("mt-0.5 size-4 shrink-0", toneIcon[readinessTone])}
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <p className="font-medium text-sm">{setupStatusLabel}</p>
-              <p className="text-xs">{setupStatusDetail}</p>
-            </div>
-          </div>
-          <Badge
-            variant="outline"
-            className="justify-self-start rounded-md bg-background/70 text-xs tabular-nums sm:justify-self-end"
+      <CardContent className="border-t p-0">
+        <div className="grid lg:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)]">
+          <section
+            aria-labelledby="property-setup-overview-title"
+            className="grid content-start gap-3 p-4 lg:border-r"
           >
-            {readiness.completedCount}/{readiness.totalCount} complete
-          </Badge>
-          {setupAction ? (
-            <Link
-              href={setupAction.href}
+            <div className="min-w-0">
+              <h2
+                id="property-setup-overview-title"
+                className="font-heading font-medium text-base leading-snug"
+              >
+                Property setup
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                Ownership and unit records required before filing.
+              </p>
+            </div>
+            <div
               className={cn(
-                buttonVariants({ variant: "default" }),
-                "justify-self-start rounded-md sm:col-start-2 sm:justify-self-end",
+                "grid gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center lg:grid-cols-1",
+                toneSurface[readinessTone],
               )}
             >
-              {setupAction.label}
-            </Link>
-          ) : null}
-        </div>
-        <dl className="grid overflow-hidden rounded-md border sm:grid-cols-3 sm:divide-x">
-          {setupFacts.map((fact) => (
-            <div
-              className="flex items-center justify-between gap-3 px-3 py-2"
-              key={fact.label}
-            >
-              <dt className="text-muted-foreground text-xs">{fact.label}</dt>
-              <dd className="font-semibold text-sm tabular-nums">
-                {fact.value}
-              </dd>
+              <div className="flex min-w-0 items-start gap-2.5">
+                <StatusIcon
+                  className={cn(
+                    "mt-0.5 size-4 shrink-0",
+                    toneIcon[readinessTone],
+                  )}
+                  aria-hidden="true"
+                />
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{setupStatusLabel}</p>
+                  <p className="text-xs">{setupStatusDetail}</p>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className="justify-self-start rounded-md bg-background/70 text-xs tabular-nums sm:justify-self-end lg:justify-self-start"
+              >
+                {readiness.completedCount}/{readiness.totalCount} complete
+              </Badge>
+              {setupAction ? (
+                <Link
+                  href={setupAction.href}
+                  className={cn(
+                    buttonVariants({ variant: "default", size: "sm" }),
+                    "justify-self-start rounded-md",
+                  )}
+                >
+                  {setupAction.label}
+                </Link>
+              ) : null}
             </div>
-          ))}
-        </dl>
+            <dl className="grid overflow-hidden rounded-md border sm:grid-cols-3 sm:divide-x lg:grid-cols-1 lg:divide-x-0 lg:divide-y">
+              {setupFacts.map((fact) => (
+                <div
+                  className="flex items-center justify-between gap-3 px-3 py-2"
+                  key={fact.label}
+                >
+                  <dt className="text-muted-foreground text-xs">
+                    {fact.label}
+                  </dt>
+                  <dd className="font-semibold text-sm tabular-nums">
+                    {fact.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+          <div className="min-w-0 border-t p-4 lg:border-t-0">{children}</div>
+        </div>
       </CardContent>
     </Card>
   );
+}
+
+function getFilingReadinessRows(
+  propertyId: string,
+  taxYear: number,
+  setupReadiness: PropertyReadiness,
+  yearEndReadiness: YearEndReadiness,
+): FilingReadinessRow[] {
+  const setupGaps = setupReadiness.tasks.filter(
+    (task) => task.status !== "complete",
+  );
+  const firstSetupAction =
+    setupGaps[0] === undefined ? null : getSetupAction(setupGaps[0].id);
+  const hasOwnershipSetupGap = setupGaps.some(
+    (task) => task.id === "ownership",
+  );
+  const rows: FilingReadinessRow[] = [
+    {
+      id: "property_setup",
+      label: "Property setup",
+      status: setupGaps.length > 0 ? "blocking" : "clear",
+      count: setupGaps.length,
+      detail:
+        setupGaps.length > 0
+          ? `${formatReadableList(setupGaps.map((task) => task.label))} must be resolved before filing.`
+          : "Property details, units, owners, and ownership shares are complete.",
+      href: firstSetupAction?.href ?? "#property-setup",
+      actionLabel: setupGaps.length > 0 ? "Fix setup" : "View",
+    },
+  ];
+
+  for (const item of yearEndReadiness.items) {
+    if (item.id === "ownership_allocations" && hasOwnershipSetupGap) {
+      continue;
+    }
+
+    rows.push(toFilingReadinessRow(item, propertyId, taxYear));
+  }
+
+  return rows;
+}
+
+function toFilingReadinessRow(
+  item: YearEndReadinessItem,
+  propertyId: string,
+  taxYear: number,
+): FilingReadinessRow {
+  switch (item.id) {
+    case "uncategorized_transactions":
+      return {
+        id: item.id,
+        label: "Uncategorized transactions",
+        status: item.status,
+        count: item.count,
+        detail:
+          item.count > 0
+            ? `${item.count} transaction${pluralSuffix(item.count)} need${item.count === 1 ? "s" : ""} a category before export.`
+            : "All transactions for this year have a category or split.",
+        href: `/transactions?propertyId=${propertyId}&year=${taxYear}&issue=uncategorized`,
+        actionLabel: item.count > 0 ? "Review" : "View",
+      };
+    case "missing_documents":
+      return {
+        id: item.id,
+        label: "Missing receipts",
+        status: item.status,
+        count: item.count,
+        detail:
+          item.count > 0
+            ? `${item.count} expense${pluralSuffix(item.count)} need${item.count === 1 ? "s" : ""} receipt or invoice support.`
+            : "Expense records for this year have supporting documents.",
+        href: `/transactions?propertyId=${propertyId}&year=${taxYear}&issue=missing_receipt`,
+        actionLabel: item.count > 0 ? "Attach" : "View",
+      };
+    case "capital_assets":
+      return {
+        id: item.id,
+        label: "Capital asset review",
+        status: item.status,
+        count: item.count,
+        detail:
+          item.count > 0
+            ? `${item.count} marked capital transaction${pluralSuffix(item.count)} need accountant review; ${item.supportedCapitalTransactions} have support attached.`
+            : "No capital asset transactions are marked for this year.",
+        href: `/year-end?propertyId=${propertyId}&year=${taxYear}`,
+        actionLabel: item.count > 0 ? "Open" : "View",
+      };
+    case "ownership_allocations":
+      return {
+        id: item.id,
+        label: "Ownership allocations",
+        status: item.status,
+        count: item.count,
+        detail:
+          item.ownershipWarning === null
+            ? "Ownership shares total 100% through the active part of this tax year."
+            : formatOwnershipWarning(item.ownershipWarning),
+        href: "#ownership-history",
+        actionLabel: item.count > 0 ? "Review" : "View",
+      };
+    default:
+      return assertNever(item);
+  }
+}
+
+function getOverallFilingStatus(
+  rows: FilingReadinessRow[],
+): FilingOverallStatus {
+  if (rows.some((row) => row.status === "blocking")) {
+    return "blocked";
+  }
+
+  if (rows.some((row) => row.status === "warning")) {
+    return "needs_review";
+  }
+
+  return "ready";
+}
+
+function getOverallFilingTone(status: FilingOverallStatus): StatusTone {
+  if (status === "ready") {
+    return "ready";
+  }
+
+  if (status === "needs_review") {
+    return "review";
+  }
+
+  return "blocked";
+}
+
+function getOverallFilingIcon(status: FilingOverallStatus) {
+  if (status === "ready") {
+    return CheckCircle2;
+  }
+
+  if (status === "needs_review") {
+    return CircleDot;
+  }
+
+  return AlertTriangle;
+}
+
+function getReadinessTone(status: ReadinessStatus): StatusTone {
+  if (status === "clear") {
+    return "ready";
+  }
+
+  if (status === "warning") {
+    return "review";
+  }
+
+  return "blocked";
+}
+
+function getReadinessIcon(status: ReadinessStatus) {
+  if (status === "clear") {
+    return CheckCircle2;
+  }
+
+  if (status === "warning") {
+    return CircleDot;
+  }
+
+  return AlertTriangle;
+}
+
+function getFilingRowCounts(rows: FilingReadinessRow[]) {
+  return {
+    blocking: rows.filter((row) => row.status === "blocking").length,
+    warning: rows.filter((row) => row.status === "warning").length,
+    clear: rows.filter((row) => row.status === "clear").length,
+  };
+}
+
+function formatOverallFilingStatus(status: FilingOverallStatus) {
+  if (status === "ready") {
+    return "Ready";
+  }
+
+  if (status === "needs_review") {
+    return "Needs review";
+  }
+
+  return "Blocked";
+}
+
+function getFilingReadinessMessage(
+  status: FilingOverallStatus,
+  rows: FilingReadinessRow[],
+  taxYear: number,
+) {
+  if (status === "ready") {
+    return `${taxYear} records are ready for year-end export.`;
+  }
+
+  const activeRows = rows.filter((row) =>
+    status === "blocked" ? row.status === "blocking" : row.status === "warning",
+  );
+  const reason = formatReadableList(activeRows.map((row) => row.label));
+
+  if (status === "blocked") {
+    return `Blocked by ${reason}. Resolve blocking items before exporting a year-end package.`;
+  }
+
+  return `Review ${reason} before export. Warnings stay visible for year-end review.`;
+}
+
+function getFilingReadinessDetail(
+  status: FilingOverallStatus,
+  nextRow: FilingReadinessRow | undefined,
+  setupReadiness: PropertyReadiness,
+) {
+  if (status === "ready") {
+    return "Every filing check is clear; you can still review the supporting records below.";
+  }
+
+  if (setupReadiness.setupGapCount > 0) {
+    return "Setup comes first so later records can be tied to the right units and owners.";
+  }
+
+  if (nextRow !== undefined) {
+    return `${nextRow.label} is the next item to resolve.`;
+  }
+
+  return "Open the review item below to confirm the remaining records.";
+}
+
+function summarizePropertyFinancials(
+  property: RentalProperty,
+  rentLedger: RentLedger,
+  taxYear: number,
+  incompleteTransactionCount: number,
+): PropertyFinancialSummary {
+  const entries = property.ledgerEntries
+    .filter((entry) => entryYear(entry) === taxYear)
+    .map((entry) => allocateEntryToYear(entry, taxYear));
+  const mortgagePayments = property.mortgagePayments.filter((payment) =>
+    payment.date.startsWith(`${taxYear}-`),
+  );
+  const expenseSummary = summarizeDeductibleExpenses(entries, mortgagePayments);
+  const rent = summarizeRentLedger(rentLedger.rentEvents, taxYear);
+  const { taxableManualIncome } = summarizeManualIncomeForTax(entries);
+  const grossRentalIncome = roundMoney(
+    rent.grossRentalIncome + taxableManualIncome,
+  );
+  const deductibleExpenses = roundMoney(
+    [...expenseSummary.values()].reduce((total, amount) => total + amount, 0),
+  );
+
+  return {
+    grossRentalIncome,
+    paymentsReceived: rent.paymentsReceived,
+    deductibleExpenses,
+    netRecordedRentalIncome: roundMoney(grossRentalIncome - deductibleExpenses),
+    incompleteTransactionCount,
+  };
+}
+
+function allocateEntryToYear(
+  entry: LedgerEntryWithSplits,
+  taxYear: number,
+): LedgerEntryWithSplits {
+  if (!isPrepaid(entry)) {
+    return entry;
+  }
+
+  const amount = allocatePrepaidToYear(entry, taxYear);
+  const splitRatio = entry.amount === 0 ? 0 : amount / entry.amount;
+
+  return {
+    ...entry,
+    amount,
+    splits: entry.splits.map((split) => ({
+      ...split,
+      amount: roundMoney(split.amount * splitRatio),
+    })),
+  };
+}
+
+function formatOwnershipWarning(warning: OwnershipReadinessWarning) {
+  if (warning.code === "incomplete_ownership_total") {
+    return `Ownership shares total ${formatPercent(warning.totalPercentage)}% on ${formatDisplayDate(warning.date)}.`;
+  }
+
+  if (warning.validationCode === "OVER_ALLOCATED") {
+    const total =
+      warning.totalPercentage === undefined
+        ? ""
+        : ` ${formatPercent(warning.totalPercentage)}%`;
+    const date =
+      warning.date === undefined
+        ? ""
+        : ` on ${formatDisplayDate(warning.date)}`;
+
+    return `Active ownership shares cannot exceed 100 percent.${total}${date}.`;
+  }
+
+  if (warning.validationCode === "INVALID_DATE_RANGE") {
+    return "Review ownership effective dates before export.";
+  }
+
+  return "Review ownership percentages before export.";
+}
+
+function formatReadableList(items: string[]) {
+  if (items.length === 0) {
+    return "remaining checks";
+  }
+
+  if (items.length === 1) {
+    return items[0];
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled readiness item: ${JSON.stringify(value)}`);
+}
+
+function pluralSuffix(count: number) {
+  return count === 1 ? "" : "s";
+}
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function getSetupAction(id: PropertyReadiness["tasks"][number]["id"]) {

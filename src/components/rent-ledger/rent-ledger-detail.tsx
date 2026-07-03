@@ -132,6 +132,7 @@ export function RentLedgerDetail({
   onAddLeaseDocument,
   showActivityTools = true,
   showActivityTable = true,
+  defaultOpenLeases,
 }: {
   ledger: RentLedger;
   year: number;
@@ -147,6 +148,7 @@ export function RentLedgerDetail({
   ) => boolean | Promise<boolean>;
   showActivityTools?: boolean;
   showActivityTable?: boolean;
+  defaultOpenLeases?: boolean;
 }) {
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
 
@@ -163,6 +165,7 @@ export function RentLedgerDetail({
           unitLabels={unitLabels}
           leaseError={leaseError}
           documentError={documentError}
+          defaultOpen={defaultOpenLeases}
           onCreateLease={onCreateLease}
           onDeleteLease={onDeleteLease}
           onAddLeaseDocument={onAddLeaseDocument}
@@ -292,6 +295,7 @@ function LeasesPanel({
   unitLabels,
   leaseError,
   documentError,
+  defaultOpen,
   onCreateLease,
   onDeleteLease,
   onAddLeaseDocument,
@@ -300,6 +304,7 @@ function LeasesPanel({
   unitLabels: Map<string, string>;
   leaseError?: string;
   documentError?: string;
+  defaultOpen?: boolean;
   onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
   onAddLeaseDocument: (
@@ -309,7 +314,7 @@ function LeasesPanel({
   const hasUnits = ledger.units.length > 0;
   const hasLeases = ledger.leases.length > 0;
   const hasErrors = Boolean(leaseError || documentError);
-  const shouldOpen = !hasUnits || !hasLeases || hasErrors;
+  const shouldOpen = defaultOpen ?? (!hasUnits || !hasLeases || hasErrors);
   const linkedDocumentCount = ledger.documents.filter((document) =>
     document.links.some((link) => link.targetType === "lease"),
   ).length;
