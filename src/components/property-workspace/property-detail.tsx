@@ -308,7 +308,7 @@ export function PropertyWorkspaceDetail({
             </p>
           </div>
           <RentIncomeSummaryStrip ledger={rentLedger} year={year} />
-          <div className="grid gap-4 xl:grid-cols-[minmax(21rem,0.42fr)_minmax(0,1fr)] xl:items-start">
+          <div className="grid gap-4 xl:grid-cols-2">
             <RentActivityTools
               ledger={rentLedger}
               year={year}
