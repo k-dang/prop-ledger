@@ -25,27 +25,20 @@ export function mortgageInterestForYear(
 }
 
 export function isMortgagePaymentAllocated(
-  payment: Pick<MortgagePayment, "principal" | "interest" | "fees">,
+  payment: Pick<MortgagePayment, "principal" | "interest">,
 ): boolean {
-  return (
-    payment.principal !== null ||
-    payment.interest !== null ||
-    payment.fees !== null
-  );
+  return payment.principal !== null || payment.interest !== null;
 }
 
 export function mortgagePaymentComponentsBalance(
-  payment: Pick<
-    MortgagePayment,
-    "totalAmount" | "principal" | "interest" | "fees"
-  >,
+  payment: Pick<MortgagePayment, "totalAmount" | "principal" | "interest">,
 ): boolean {
   if (!isMortgagePaymentAllocated(payment)) {
     return true;
   }
 
   const componentTotal = roundMoney(
-    (payment.principal ?? 0) + (payment.interest ?? 0) + (payment.fees ?? 0),
+    (payment.principal ?? 0) + (payment.interest ?? 0),
   );
 
   return componentTotal === roundMoney(payment.totalAmount);

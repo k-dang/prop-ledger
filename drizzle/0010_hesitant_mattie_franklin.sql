@@ -1,0 +1,1 @@
+ALTER TABLE "rental"."mortgage_payments" DROP COLUMN "fees";

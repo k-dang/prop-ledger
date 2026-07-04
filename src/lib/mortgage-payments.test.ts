@@ -18,7 +18,6 @@ function makePayment(
     totalAmount: 1500,
     principal: 1000,
     interest: 450,
-    fees: 50,
     ...payment,
   };
 }
@@ -49,7 +48,7 @@ describe("mortgage payment allocation", () => {
   it("treats a payment with no components as unallocated", () => {
     expect(
       isMortgagePaymentAllocated(
-        makePayment({ id: "p1", principal: null, interest: null, fees: null }),
+        makePayment({ id: "p1", principal: null, interest: null }),
       ),
     ).toBe(false);
   });
@@ -57,7 +56,7 @@ describe("mortgage payment allocation", () => {
   it("treats an unallocated payment as balanced", () => {
     expect(
       mortgagePaymentComponentsBalance(
-        makePayment({ id: "p1", principal: null, interest: null, fees: null }),
+        makePayment({ id: "p1", principal: null, interest: null }),
       ),
     ).toBe(true);
   });
@@ -68,9 +67,8 @@ describe("mortgage payment allocation", () => {
         makePayment({
           id: "p1",
           totalAmount: 1500,
-          principal: 1000,
+          principal: 1050,
           interest: 450,
-          fees: 50,
         }),
       ),
     ).toBe(true);
@@ -84,7 +82,6 @@ describe("mortgage payment allocation", () => {
           totalAmount: 1500,
           principal: 1000,
           interest: 400,
-          fees: null,
         }),
       ),
     ).toBe(false);

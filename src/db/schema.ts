@@ -131,7 +131,6 @@ export const mortgagePayments = pgTable("mortgage_payments", {
   totalAmount: doublePrecision("total_amount").notNull(),
   principal: doublePrecision("principal"),
   interest: doublePrecision("interest"),
-  fees: doublePrecision("fees"),
 });
 
 export const ledgerEntries = pgTable("ledger_entries", {

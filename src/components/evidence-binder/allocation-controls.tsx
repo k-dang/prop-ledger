@@ -1,7 +1,7 @@
 "use client";
 
 import { Banknote, CopyPlus, Plus, Split, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { z } from "zod";
 
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -370,7 +370,6 @@ const mortgagePaymentFormSchema = z
     totalAmount: finiteFormNumber,
     principal: optionalFormString,
     interest: optionalFormString,
-    fees: optionalFormString,
   })
   .transform(
     (data): NewMortgagePaymentInput => ({
@@ -379,7 +378,6 @@ const mortgagePaymentFormSchema = z
       totalAmount: data.totalAmount,
       principal: data.principal !== undefined ? Number(data.principal) : null,
       interest: data.interest !== undefined ? Number(data.interest) : null,
-      fees: data.fees !== undefined ? Number(data.fees) : null,
     }),
   );
 
@@ -426,7 +424,6 @@ export function MortgagePaymentsPanel({
                 <TableHead>Total</TableHead>
                 <TableHead>Principal</TableHead>
                 <TableHead>Interest</TableHead>
-                <TableHead>Fees</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Action</TableHead>
               </TableRow>
@@ -452,9 +449,6 @@ export function MortgagePaymentsPanel({
                       {payment.interest === null
                         ? "-"
                         : formatMoney(payment.interest)}
-                    </TableCell>
-                    <TableCell>
-                      {payment.fees === null ? "-" : formatMoney(payment.fees)}
                     </TableCell>
                     <TableCell>
                       {!allocated ? (
@@ -505,6 +499,59 @@ export function MortgagePaymentsPanel({
   );
 }
 
+type MortgagePaymentDraft = {
+  date: string;
+  lender: string;
+  totalAmount: string;
+  principal: string;
+  interest: string;
+};
+
+type MortgagePaymentDraftField = keyof MortgagePaymentDraft;
+
+type MortgagePaymentDraftAction =
+  | {
+      type: "field";
+      field: MortgagePaymentDraftField;
+      value: string;
+    }
+  | { type: "prefill"; payment: MortgagePayment }
+  | { type: "reset" };
+
+const emptyMortgagePaymentDraft: MortgagePaymentDraft = {
+  date: "",
+  lender: "",
+  totalAmount: "",
+  principal: "",
+  interest: "",
+};
+
+function mortgagePaymentDraftReducer(
+  state: MortgagePaymentDraft,
+  action: MortgagePaymentDraftAction,
+): MortgagePaymentDraft {
+  switch (action.type) {
+    case "field":
+      return { ...state, [action.field]: action.value };
+    case "prefill":
+      return mortgagePaymentDraftFromPayment(action.payment);
+    case "reset":
+      return emptyMortgagePaymentDraft;
+  }
+}
+
+function mortgagePaymentDraftFromPayment(
+  payment: MortgagePayment,
+): MortgagePaymentDraft {
+  return {
+    date: nextMonthlyPaymentDate(payment.date),
+    lender: payment.lender,
+    totalAmount: formatFormAmount(payment.totalAmount),
+    principal: formatOptionalFormAmount(payment.principal),
+    interest: formatOptionalFormAmount(payment.interest),
+  };
+}
+
 function MortgagePaymentForm({
   latestPayment,
   propertyId,
@@ -514,16 +561,14 @@ function MortgagePaymentForm({
   propertyId: string;
   onErrorChange: (error: string | undefined) => void;
 }) {
-  const [date, setDate] = useState("");
-  const [lender, setLender] = useState("");
-  const [totalAmount, setTotalAmount] = useState("");
-  const [principal, setPrincipal] = useState("");
-  const [interest, setInterest] = useState("");
-  const [fees, setFees] = useState("");
+  const [draft, dispatch] = useReducer(
+    mortgagePaymentDraftReducer,
+    emptyMortgagePaymentDraft,
+  );
+  const { date, lender, totalAmount, principal, interest } = draft;
   const total = Number(totalAmount) || 0;
-  const allocated =
-    (Number(principal) || 0) + (Number(interest) || 0) + (Number(fees) || 0);
-  const hasBreakdown = principal !== "" || interest !== "" || fees !== "";
+  const allocated = (Number(principal) || 0) + (Number(interest) || 0);
+  const hasBreakdown = principal !== "" || interest !== "";
   const remaining = total - allocated;
   const isBalanced =
     totalAmount !== "" && hasBreakdown && Math.round(remaining * 100) === 0;
@@ -545,12 +590,7 @@ function MortgagePaymentForm({
       onErrorChange(result.ok ? undefined : result.error);
 
       if (result.ok) {
-        setDate("");
-        setLender("");
-        setTotalAmount("");
-        setPrincipal("");
-        setInterest("");
-        setFees("");
+        dispatch({ type: "reset" });
       }
 
       return result.ok;
@@ -561,12 +601,7 @@ function MortgagePaymentForm({
       return;
     }
 
-    setDate(nextMonthlyPaymentDate(latestPayment.date));
-    setLender(latestPayment.lender);
-    setTotalAmount(formatFormAmount(latestPayment.totalAmount));
-    setPrincipal(formatOptionalFormAmount(latestPayment.principal));
-    setInterest(formatOptionalFormAmount(latestPayment.interest));
-    setFees(formatOptionalFormAmount(latestPayment.fees));
+    dispatch({ type: "prefill", payment: latestPayment });
     onErrorChange(undefined);
   }
 
@@ -606,7 +641,9 @@ function MortgagePaymentForm({
             name="date"
             required
             value={date}
-            onChange={setDate}
+            onChange={(value) => {
+              dispatch({ type: "field", field: "date", value });
+            }}
           />
         </Field>
         <Field>
@@ -618,7 +655,11 @@ function MortgagePaymentForm({
             required
             value={lender}
             onChange={(event) => {
-              setLender(event.target.value);
+              dispatch({
+                type: "field",
+                field: "lender",
+                value: event.target.value,
+              });
             }}
           />
         </Field>
@@ -635,7 +676,11 @@ function MortgagePaymentForm({
             required
             value={totalAmount}
             onChange={(event) => {
-              setTotalAmount(event.target.value);
+              dispatch({
+                type: "field",
+                field: "totalAmount",
+                value: event.target.value,
+              });
             }}
           />
         </Field>
@@ -657,7 +702,7 @@ function MortgagePaymentForm({
               : "Breakdown optional"}
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="mortgage-principal">Principal</FieldLabel>
             <Input
@@ -670,7 +715,11 @@ function MortgagePaymentForm({
               placeholder="1500.00"
               value={principal}
               onChange={(event) => {
-                setPrincipal(event.target.value);
+                dispatch({
+                  type: "field",
+                  field: "principal",
+                  value: event.target.value,
+                });
               }}
             />
           </Field>
@@ -686,23 +735,11 @@ function MortgagePaymentForm({
               placeholder="125.00"
               value={interest}
               onChange={(event) => {
-                setInterest(event.target.value);
-              }}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="mortgage-fees">Fees</FieldLabel>
-            <Input
-              id="mortgage-fees"
-              name="fees"
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={fees}
-              onChange={(event) => {
-                setFees(event.target.value);
+                dispatch({
+                  type: "field",
+                  field: "interest",
+                  value: event.target.value,
+                });
               }}
             />
           </Field>

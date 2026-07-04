@@ -94,7 +94,6 @@ const property: YearEndPackageSource = {
       totalAmount: 3000,
       principal: 1800,
       interest: 1200,
-      fees: 0,
     },
   ],
   documents: [

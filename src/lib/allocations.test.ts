@@ -160,7 +160,6 @@ describe("mortgage interest in expense totals", () => {
           totalAmount: 1500,
           principal: 1000,
           interest: 450,
-          fees: 50,
         },
       ],
     );
