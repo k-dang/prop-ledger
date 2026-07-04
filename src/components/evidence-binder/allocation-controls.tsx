@@ -287,7 +287,7 @@ function SplitsEditor({
               >
                 <span
                   className={cn(
-                    "flex flex-1 text-left",
+                    "min-w-0 flex-1 truncate text-left",
                     draft.category === "" && "text-muted-foreground",
                   )}
                 >

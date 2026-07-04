@@ -314,7 +314,7 @@ export function TransactionsInbox({
                               }}
                               className="h-9 w-full rounded-md"
                             >
-                              <span className="flex flex-1 text-left">
+                              <span className="min-w-0 flex-1 truncate text-left">
                                 {currentCategoryLabel}
                               </span>
                             </SelectTrigger>
@@ -403,7 +403,9 @@ function FilterSelect({
         }}
       >
         <SelectTrigger id={id} className="h-9 w-full rounded-md">
-          <span className="flex flex-1 text-left">{selectedLabel}</span>
+          <span className="min-w-0 flex-1 truncate text-left">
+            {selectedLabel}
+          </span>
         </SelectTrigger>
         <SelectContent align="start">
           {options.map((option) => (
