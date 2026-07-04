@@ -74,9 +74,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
+import { createOwnershipPeriodTimeline } from "@/lib/ownership-period-timeline";
 import {
   formatPercent,
-  getOwnershipHistory,
   type NewOwnerWithOwnershipInput,
   type NewUnitInput,
   type PropertyReadiness,
@@ -634,7 +634,8 @@ function SetupSection({
   onDeleteOwner,
 }: SetupSectionProps) {
   const hasUnits = property.units.length > 0;
-  const hasOwners = getOwnershipHistory(property).length > 0;
+  const ownershipHistory = getOwnershipDisplayHistory(property);
+  const hasOwners = ownershipHistory.length > 0;
   const complete = readiness.setupGapCount === 0;
   const summary = `${pluralize(property.units.length, "unit")} · ${pluralize(
     property.owners.length,
@@ -714,7 +715,7 @@ function SetupSection({
               >
                 {hasOwners ? (
                   <OwnersTable
-                    property={property}
+                    history={ownershipHistory}
                     onDeleteOwner={onDeleteOwner}
                   />
                 ) : null}
@@ -943,14 +944,12 @@ function UnitsTable({
 }
 
 function OwnersTable({
-  property,
+  history,
   onDeleteOwner,
 }: {
-  property: RentalProperty;
+  history: ReturnType<typeof getOwnershipDisplayHistory>;
   onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
 }) {
-  const history = getOwnershipHistory(property);
-
   function handleDelete(ownerId: string, ownerName: string) {
     if (
       !window.confirm(
@@ -1015,6 +1014,23 @@ function EmptyState({
 
 function pluralize(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function getOwnershipDisplayHistory(property: RentalProperty) {
+  return createOwnershipPeriodTimeline({
+    owners: property.owners,
+    periods: property.ownershipPeriods,
+  })
+    .periodsWithOwners()
+    .map((period) => ({
+      ...period,
+      dateRange: formatDateRange(period.effectiveFrom, period.effectiveTo),
+      percentageLabel: `${formatPercent(period.percentage)}%`,
+    }));
+}
+
+function formatDateRange(start: string, end: string | null) {
+  return end === null ? `${start} onward` : `${start} to ${end}`;
 }
 
 function formatDisplayDate(value: string) {
@@ -1258,6 +1274,7 @@ function getFilingReadinessRows(
                     )?.ownershipWarning ?? {
                       code: "invalid_ownership_period",
                       validationCode: "INVALID_DATE_RANGE",
+                      periodIds: [],
                     },
                     formatDisplayDate,
                     formatPercent,

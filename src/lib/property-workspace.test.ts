@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  canAddOwnershipPeriod,
-  getOwnershipHistory,
-  getOwnershipTotalOnDate,
   getPropertyReadiness,
   type OwnershipPeriod,
   type RentalProperty,
-  validateOwnershipPeriods,
 } from "./property-workspace";
 
 // Ownership periods are full schema rows now; this fills the columns the
@@ -57,92 +53,6 @@ const baseProperty: RentalProperty = {
   mortgagePayments: [],
   documents: [],
 };
-
-describe("ownership period validation", () => {
-  it("accepts valid active ownership allocations at 100 percent", () => {
-    const periods = [
-      makePeriod({
-        id: "period-1",
-        ownerId: "owner-1",
-        percentage: 50,
-        effectiveFrom: "2026-01-01",
-      }),
-      makePeriod({
-        id: "period-2",
-        ownerId: "owner-2",
-        percentage: 50,
-        effectiveFrom: "2026-01-01",
-      }),
-    ];
-
-    expect(validateOwnershipPeriods(periods)).toEqual([]);
-    expect(canAddOwnershipPeriod([periods[0]], periods[1]).ok).toBeTruthy();
-  });
-
-  it("rejects overlapping active allocations above 100 percent", () => {
-    const periods = [
-      makePeriod({
-        id: "period-1",
-        ownerId: "owner-1",
-        percentage: 60,
-        effectiveFrom: "2026-01-01",
-      }),
-      makePeriod({
-        id: "period-2",
-        ownerId: "owner-2",
-        percentage: 50,
-        effectiveFrom: "2026-03-01",
-      }),
-    ];
-
-    const result = canAddOwnershipPeriod([periods[0]], periods[1]);
-
-    expect(result.ok).toBe(false);
-    expect(result.issues).toContainEqual(
-      expect.objectContaining({
-        code: "OVER_ALLOCATED",
-        date: "2026-03-01",
-        totalPercentage: 110,
-      }),
-    );
-  });
-
-  it("supports ownership changes inside a tax year without over-allocation", () => {
-    const property: RentalProperty = {
-      ...baseProperty,
-      ownershipPeriods: [
-        makePeriod({
-          id: "period-1",
-          ownerId: "owner-1",
-          percentage: 100,
-          effectiveFrom: "2025-01-01",
-          effectiveTo: "2025-06-30",
-        }),
-        makePeriod({
-          id: "period-2",
-          ownerId: "owner-2",
-          percentage: 100,
-          effectiveFrom: "2025-07-01",
-        }),
-      ],
-    };
-
-    const history = getOwnershipHistory(property);
-
-    expect(history).toHaveLength(2);
-    expect(history.map((period) => period.ownerName)).toEqual([
-      "Avery Chen",
-      "Jordan Patel",
-    ]);
-    expect(
-      getOwnershipTotalOnDate(property.ownershipPeriods, "2025-06-30"),
-    ).toBe(100);
-    expect(
-      getOwnershipTotalOnDate(property.ownershipPeriods, "2025-07-01"),
-    ).toBe(100);
-    expect(validateOwnershipPeriods(property.ownershipPeriods)).toEqual([]);
-  });
-});
 
 describe("property setup readiness", () => {
   it("surfaces setup gaps for units, owners, and ownership", () => {

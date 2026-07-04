@@ -5,12 +5,11 @@ import {
   getDocumentsForTarget,
   getEvidenceExceptionCounts,
 } from "./evidence-binder";
-import type { RentalProperty } from "./property-workspace";
 import {
-  getOwnershipTotalOnDate,
+  createOwnershipPeriodTimeline,
   type OwnershipValidationIssue,
-  validateOwnershipPeriods,
-} from "./property-workspace";
+} from "./ownership-period-timeline";
+import type { RentalProperty } from "./property-workspace";
 
 export type ReadinessStatus = "clear" | "blocking" | "warning";
 
@@ -42,11 +41,13 @@ export type OwnershipReadinessWarning =
       validationCode: OwnershipValidationIssue["code"];
       date?: string;
       totalPercentage?: number;
+      periodIds: string[];
     }
   | {
       code: "incomplete_ownership_total";
       date: string;
       totalPercentage: number;
+      periodIds: string[];
     };
 
 export type YearEndDashboardCounts = {
@@ -165,77 +166,29 @@ function getOwnershipAllocationWarnings(
     return [];
   }
 
-  const validationIssues = validateOwnershipPeriods(property.ownershipPeriods);
+  const ownershipTimeline = createOwnershipPeriodTimeline({
+    periods: property.ownershipPeriods,
+  });
+  const validationWarnings = ownershipTimeline.validate().map((issue) => ({
+    code: "invalid_ownership_period" as const,
+    validationCode: issue.code,
+    date: issue.date,
+    totalPercentage: issue.totalPercentage,
+    periodIds: issue.periodIds,
+  }));
 
-  if (validationIssues.length > 0) {
-    const issue = validationIssues[0];
-
-    return [
-      {
-        code: "invalid_ownership_period",
-        validationCode: issue.code,
-        date: issue.date,
-        totalPercentage: issue.totalPercentage,
-      },
-    ];
+  if (validationWarnings.length > 0) {
+    return validationWarnings;
   }
 
-  const checkpoints = getOwnershipCheckpoints(
-    property,
-    activeStart,
-    taxYearEnd,
-  );
+  const coverageWarnings = ownershipTimeline
+    .coverageForRange({ activeFrom: activeStart, activeTo: taxYearEnd })
+    .map((finding) => ({
+      code: "incomplete_ownership_total" as const,
+      date: finding.date,
+      totalPercentage: finding.totalPercentage,
+      periodIds: finding.periodIds,
+    }));
 
-  for (const checkpoint of checkpoints) {
-    const total = getOwnershipTotalOnDate(
-      property.ownershipPeriods,
-      checkpoint,
-    );
-
-    if (total !== 100) {
-      return [
-        {
-          code: "incomplete_ownership_total",
-          date: checkpoint,
-          totalPercentage: total,
-        },
-      ];
-    }
-  }
-
-  return [];
-}
-
-function getOwnershipCheckpoints(
-  property: RentalProperty,
-  activeStart: string,
-  taxYearEnd: string,
-) {
-  const checkpoints = new Set<string>([activeStart]);
-
-  for (const period of property.ownershipPeriods) {
-    if (
-      period.effectiveFrom >= activeStart &&
-      period.effectiveFrom <= taxYearEnd
-    ) {
-      checkpoints.add(period.effectiveFrom);
-    }
-
-    if (period.effectiveTo !== null) {
-      const dayAfterEnd = addIsoDays(period.effectiveTo, 1);
-
-      if (dayAfterEnd >= activeStart && dayAfterEnd <= taxYearEnd) {
-        checkpoints.add(dayAfterEnd);
-      }
-    }
-  }
-
-  return Array.from(checkpoints).toSorted();
-}
-
-function addIsoDays(date: string, days: number) {
-  const parsed = new Date(`${date}T00:00:00.000Z`);
-  parsed.setUTCDate(parsed.getUTCDate() + days);
-
-  return parsed.toISOString().slice(0, 10);
+  return [...validationWarnings, ...coverageWarnings];
 }

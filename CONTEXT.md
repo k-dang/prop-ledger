@@ -20,6 +20,8 @@ _Avoid_: closed year, locked year, annual record
 **Ownership Period**:
 An effective-dated record of one owner's share of a property over a date range; the
 authoritative source of owner allocation, selected by date — never restated per year.
+Its start and end dates are inclusive; gaps are neutral record facts until a
+required active range needs 100% ownership coverage.
 _Avoid_: share, allocation, split (as standalone nouns)
 
 **Year-End Package**:

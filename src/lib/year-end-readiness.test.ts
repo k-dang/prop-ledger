@@ -242,6 +242,34 @@ describe("year-end readiness", () => {
             code: "incomplete_ownership_total",
             date: "2026-07-01",
             totalPercentage: 50,
+            periodIds: ["period-2"],
+          },
+        }),
+      ]),
+    );
+  });
+
+  it("does not add coverage warnings after invalid ownership periods", () => {
+    const property = makeProperty({
+      ownershipPeriods: [
+        makeOwnershipPeriod({
+          id: "period-1",
+          ownerId: "owner-1",
+          percentage: 150,
+        }),
+      ],
+    });
+
+    expect(getYearEndReadiness(property, 2026).items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "ownership_allocations",
+          status: "warning",
+          count: 1,
+          ownershipWarning: {
+            code: "invalid_ownership_period",
+            validationCode: "INVALID_PERCENTAGE",
+            periodIds: ["period-1"],
           },
         }),
       ]),

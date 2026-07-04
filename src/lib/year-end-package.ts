@@ -14,6 +14,7 @@ import {
   getCapitalAssetTransactions,
   getDocumentsForTarget,
 } from "./evidence-binder";
+import { createOwnershipPeriodTimeline } from "./ownership-period-timeline";
 import type { RentalProperty } from "./property-workspace";
 import { summarizeRentLedger } from "./rent-ledger";
 import { summarizeManualIncomeForTax } from "./rental-income";
@@ -41,7 +42,11 @@ export function buildYearEndPackageSnapshot({
   scope: PackageScope;
   generatedAt: string;
 }): YearEndPackageSnapshot {
-  const allocation = createAllocation(source, scope);
+  const ownershipTimeline = createOwnershipPeriodTimeline({
+    owners: source.owners,
+    periods: source.ownershipPeriods,
+  });
+  const allocation = createAllocation(source, scope, ownershipTimeline);
   const entries = source.ledgerEntries.filter(
     (entry) => entryYear(entry) === taxYear,
   );
@@ -79,7 +84,11 @@ export function buildYearEndPackageSnapshot({
       taxableManualIncome,
       expenseSummary,
     ),
-    ownerShareWorksheet: buildOwnerShareWorksheet(source, taxYear, scope),
+    ownerShareWorksheet: buildOwnerShareWorksheet(
+      ownershipTimeline,
+      taxYear,
+      scope,
+    ),
     rentLedger: {
       rentReceived: rentSummary.paymentsReceived,
       paymentCount: rentSummary.paymentCount,
@@ -103,7 +112,11 @@ export function buildYearEndPackageSnapshot({
   };
 }
 
-function createAllocation(source: YearEndPackageSource, scope: PackageScope) {
+function createAllocation(
+  source: YearEndPackageSource,
+  scope: PackageScope,
+  ownershipTimeline: ReturnType<typeof createOwnershipPeriodTimeline>,
+) {
   if (scope.type === "property") {
     return {
       snapshotScope: { type: "property", label: "Full property" } as const,
@@ -123,7 +136,8 @@ function createAllocation(source: YearEndPackageSource, scope: PackageScope) {
       ownerId: owner.id,
       label: owner.name,
     } as const,
-    factorFor: (date: string) => ownershipShare(source, owner.id, date) / 100,
+    factorFor: (date: string) =>
+      ownershipTimeline.ownerShareFactor(owner.id, date),
   };
 }
 
@@ -247,29 +261,25 @@ function buildPackageDocumentIndex(
 }
 
 function buildOwnerShareWorksheet(
-  source: YearEndPackageSource,
+  ownershipTimeline: ReturnType<typeof createOwnershipPeriodTimeline>,
   taxYear: number,
   scope: PackageScope,
 ) {
   const yearStart = `${taxYear}-01-01`;
   const yearEnd = `${taxYear}-12-31`;
-  return source.owners
-    .filter((owner) => scope.type === "property" || owner.id === scope.ownerId)
+  return ownershipTimeline
+    .ownerPeriodsForRange(
+      { activeFrom: yearStart, activeTo: yearEnd },
+      scope.type === "owner" ? scope.ownerId : undefined,
+    )
     .map((owner) => ({
-      ownerId: owner.id,
-      ownerName: owner.name,
-      periods: source.ownershipPeriods
-        .filter(
-          (period) =>
-            period.ownerId === owner.id &&
-            period.effectiveFrom <= yearEnd &&
-            (period.effectiveTo === null || period.effectiveTo >= yearStart),
-        )
-        .map((period) => ({
-          from: period.effectiveFrom,
-          to: period.effectiveTo,
-          percentage: period.percentage,
-        })),
+      ownerId: owner.ownerId,
+      ownerName: owner.ownerName,
+      periods: owner.periods.map((period) => ({
+        from: period.effectiveFrom,
+        to: period.effectiveTo,
+        percentage: period.percentage,
+      })),
     }));
 }
 
@@ -287,21 +297,6 @@ function propertyIdentity(source: YearEndPackageSource) {
       .filter(Boolean)
       .join(", "),
   };
-}
-
-function ownershipShare(
-  source: YearEndPackageSource,
-  ownerId: string,
-  date: string,
-) {
-  return source.ownershipPeriods
-    .filter(
-      (period) =>
-        period.ownerId === ownerId &&
-        period.effectiveFrom <= date &&
-        (period.effectiveTo === null || period.effectiveTo >= date),
-    )
-    .reduce((sum, period) => sum + period.percentage, 0);
 }
 
 function round(value: number) {

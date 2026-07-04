@@ -25,13 +25,15 @@ import {
   transactionMutationCacheTags,
 } from "@/lib/cache-tags";
 import {
-  canAddOwnershipPeriod,
+  createOwnershipPeriodTimeline,
+  type OwnershipValidationIssue,
+} from "@/lib/ownership-period-timeline";
+import {
   formatDisplayDate,
   formatPercent,
   type NewOwnerWithOwnershipInput,
   type NewPropertyInput,
   type NewUnitInput,
-  type OwnershipValidationIssue,
 } from "@/lib/property-workspace";
 import type {
   NewLeaseDocumentInput,
@@ -184,10 +186,12 @@ export async function addOwnerWithOwnership(
         effectiveFrom: input.effectiveFrom,
         effectiveTo: input.effectiveTo ?? null,
       };
-      const validation = canAddOwnershipPeriod(existing, nextPeriod);
+      const validationIssues = createOwnershipPeriodTimeline({
+        periods: [...existing, nextPeriod],
+      }).validate();
 
-      if (!validation.ok) {
-        return { ok: false, error: formatOwnershipIssue(validation.issues[0]) };
+      if (validationIssues.length > 0) {
+        return { ok: false, error: formatOwnershipIssue(validationIssues[0]) };
       }
 
       const owner = {
