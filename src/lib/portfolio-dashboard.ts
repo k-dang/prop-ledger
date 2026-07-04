@@ -1,19 +1,16 @@
 import type { RentEvent, T776Category } from "../db/schema";
 import { T776_CATEGORIES } from "../db/schema";
-import {
-  allocatePrepaidToYear,
-  isPrepaid,
-  type LedgerEntryWithSplits,
-  summarizeDeductibleExpenses,
-} from "./allocations";
 import { entryYear, formatExpenseCategory } from "./evidence-binder";
 import {
   getPropertyReadiness,
   type RentalProperty,
 } from "./property-workspace";
-import { summarizeRentLedger } from "./rent-ledger";
-import { summarizeManualIncomeForTax } from "./rental-income";
+import { isValidTaxYear } from "./tax-year";
+import { summarizeTaxYearFinancials } from "./tax-year-financial-summary";
 import { getYearEndReadiness } from "./year-end-readiness";
+import { getYearEndReadinessRows } from "./year-end-readiness-view-model";
+
+export { isValidTaxYear } from "./tax-year";
 
 export type DashboardPropertySource = RentalProperty & {
   rentEvents: RentEvent[];
@@ -149,11 +146,12 @@ function buildPropertyResult(
 
   const setup = getPropertyReadiness(property);
   const readiness = getYearEndReadiness(property, taxYear);
-  const { financials, categories } = summarizePropertyFinancials(
+  const financials = summarizeTaxYearFinancials(
     property,
     taxYear,
     readiness.uncategorizedTransactions,
   );
+  const categories = financials.expenseCategoryTotals;
   const blockingCount = setup.setupGapCount + readiness.blockingCount;
   const warningCount = readiness.warningCount;
   const attentionItems = buildAttentionItems(
@@ -182,51 +180,14 @@ function buildPropertyResult(
             ? "needs_review"
             : "ready",
       openExceptionCount,
-      ...financials,
+      grossRentalIncome: financials.grossRentalIncome,
+      paymentsReceived: financials.paymentsReceived,
+      deductibleExpenses: financials.deductibleExpenses,
+      netRecordedRentalIncome: financials.netRecordedRentalIncome,
+      incompleteTransactionCount: financials.incompleteTransactionCount,
     },
     categories,
     attentionItems,
-  };
-}
-
-function summarizePropertyFinancials(
-  property: DashboardPropertySource,
-  taxYear: number,
-  incompleteTransactionCount: number,
-): { financials: FinancialSummary; categories: Map<T776Category, number> } {
-  const entries = property.ledgerEntries
-    .filter((entry) => entryYear(entry) === taxYear)
-    .map((entry) => allocateEntryToYear(entry, taxYear));
-  const mortgagePayments = property.mortgagePayments.filter((payment) =>
-    payment.date.startsWith(`${taxYear}-`),
-  );
-  const expenseSummary = summarizeDeductibleExpenses(entries, mortgagePayments);
-  const categories = new Map<T776Category, number>();
-
-  for (const [category, amount] of expenseSummary) {
-    categories.set(category, roundMoney(amount));
-  }
-
-  const rent = summarizeRentLedger(property.rentEvents, taxYear);
-  const { taxableManualIncome } = summarizeManualIncomeForTax(entries);
-  const grossRentalIncome = roundMoney(
-    rent.grossRentalIncome + taxableManualIncome,
-  );
-  const deductibleExpenses = roundMoney(
-    [...expenseSummary.values()].reduce((total, amount) => total + amount, 0),
-  );
-
-  return {
-    financials: {
-      grossRentalIncome,
-      paymentsReceived: rent.paymentsReceived,
-      deductibleExpenses,
-      netRecordedRentalIncome: roundMoney(
-        grossRentalIncome - deductibleExpenses,
-      ),
-      incompleteTransactionCount,
-    },
-    categories,
   };
 }
 
@@ -242,27 +203,6 @@ function mergeCategoryTotals(
   }
 
   return totals;
-}
-
-function allocateEntryToYear(
-  entry: LedgerEntryWithSplits,
-  taxYear: number,
-): LedgerEntryWithSplits {
-  if (!isPrepaid(entry)) {
-    return entry;
-  }
-
-  const amount = allocatePrepaidToYear(entry, taxYear);
-  const splitRatio = entry.amount === 0 ? 0 : amount / entry.amount;
-
-  return {
-    ...entry,
-    amount,
-    splits: entry.splits.map((split) => ({
-      ...split,
-      amount: roundMoney(split.amount * splitRatio),
-    })),
-  };
 }
 
 function buildAttentionItems(
@@ -287,57 +227,27 @@ function buildAttentionItems(
     });
   }
 
-  for (const item of readiness.items) {
-    if (item.status === "clear") {
+  for (const row of getYearEndReadinessRows({
+    propertyId: property.id,
+    taxYear,
+    readiness,
+    setupReadiness: setup,
+    surface: "portfolio",
+  })) {
+    if (row.status === "clear") {
       continue;
     }
 
-    // An incomplete ownership setup task already surfaces the same root cause as
-    // the ownership_allocations readiness warning, so drop the duplicate here.
-    if (
-      item.id === "ownership_allocations" &&
-      setupGaps.some((task) => task.id === "ownership")
-    ) {
-      continue;
-    }
-
-    const common = {
-      id: `${property.id}:${item.id}`,
+    items.push({
+      id: `${property.id}:${row.id}`,
       propertyId: property.id,
       propertyName: property.name,
-      severity: item.status,
-      count: item.count,
-    } as const;
-
-    if (item.id === "uncategorized_transactions") {
-      items.push({
-        ...common,
-        label: "Categorize transactions",
-        detail: `${item.count} transaction${plural(item.count)} need review.`,
-        href: transactionHref(property.id, taxYear, "uncategorized"),
-      });
-    } else if (item.id === "missing_documents") {
-      items.push({
-        ...common,
-        label: "Attach missing evidence",
-        detail: `${item.count} expense${plural(item.count)} need receipt or invoice support.`,
-        href: transactionHref(property.id, taxYear, "missing_receipt"),
-      });
-    } else if (item.id === "capital_assets") {
-      items.push({
-        ...common,
-        label: "Review capital assets",
-        detail: `${item.count} marked transaction${plural(item.count)} need accountant review.`,
-        href: `/year-end?propertyId=${property.id}&year=${taxYear}`,
-      });
-    } else {
-      items.push({
-        ...common,
-        label: "Review ownership allocations",
-        detail: `${item.count} ownership issue${plural(item.count)} remain.`,
-        href: `/properties/${property.id}`,
-      });
-    }
+      severity: row.status,
+      label: row.label,
+      detail: row.detail,
+      count: row.count,
+      href: row.href,
+    });
   }
 
   return items;
@@ -406,15 +316,6 @@ function getAvailableTaxYears(
   return [...years].filter(isValidTaxYear).toSorted((a, b) => b - a);
 }
 
-const MIN_TAX_YEAR = 2000;
-const MAX_TAX_YEAR = 2100;
-
-/** Shared bound for selectable tax years; keeps the route and the aggregator
- * from drifting on what counts as a valid year. */
-export function isValidTaxYear(year: number) {
-  return Number.isInteger(year) && year >= MIN_TAX_YEAR && year <= MAX_TAX_YEAR;
-}
-
 function inactivePropertySummary(
   property: DashboardPropertySource,
 ): PropertyDashboardSummary {
@@ -444,14 +345,6 @@ function isActiveForYear(
   return property.acquisitionDate <= `${taxYear}-12-31`;
 }
 
-function transactionHref(
-  propertyId: string,
-  taxYear: number,
-  issue: "uncategorized" | "missing_receipt",
-) {
-  return `/transactions?propertyId=${propertyId}&year=${taxYear}&issue=${issue}`;
-}
-
 function compareAttentionItems(
   left: DashboardAttentionItem,
   right: DashboardAttentionItem,
@@ -465,10 +358,6 @@ function compareAttentionItems(
   }
 
   return left.propertyName.localeCompare(right.propertyName);
-}
-
-function plural(count: number) {
-  return count === 1 ? "" : "s";
 }
 
 function roundMoney(value: number) {

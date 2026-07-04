@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useReducer } from "react";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
 import {
@@ -71,7 +70,6 @@ export function PropertyWorkspace({
   workspace: PropertyWorkspaceData | undefined;
   year: number;
 }) {
-  const router = useRouter();
   const [errors, dispatchError] = useReducer(workspaceErrorReducer, {});
 
   if (workspace === undefined) {
@@ -154,15 +152,9 @@ export function PropertyWorkspace({
   }
 
   async function handleDeleteManualTransaction(transactionId: string) {
-    const saved = await runWorkspaceMutation("transaction", () =>
+    return runWorkspaceMutation("transaction", () =>
       deleteManualTransaction(selectedId, transactionId),
     );
-
-    if (saved) {
-      router.refresh();
-    }
-
-    return saved;
   }
 
   async function handleDeleteEvidenceDocument(documentId: string) {

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PropertyWorkspace } from "@/components/property-workspace/property-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPropertyWorkspace } from "@/db/queries";
-import { getDefaultTaxYear } from "@/lib/year-end-readiness";
+import { parseTaxYearSearchParam } from "@/lib/tax-year";
 
 export const metadata: Metadata = {
   title: "Property Workspace",
@@ -16,7 +16,7 @@ export default function PropertyPage({
   searchParams,
 }: {
   params: Promise<{ propertyId: string }>;
-  searchParams: Promise<{ year?: string }>;
+  searchParams: Promise<{ year?: string | string[] }>;
 }) {
   // `params` and the DB read are both request-time work under Cache Components,
   // so they stream in behind a Suspense boundary.
@@ -32,7 +32,7 @@ async function PropertyContent({
   searchParams,
 }: {
   params: Promise<{ propertyId: string }>;
-  searchParams: Promise<{ year?: string }>;
+  searchParams: Promise<{ year?: string | string[] }>;
 }) {
   const [{ propertyId }, { year }] = await Promise.all([params, searchParams]);
   const workspace = await getPropertyWorkspace(propertyId);
@@ -41,17 +41,9 @@ async function PropertyContent({
     <PropertyWorkspace
       propertyId={propertyId}
       workspace={workspace}
-      year={parseYear(year)}
+      year={parseTaxYearSearchParam(year)}
     />
   );
-}
-
-function parseYear(raw: string | undefined): number {
-  const parsed = Number(raw);
-
-  return Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100
-    ? parsed
-    : getDefaultTaxYear();
 }
 
 function PropertySkeleton() {
