@@ -219,6 +219,12 @@ export function PropertyWorkspaceDetail({
     !deferActivity &&
     (yearEndReadiness.uncategorizedTransactions > 0 ||
       yearEndReadiness.missingReceipts > 0);
+  const mortgagePaymentSummary = getMortgagePaymentSummary(property, year);
+  const taxableActivitySummary = getTaxableActivitySummary(
+    property,
+    rentLedger,
+    year,
+  );
 
   return (
     <>
@@ -269,6 +275,8 @@ export function PropertyWorkspaceDetail({
       </section>
       <WorkflowDetails
         id="mortgage-payments"
+        icon={WalletCards}
+        summary={mortgagePaymentSummary}
         title="Mortgage payments"
         description={
           deferActivity
@@ -284,6 +292,8 @@ export function PropertyWorkspaceDetail({
       </WorkflowDetails>
       <WorkflowDetails
         id="tax-activity"
+        icon={CircleDollarSign}
+        summary={taxableActivitySummary}
         title="Record taxable activity"
         description={
           deferActivity
@@ -292,21 +302,7 @@ export function PropertyWorkspaceDetail({
         }
         open={openTaxActivity}
       >
-        <section
-          aria-labelledby="tax-activity-title"
-          className="grid scroll-mt-4 gap-3"
-        >
-          <div>
-            <h2
-              id="tax-activity-title"
-              className="font-heading font-medium text-base leading-snug"
-            >
-              Record taxable activity
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Rent payments, deductions, and non-rent income for {year}.
-            </p>
-          </div>
+        <div className="grid gap-3">
           <RentIncomeSummaryStrip ledger={rentLedger} year={year} />
           <div className="grid items-stretch gap-4 xl:grid-cols-2">
             <RentActivityTools
@@ -336,7 +332,7 @@ export function PropertyWorkspaceDetail({
               onDeleteEvent={onDeleteRentEvent}
             />
           </div>
-        </section>
+        </div>
       </WorkflowDetails>
       <EvidenceBinderPanel property={property} />
     </>
@@ -345,51 +341,53 @@ export function PropertyWorkspaceDetail({
 
 function WorkflowDetails({
   id,
+  icon: Icon,
+  summary,
   title,
   description,
   open,
   children,
 }: {
   id: string;
+  icon: LucideIcon;
+  summary: string;
   title: string;
   description: string;
   open: boolean;
   children: ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(open);
-  const panelId = `${id}-panel`;
-
   return (
-    <section
-      id={id}
-      className="grid scroll-mt-4 rounded-md border bg-background text-foreground"
-    >
-      <button
-        type="button"
-        aria-controls={panelId}
-        aria-expanded={expanded}
-        className="flex items-center justify-between gap-3 px-4 py-3 text-left"
-        onClick={() => {
-          setExpanded((current) => !current);
-        }}
-      >
-        <span className="min-w-0">
-          <span className="block font-heading font-medium text-base leading-snug">
-            {title}
-          </span>
-          <span className="block text-muted-foreground text-sm">
-            {description}
-          </span>
-        </span>
-        <span className="shrink-0 rounded-md border px-2 py-1 text-muted-foreground text-xs">
-          {expanded ? "Hide" : "Open"}
-        </span>
-      </button>
-      {expanded ? (
-        <div id={panelId} className="grid gap-4 border-t px-4 py-4">
-          {children}
-        </div>
-      ) : null}
+    <section id={id} className="scroll-mt-4">
+      <Card className="rounded-md py-0">
+        <h2 className="sr-only">{title}</h2>
+        <Accordion defaultValue={open ? [id] : []}>
+          <AccordionItem value={id} className="border-b-0">
+            <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
+                <Icon
+                  className="size-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <div className="min-w-0">
+                  <span className="block font-medium text-sm">{title}</span>
+                  <span className="block truncate text-muted-foreground text-xs">
+                    {description}
+                  </span>
+                </div>
+                <span className="ml-auto hidden shrink-0 text-muted-foreground text-xs tabular-nums sm:inline">
+                  {summary}
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent
+              id={`${id}-panel`}
+              className="grid gap-4 border-t px-4 py-4"
+            >
+              {children}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </Card>
     </section>
   );
 }
@@ -1016,6 +1014,34 @@ function EmptyState({
 
 function pluralize(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function getMortgagePaymentSummary(property: RentalProperty, year: number) {
+  const yearPrefix = `${year}-`;
+  const paymentCount = property.mortgagePayments.filter((payment) =>
+    payment.date.startsWith(yearPrefix),
+  ).length;
+
+  return `${pluralize(paymentCount, "payment")} in ${year}`;
+}
+
+function getTaxableActivitySummary(
+  property: RentalProperty,
+  rentLedger: RentLedger,
+  year: number,
+) {
+  const yearPrefix = `${year}-`;
+  const rentPaymentCount = rentLedger.rentEvents.filter(
+    (event) => event.type === "payment" && event.date.startsWith(yearPrefix),
+  ).length;
+  const transactionCount = property.ledgerEntries.filter((entry) =>
+    entry.date.startsWith(yearPrefix),
+  ).length;
+
+  return `${pluralize(rentPaymentCount, "rent payment")} · ${pluralize(
+    transactionCount,
+    "transaction",
+  )}`;
 }
 
 function getOwnershipDisplayHistory(property: RentalProperty) {
