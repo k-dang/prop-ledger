@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePickerField } from "@/components/ui/date-picker-field";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -511,8 +511,9 @@ function AddManualTransactionSheet({
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="reviewNotes">Review notes</FieldLabel>
+            <FieldLabel htmlFor="reviewNotes">Tax review note</FieldLabel>
             <Input
+              aria-describedby="reviewNotes-description"
               id="reviewNotes"
               name="reviewNotes"
               value={draft.reviewNotes}
@@ -520,6 +521,10 @@ function AddManualTransactionSheet({
                 updateDraft({ reviewNotes: event.target.value });
               }}
             />
+            <FieldDescription id="reviewNotes-description">
+              Optional tax treatment context, like capital vs. repair, prepaid
+              period, or personal-use portion.
+            </FieldDescription>
           </Field>
           {transactionType === "expense" ? (
             <FieldLabel
