@@ -308,8 +308,9 @@ export function PropertyWorkspaceDetail({
             </p>
           </div>
           <RentIncomeSummaryStrip ledger={rentLedger} year={year} />
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid items-stretch gap-4 xl:grid-cols-2">
             <RentActivityTools
+              className="h-full"
               ledger={rentLedger}
               year={year}
               error={rentEventError}
@@ -318,6 +319,7 @@ export function PropertyWorkspaceDetail({
               showActivity={false}
             />
             <DeductionsAndIncomePanel
+              className="h-full"
               property={property}
               error={transactionError}
               evidenceError={transactionDocumentError}

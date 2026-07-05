@@ -212,6 +212,7 @@ export function RentActivityTools({
   return (
     <div className={cn("flex min-w-0 flex-col gap-4", className)}>
       <RentEventPanel
+        className={!showActivity ? "h-full" : undefined}
         leases={ledger.leases}
         latestPayment={getLatestRentPayment(ledger.rentEvents)}
         error={error}
@@ -620,11 +621,13 @@ function RentEventPanel({
   leases,
   latestPayment,
   error,
+  className,
   onRecordEvent,
 }: {
   leases: Lease[];
   latestPayment?: RentEvent;
   error?: string;
+  className?: string;
   onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
 }) {
   const [selectedLeaseId, setSelectedLeaseId] = useState("");
@@ -660,7 +663,7 @@ function RentEventPanel({
   }
 
   return (
-    <Card className="rounded-md">
+    <Card className={cn("rounded-md", className)}>
       <CardHeader>
         <CardTitle as="h2">Record rent payment</CardTitle>
         <CardDescription>

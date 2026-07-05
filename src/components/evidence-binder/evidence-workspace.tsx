@@ -49,6 +49,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   createEmptyManualTransactionDraft,
   formatLedgerCategory,
   getDocumentsForTarget,
@@ -176,6 +184,7 @@ export function DeductionsAndIncomePanel({
   property,
   error,
   evidenceError,
+  className,
   onSubmit,
   onDeleteTransaction,
   onUploadEvidence,
@@ -184,6 +193,7 @@ export function DeductionsAndIncomePanel({
   property: RentalProperty;
   error?: string;
   evidenceError?: string;
+  className?: string;
   onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
   onDeleteTransaction: (transactionId: string) => boolean | Promise<boolean>;
   onUploadEvidence: (
@@ -192,6 +202,9 @@ export function DeductionsAndIncomePanel({
   ) => boolean | Promise<boolean>;
   onDeleteDocument: (documentId: string) => boolean | Promise<boolean>;
 }) {
+  const entries = property.ledgerEntries.toSorted((a, b) =>
+    b.date.localeCompare(a.date),
+  );
   const incomeTotal = property.ledgerEntries
     .filter((entry) => entry.type === "income")
     .reduce((total, entry) => total + entry.amount, 0);
@@ -199,7 +212,7 @@ export function DeductionsAndIncomePanel({
     .filter((entry) => entry.type === "expense")
     .reduce((total, entry) => total + entry.amount, 0);
   return (
-    <Card className="rounded-md">
+    <Card className={cn("rounded-md", className)}>
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
           <CardTitle as="h2">Deductions & non-rent income</CardTitle>
@@ -235,83 +248,156 @@ export function DeductionsAndIncomePanel({
             No deductions or non-rent income recorded.
           </EmptyState>
         ) : (
-          <ul className="grid gap-2">
-            {property.ledgerEntries.map((entry) => {
-              const linked = getDocumentsForTarget(
-                property.documents,
-                "transaction",
-                entry.id,
-              );
-
-              return (
-                <li
-                  className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-start"
-                  key={entry.id}
-                >
-                  <div className="text-muted-foreground text-sm tabular-nums">
-                    {entry.date}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <p className="max-w-full truncate font-medium text-sm">
-                        {entry.vendor}
-                      </p>
-                      <TransactionTypeLabel entry={entry} />
-                    </div>
-                    <p className="mt-1 truncate text-muted-foreground text-xs">
-                      {entry.reviewNotes || entry.memo || "No notes"}
-                    </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <TransactionTags entry={entry} />
-                      <TransactionEvidenceControl
-                        documents={linked}
-                        transaction={entry}
-                        transactionId={entry.id}
-                        capitalAssetControl={
-                          entry.type === "expense" ? (
-                            <CapitalAssetControl
-                              propertyId={property.id}
-                              transactionId={entry.id}
-                              isCapitalAsset={entry.isCapitalAsset}
-                            />
-                          ) : null
-                        }
-                        onUploadEvidence={onUploadEvidence}
-                        onDeleteDocument={onDeleteDocument}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
-                    <span className="font-semibold tabular-nums text-sm">
-                      {formatMoney(entry.amount)}
-                    </span>
-                    <DeleteTransactionButton
-                      transactionId={entry.id}
-                      vendor={entry.vendor}
-                      onDelete={onDeleteTransaction}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <TransactionRecordsLedger
+            documents={property.documents}
+            entries={entries}
+            propertyId={property.id}
+            onDeleteDocument={onDeleteDocument}
+            onDeleteTransaction={onDeleteTransaction}
+            onUploadEvidence={onUploadEvidence}
+          />
         )}
       </CardContent>
     </Card>
   );
 }
 
-function TransactionTags({
-  entry,
+function TransactionRecordsLedger({
+  documents,
+  entries,
+  propertyId,
+  onDeleteDocument,
+  onDeleteTransaction,
+  onUploadEvidence,
 }: {
-  entry: RentalProperty["ledgerEntries"][number];
+  documents: RentalProperty["documents"];
+  entries: RentalProperty["ledgerEntries"];
+  propertyId: string;
+  onDeleteDocument: (documentId: string) => boolean | Promise<boolean>;
+  onDeleteTransaction: (transactionId: string) => boolean | Promise<boolean>;
+  onUploadEvidence: (
+    transactionId: string,
+    formData: FormData,
+  ) => boolean | Promise<boolean>;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Badge variant="outline" className="rounded-md">
-        {formatLedgerCategory(entry)}
-      </Badge>
+    <div className="max-h-80 overflow-y-auto rounded-md border bg-background">
+      <Table
+        aria-label="Deduction and non-rent income records"
+        className="min-w-[34rem] table-fixed"
+      >
+        <colgroup>
+          <col className="w-[6.75rem]" />
+          <col />
+          <col className="w-[7.5rem]" />
+          <col className="w-[4.5rem]" />
+        </colgroup>
+        <TableHeader className="sticky top-0 z-10 bg-muted/30">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="h-8 px-2 text-muted-foreground text-xs">
+              Date
+            </TableHead>
+            <TableHead className="h-8 px-2 text-muted-foreground text-xs">
+              Record
+            </TableHead>
+            <TableHead className="h-8 px-2 text-right text-muted-foreground text-xs">
+              Amount
+            </TableHead>
+            <TableHead className="h-8 px-2">
+              <span className="sr-only">Actions</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.map((entry) => (
+            <TransactionRecordRow
+              documents={documents}
+              entry={entry}
+              key={entry.id}
+              propertyId={propertyId}
+              onDeleteDocument={onDeleteDocument}
+              onDeleteTransaction={onDeleteTransaction}
+              onUploadEvidence={onUploadEvidence}
+            />
+          ))}
+        </TableBody>
+      </Table>
     </div>
+  );
+}
+
+function TransactionRecordRow({
+  entry,
+  documents,
+  propertyId,
+  onDeleteDocument,
+  onDeleteTransaction,
+  onUploadEvidence,
+}: {
+  entry: RentalProperty["ledgerEntries"][number];
+  documents: RentalProperty["documents"];
+  propertyId: string;
+  onDeleteDocument: (documentId: string) => boolean | Promise<boolean>;
+  onDeleteTransaction: (transactionId: string) => boolean | Promise<boolean>;
+  onUploadEvidence: (
+    transactionId: string,
+    formData: FormData,
+  ) => boolean | Promise<boolean>;
+}) {
+  const linked = getDocumentsForTarget(documents, "transaction", entry.id);
+  const category = formatLedgerCategory(entry);
+  const note = entry.reviewNotes || entry.memo;
+  const isUncategorized = category.startsWith("Uncategorized");
+
+  return (
+    <TableRow>
+      <TableCell className="px-2 py-2 text-muted-foreground tabular-nums">
+        <time dateTime={entry.date}>{entry.date}</time>
+      </TableCell>
+      <TableCell className="min-w-0 whitespace-normal px-2 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate font-medium text-sm">{entry.vendor}</p>
+          <TransactionTypeLabel entry={entry} />
+        </div>
+        <p className="mt-0.5 truncate text-muted-foreground text-xs">
+          <span className={cn(isUncategorized && toneIcon.review)}>
+            {category}
+          </span>
+          {note ? <span> · {note}</span> : null}
+        </p>
+      </TableCell>
+      <TableCell className="px-2 py-2 text-right">
+        <span className="block font-semibold tabular-nums text-sm">
+          {formatMoney(entry.amount)}
+        </span>
+      </TableCell>
+      <TableCell className="px-2 py-2">
+        <div className="flex items-center justify-end gap-1">
+          <TransactionEvidenceControl
+            compact
+            documents={linked}
+            transaction={entry}
+            transactionId={entry.id}
+            capitalAssetControl={
+              entry.type === "expense" ? (
+                <CapitalAssetControl
+                  propertyId={propertyId}
+                  transactionId={entry.id}
+                  isCapitalAsset={entry.isCapitalAsset}
+                />
+              ) : null
+            }
+            onUploadEvidence={onUploadEvidence}
+            onDeleteDocument={onDeleteDocument}
+          />
+          <DeleteTransactionButton
+            transactionId={entry.id}
+            vendor={entry.vendor}
+            onDelete={onDeleteTransaction}
+          />
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -323,11 +409,11 @@ function TransactionTypeLabel({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 font-medium text-sm",
+        "inline-flex items-center gap-1.5 font-medium text-xs",
         entry.type === "income" ? toneIcon.ready : toneIcon.info,
       )}
     >
-      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+      <span className="size-1 rounded-full bg-current" aria-hidden="true" />
       <span className="text-foreground">
         {entry.type === "income" ? "Non-rent income" : "Expense"}
       </span>
@@ -555,7 +641,7 @@ function SummaryMetric({
   return (
     <div className="min-w-0 p-3">
       <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="mt-1 font-semibold text-lg">{value}</p>
+      <p className="mt-1 font-semibold tabular-nums text-sm">{value}</p>
     </div>
   );
 }
@@ -588,8 +674,9 @@ function DeleteTransactionButton({
   return (
     <Button
       type="button"
-      variant="destructive"
+      variant="ghost"
       size="icon-sm"
+      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
       aria-label={`Delete tax record from ${vendor}`}
       title="Delete tax record"
       disabled={isDeleting}
@@ -605,6 +692,7 @@ function TransactionEvidenceControl({
   transaction,
   transactionId,
   capitalAssetControl,
+  compact = false,
   onUploadEvidence,
   onDeleteDocument,
 }: {
@@ -612,6 +700,7 @@ function TransactionEvidenceControl({
   transaction: RentalProperty["ledgerEntries"][number];
   transactionId: string;
   capitalAssetControl: ReactNode;
+  compact?: boolean;
   onUploadEvidence: (
     transactionId: string,
     formData: FormData,
@@ -638,19 +727,27 @@ function TransactionEvidenceControl({
     <Sheet open={open} onOpenChange={setOpen}>
       <Button
         type="button"
-        variant="outline"
+        variant={compact ? "ghost" : "outline"}
         size="sm"
         className={cn(
           "h-7 rounded-md px-2",
-          linkedCount > 0 ? toneSurface.ready : toneSurface.review,
+          compact
+            ? cn(
+                "gap-1 px-1.5 text-muted-foreground",
+                linkedCount > 0 ? toneIcon.ready : toneIcon.review,
+              )
+            : linkedCount > 0
+              ? toneSurface.ready
+              : toneSurface.review,
         )}
         title="Manage evidence"
+        aria-label={`Manage evidence for ${transaction.vendor}: ${linkedCount} linked`}
         onClick={() => {
           setOpen(true);
         }}
       >
         <Paperclip data-icon="inline-start" />
-        {linkedCount} linked
+        {compact ? linkedCount : `${linkedCount} linked`}
       </Button>
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader className="border-b pr-12">
