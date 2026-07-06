@@ -108,8 +108,10 @@ const currencyFormatter = new Intl.NumberFormat("en-CA", {
 
 export function EvidenceBinderPanel({
   property,
+  className,
 }: {
   property: RentalProperty;
+  className?: string;
 }) {
   const exceptions = getEvidenceExceptionCounts({
     ledgerEntries: property.ledgerEntries,
@@ -123,59 +125,57 @@ export function EvidenceBinderPanel({
   }
 
   return (
-    <section id="transactions" className="scroll-mt-4">
-      <Card className="rounded-md">
-        <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
-          <div>
-            <CardTitle as="h2">Review needed</CardTitle>
-            <CardDescription>
-              Tax records that still need categories or receipts before
-              year-end.
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2 lg:justify-self-end">
-            <Link
-              href="/transactions"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "rounded-md",
-              )}
-            >
-              <Receipt data-icon="inline-start" />
-              Review
-            </Link>
-            <Link
-              href="/documents"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "rounded-md",
-              )}
-            >
-              <FileText data-icon="inline-start" />
-              Documents
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <ExceptionTile
+    <section id="transactions" className={cn("scroll-mt-4", className)}>
+      <div
+        className={cn(
+          "grid gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center",
+          toneSurface.review,
+        )}
+      >
+        <div className="min-w-0">
+          <h3 className="font-medium text-foreground text-sm">Review needed</h3>
+          <p className="mt-0.5 max-w-2xl text-review-text text-sm">
+            Records still need categories or receipts before year-end.
+          </p>
+        </div>
+        <dl className="flex flex-wrap gap-x-5 gap-y-2 sm:justify-self-end">
+          <ExceptionMetric
             label="Uncategorized"
             value={exceptions.uncategorizedTransactions}
           />
-          <ExceptionTile
+          <ExceptionMetric
             label="Missing receipts"
             value={exceptions.missingReceipts}
           />
-        </CardContent>
-      </Card>
+        </dl>
+        <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-1 lg:justify-self-end">
+          <Link
+            href="/transactions"
+            className={cn(buttonVariants({ variant: "outline" }), "rounded-md")}
+          >
+            <Receipt data-icon="inline-start" />
+            Review
+          </Link>
+          <Link
+            href="/documents"
+            className={cn(buttonVariants({ variant: "outline" }), "rounded-md")}
+          >
+            <FileText data-icon="inline-start" />
+            Documents
+          </Link>
+        </div>
+      </div>
     </section>
   );
 }
 
-function ExceptionTile({ label, value }: { label: string; value: number }) {
+function ExceptionMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border bg-background p-3">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="mt-1 font-semibold text-2xl">{value}</p>
+    <div className="min-w-24">
+      <dt className="text-review-text text-xs">{label}</dt>
+      <dd className="mt-0.5 font-semibold text-foreground text-lg tabular-nums">
+        {value}
+      </dd>
     </div>
   );
 }
@@ -348,18 +348,18 @@ function TransactionRecordRow({
   const category = formatLedgerCategory(entry);
   const note = entry.reviewNotes || entry.memo;
   const isUncategorized = category.startsWith("Uncategorized");
+  const typeLabel = entry.type === "income" ? "Income" : "Expense";
 
   return (
     <TableRow>
       <TableCell className="px-2 py-2 text-muted-foreground tabular-nums">
         <time dateTime={entry.date}>{entry.date}</time>
       </TableCell>
-      <TableCell className="min-w-0 whitespace-normal px-2 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate font-medium text-sm">{entry.vendor}</p>
-          <TransactionTypeLabel entry={entry} />
-        </div>
+      <TableCell className="min-w-0 whitespace-normal px-2 py-2 align-top">
+        <p className="min-w-0 truncate font-medium text-sm">{entry.vendor}</p>
         <p className="mt-0.5 truncate text-muted-foreground text-xs">
+          <span>{typeLabel}</span>
+          <span> · </span>
           <span className={cn(isUncategorized && toneIcon.review)}>
             {category}
           </span>
@@ -398,26 +398,6 @@ function TransactionRecordRow({
         </div>
       </TableCell>
     </TableRow>
-  );
-}
-
-function TransactionTypeLabel({
-  entry,
-}: {
-  entry: RentalProperty["ledgerEntries"][number];
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 font-medium text-xs",
-        entry.type === "income" ? toneIcon.ready : toneIcon.info,
-      )}
-    >
-      <span className="size-1 rounded-full bg-current" aria-hidden="true" />
-      <span className="text-foreground">
-        {entry.type === "income" ? "Non-rent income" : "Expense"}
-      </span>
-    </span>
   );
 }
 

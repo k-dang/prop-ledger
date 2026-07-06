@@ -303,6 +303,7 @@ export function PropertyWorkspaceDetail({
         open={openTaxActivity}
       >
         <div className="grid gap-3">
+          <EvidenceBinderPanel property={property} />
           <RentIncomeSummaryStrip ledger={rentLedger} year={year} />
           <div className="grid items-stretch gap-4 xl:grid-cols-2">
             <RentActivityTools
@@ -334,7 +335,6 @@ export function PropertyWorkspaceDetail({
           </div>
         </div>
       </WorkflowDetails>
-      <EvidenceBinderPanel property={property} />
     </>
   );
 }
