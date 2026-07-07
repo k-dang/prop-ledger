@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { type ReactNode, Suspense } from "react";
 
 import {
   Sidebar,
@@ -57,13 +58,7 @@ const NAV_ITEMS = [
   },
 ] as const;
 
-export function AppSidebar({
-  properties,
-}: {
-  properties: ReadonlyArray<{ id: string; name: string }>;
-}) {
-  const pathname = usePathname();
-
+export function AppSidebar({ children }: { children: ReactNode }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -92,62 +87,112 @@ export function AppSidebar({
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const active = item.isActive(pathname);
-
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      tooltip={item.label}
-                      isActive={active}
-                      render={<Link href={item.href} />}
-                    >
-                      <Icon aria-hidden="true" />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              <Suspense fallback={<WorkspaceNavigationFallback />}>
+                <WorkspaceNavigation />
+              </Suspense>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Properties</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {properties.length === 0 ? (
-                <SidebarMenuItem>
-                  <SidebarMenuButton disabled tooltip="No properties yet">
-                    <Building2 aria-hidden="true" />
-                    <span>No properties yet</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ) : (
-                properties.map((property) => {
-                  const href = `/properties/${property.id}`;
-                  const active =
-                    pathname === href || pathname.startsWith(`${href}/`);
-
-                  return (
-                    <SidebarMenuItem key={property.id}>
-                      <SidebarMenuButton
-                        tooltip={property.name}
-                        isActive={active}
-                        render={<Link href={href} />}
-                      >
-                        <Building2 aria-hidden="true" />
-                        <span>{property.name}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })
-              )}
-            </SidebarMenu>
+            <SidebarMenu>{children}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+function WorkspaceNavigation() {
+  const pathname = usePathname();
+
+  return <WorkspaceNavigationItems pathname={pathname} />;
+}
+
+function WorkspaceNavigationItems({ pathname }: { pathname: string }) {
+  return NAV_ITEMS.map((item) => {
+    const Icon = item.icon;
+    const active = item.isActive(pathname);
+
+    return (
+      <SidebarMenuItem key={item.href}>
+        <SidebarMenuButton
+          tooltip={item.label}
+          isActive={active}
+          render={<Link href={item.href} />}
+        >
+          <Icon aria-hidden="true" />
+          <span>{item.label}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  });
+}
+
+function WorkspaceNavigationFallback() {
+  return NAV_ITEMS.map((item) => {
+    const Icon = item.icon;
+
+    return (
+      <SidebarMenuItem key={item.href}>
+        <SidebarMenuButton
+          tooltip={item.label}
+          render={<Link href={item.href} />}
+        >
+          <Icon aria-hidden="true" />
+          <span>{item.label}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  });
+}
+
+export function SidebarPropertyNavigation({
+  properties,
+}: {
+  properties: ReadonlyArray<{ id: string; name: string }>;
+}) {
+  const pathname = usePathname();
+
+  if (properties.length === 0) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton disabled tooltip="No properties yet">
+          <Building2 aria-hidden="true" />
+          <span>No properties yet</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
+
+  return properties.map((property) => {
+    const href = `/properties/${property.id}`;
+    const active = pathname === href || pathname.startsWith(`${href}/`);
+
+    return (
+      <SidebarMenuItem key={property.id}>
+        <SidebarMenuButton
+          tooltip={property.name}
+          isActive={active}
+          render={<Link href={href} />}
+        >
+          <Building2 aria-hidden="true" />
+          <span>{property.name}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  });
+}
+
+export function SidebarPropertyNavigationFallback() {
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton disabled tooltip="Loading properties">
+        <Building2 aria-hidden="true" />
+        <span>Loading properties</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }
