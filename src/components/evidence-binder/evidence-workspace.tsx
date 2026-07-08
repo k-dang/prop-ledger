@@ -151,14 +151,20 @@ export function EvidenceBinderPanel({
         <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-1 lg:justify-self-end">
           <Link
             href="/transactions"
-            className={cn(buttonVariants({ variant: "outline" }), "rounded-md")}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "rounded-md no-underline hover:no-underline",
+            )}
           >
             <Receipt data-icon="inline-start" />
             Review
           </Link>
           <Link
             href="/documents"
-            className={cn(buttonVariants({ variant: "outline" }), "rounded-md")}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "rounded-md no-underline hover:no-underline",
+            )}
           >
             <FileText data-icon="inline-start" />
             Documents
