@@ -6,7 +6,7 @@ import {
 } from "@/components/evidence-binder/transactions-inbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPortfolio } from "@/db/queries";
-import { getEntryIssues } from "@/lib/evidence-binder";
+import { getEntryExceptions } from "@/lib/evidence-binder";
 
 export const metadata = {
   title: "Review | Rental Property Workspace",
@@ -28,7 +28,7 @@ async function TransactionsContent() {
       propertyId: property.id,
       propertyName: property.name,
       entry,
-      issues: getEntryIssues(entry, property.documents),
+      exceptions: getEntryExceptions(entry, property.documents),
     })),
   );
   const properties = portfolio.properties.map((property) => ({

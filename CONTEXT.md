@@ -60,6 +60,11 @@ warnings, *Needs review* has warnings only, and *Blocked* has one or more blocke
 including missing required property setup.
 _Avoid_: setup percentage, completion percentage, closed year
 
+**Evidence Exception**:
+A live record-readiness flag that marks a tax record as needing classification,
+source-document support, or allocation cleanup before it can support year-end filing.
+_Avoid_: error, issue, validation failure
+
 ## Relationships
 
 - A **Tax Year** scopes records to a filing period and does not compute balances;

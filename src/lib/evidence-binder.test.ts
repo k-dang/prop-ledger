@@ -10,7 +10,7 @@ import {
   entryYear,
   getCapitalAssetTransactions,
   getDocumentsForTarget,
-  getEntryIssues,
+  getEntryExceptions,
   getEvidenceExceptionCounts,
   RENTAL_INCOME_CATEGORY_OPTIONS,
   summarizeRentalExpenses,
@@ -302,7 +302,7 @@ describe("inbox filtering", () => {
     expect(entryMatchesCategory(splitEntry, "insurance")).toBe(false);
   });
 
-  it("derives the issue list used to filter the inbox", () => {
+  it("derives the exception list used to filter the inbox", () => {
     const entry = makeEntry({
       id: "needs-work",
       expenseCategory: null,
@@ -319,7 +319,7 @@ describe("inbox filtering", () => {
       ],
     });
 
-    expect(getEntryIssues(entry, [])).toEqual([
+    expect(getEntryExceptions(entry, [])).toEqual([
       "missing_receipt",
       "split_mismatch",
     ]);

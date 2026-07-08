@@ -1,7 +1,6 @@
 "use client";
 
 import { Landmark } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { setTransactionCapitalAssetStatus } from "@/lib/capital-actions";
@@ -17,7 +16,6 @@ export function CapitalAssetControl({
   transactionId: string;
   isCapitalAsset: boolean;
 }) {
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>();
   const nextStatus = !isCapitalAsset;
@@ -46,8 +44,6 @@ export function CapitalAssetControl({
 
             if (!result.ok) {
               setError(result.error);
-            } else {
-              router.refresh();
             }
           } catch {
             setError("Unable to update the capital asset status.");

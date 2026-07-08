@@ -81,8 +81,8 @@ function toReadinessRow(
   taxYear: number,
   surface: ReadinessSurface,
 ): YearEndReadinessRow {
-  const transactionsHref = (issue: "uncategorized" | "missing_receipt") =>
-    `/transactions?propertyId=${propertyId}&year=${taxYear}&issue=${issue}`;
+  const transactionsHref = (exception: "uncategorized" | "missing_receipt") =>
+    `/transactions?propertyId=${propertyId}&year=${taxYear}&exception=${exception}`;
   const yearEndHref = `/year-end?propertyId=${propertyId}&year=${taxYear}`;
   const propertyHref =
     surface === "portfolio"

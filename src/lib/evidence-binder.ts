@@ -84,41 +84,44 @@ export function createEmptyManualTransactionDraft(): ManualTransactionFormDraft 
   };
 }
 
-export const INBOX_ISSUE_TYPES = [
+export const INBOX_EXCEPTION_TYPES = [
   "uncategorized",
   "missing_receipt",
   "split_mismatch",
 ] as const;
-export type InboxIssueType = (typeof INBOX_ISSUE_TYPES)[number];
+export type InboxExceptionType = (typeof INBOX_EXCEPTION_TYPES)[number];
 
-export const INBOX_ISSUE_OPTIONS: { value: InboxIssueType; label: string }[] = [
+export const INBOX_EXCEPTION_OPTIONS: {
+  value: InboxExceptionType;
+  label: string;
+}[] = [
   { value: "uncategorized", label: "Uncategorized" },
   { value: "missing_receipt", label: "Missing receipt" },
   { value: "split_mismatch", label: "Split mismatch" },
 ];
 
-export function getEntryIssues(
+export function getEntryExceptions(
   entry: LedgerEntryWithSplits,
   documents: DocumentWithLinks[],
-): InboxIssueType[] {
-  const issues: InboxIssueType[] = [];
+): InboxExceptionType[] {
+  const exceptions: InboxExceptionType[] = [];
 
   if (isUncategorized(entry)) {
-    issues.push("uncategorized");
+    exceptions.push("uncategorized");
   }
 
   if (
     entry.type === "expense" &&
     !hasDocumentLink(documents, "transaction", entry.id)
   ) {
-    issues.push("missing_receipt");
+    exceptions.push("missing_receipt");
   }
 
   if (!splitsBalance(entry.amount, entry.splits)) {
-    issues.push("split_mismatch");
+    exceptions.push("split_mismatch");
   }
 
-  return issues;
+  return exceptions;
 }
 
 export type EvidenceExceptionCounts = {
@@ -137,10 +140,10 @@ export function getEvidenceExceptionCounts(
   };
 
   for (const entry of binder.ledgerEntries) {
-    for (const issue of getEntryIssues(entry, binder.documents)) {
-      if (issue === "uncategorized") {
+    for (const exception of getEntryExceptions(entry, binder.documents)) {
+      if (exception === "uncategorized") {
         counts.uncategorizedTransactions += 1;
-      } else if (issue === "missing_receipt") {
+      } else if (exception === "missing_receipt") {
         counts.missingReceipts += 1;
       } else {
         counts.splitMismatches += 1;

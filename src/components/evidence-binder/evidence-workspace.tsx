@@ -12,16 +12,14 @@ import Link from "next/link";
 import { type ReactNode, useState, useTransition } from "react";
 import { z } from "zod";
 import { CapitalAssetControl } from "@/components/evidence-binder/capital-asset-control";
+import { useTransactionEvidenceUpload } from "@/components/evidence-binder/transaction-evidence-upload";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
   finiteFormNumber,
   optionalFormString,
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
-import {
-  createFormSubmit,
-  type FormSubmitHandler,
-} from "@/components/property-workspace/form-submit";
+import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -153,7 +151,7 @@ export function EvidenceBinderPanel({
             href="/transactions"
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "rounded-md no-underline hover:no-underline",
+              "rounded-md !no-underline hover:!no-underline",
             )}
           >
             <Receipt data-icon="inline-start" />
@@ -163,7 +161,7 @@ export function EvidenceBinderPanel({
             href="/documents"
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "rounded-md no-underline hover:no-underline",
+              "rounded-md !no-underline hover:!no-underline",
             )}
           >
             <FileText data-icon="inline-start" />
@@ -696,17 +694,13 @@ function TransactionEvidenceControl({
   const [open, setOpen] = useState(false);
   const fileInputId = `evidence-${transactionId}`;
   const linkedCount = documents.length;
-  const handleSubmit: FormSubmitHandler = (event) => {
+  const { isUploading, uploadForm } = useTransactionEvidenceUpload({
+    transactionId,
+    onUploadEvidence,
+  });
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    const form = event.currentTarget;
-    void Promise.resolve(
-      onUploadEvidence(transactionId, new FormData(form)),
-    ).then((saved) => {
-      if (saved) {
-        form.reset();
-      }
-    });
+    uploadForm(event.currentTarget);
   };
 
   return (
@@ -823,6 +817,7 @@ function TransactionEvidenceControl({
                 type="file"
                 accept="application/pdf,image/*"
                 required
+                disabled={isUploading}
               />
             </Field>
             <Button
@@ -830,9 +825,14 @@ function TransactionEvidenceControl({
               variant="outline"
               size="sm"
               className="w-fit rounded-md"
+              disabled={isUploading}
             >
               <Plus data-icon="inline-start" />
-              {linkedCount > 0 ? "Add receipt" : "Attach receipt"}
+              {isUploading
+                ? "Attaching..."
+                : linkedCount > 0
+                  ? "Add receipt"
+                  : "Attach receipt"}
             </Button>
           </form>
         </div>
