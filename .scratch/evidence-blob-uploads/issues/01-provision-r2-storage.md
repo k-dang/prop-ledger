@@ -46,3 +46,9 @@ rejected (bucket private). Test objects were cleaned up. `.env.local` carries
 R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, and
 EVIDENCE_BASE_URL. Note: the prod bucket's CORS rule still needs its origin set once
 the Vercel domain exists (tracked in Further Notes of the PRD); dev is fully unblocked.
+
+2026-07-08 (later): Decision change — dev and production now share the single
+`rental-evidence` bucket (ADR 0002 amended). The separately provisioned prod bucket is
+unused and can be deleted from Cloudflare. The remaining CORS follow-up moves to the
+shared bucket instead: add the Vercel production origin as an AllowedOrigin alongside
+`http://localhost:3000` once the domain exists.

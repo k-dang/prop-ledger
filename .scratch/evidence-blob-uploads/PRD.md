@@ -55,7 +55,7 @@ are recorded in ADR 0002.
 20. As a co-owner, I want the original filename preserved on the document record, so that I can recognize "roof-invoice.pdf" in the binder regardless of its storage name.
 21. As a co-owner, I want an opened receipt to render inline in the browser (not force a download), so that eyeballing evidence stays a one-click act.
 22. As a co-owner, I want a clean not-found response for a link whose file no longer exists, so that a stale link fails obviously rather than hanging or erroring opaquely.
-23. As a developer, I want local dev to use a separate R2 bucket through the identical code path, so that development exercises the real presigned/CORS flow without dev junk landing next to real tax evidence.
+23. As a developer, I want local dev to use the real R2 bucket through the identical code path, so that development exercises the true presigned/CORS flow. (Dev and production share one bucket for now — a deliberate pre-launch simplification; split later if dev junk next to real evidence starts to matter.)
 24. As a developer, I want the worker project colocated in this repo with its own dev and deploy scripts, so that the read path is versioned, reviewed, and shipped alongside the app that depends on it.
 25. As a developer, I want to run the worker locally against the dev bucket while the app runs in dev, so that the full upload-then-read loop is exercisable on my machine.
 26. As a developer, I want evidence responses to carry long immutable cache headers, so that repeat views of the same receipt don't re-fetch bytes (keys are unique per upload, so staleness is impossible).
@@ -98,7 +98,7 @@ rationale and rejected alternatives.
 - The worker follows the reference project's layout: an entry module plus wrangler
   config living directly in this repo, sharing the app's package manifest, with
   scripts for local dev and deploy. Locally it runs alongside the Next dev server,
-  bound to the dev bucket; the deployed worker binds the production bucket.
+  bound to the same single bucket the deployed worker uses (shared for now).
 - **Storage URLs**: the document's storage URL is the full worker URL for the object,
   stored as-is on the document record. No signed GETs, no expiry. The existing
   readable-URL passthrough and lease-document pasted links keep one uniform URL shape.
@@ -110,9 +110,10 @@ rationale and rejected alternatives.
   interfaces and pending/error handling.
 - **Configuration**: R2 account ID, access key ID, secret access key, bucket name, and
   the worker's public base URL come from environment variables alongside the existing
-  database URL. Dev uses a separate bucket (and locally running worker) with the same
-  code path. Buckets need a CORS rule allowing presigned PUTs from their respective
-  origins; reads need no CORS since the worker serves plain GETs.
+  database URL. Dev uses the same bucket as production (shared for now) through the
+  identical code path, with the worker running locally. The bucket needs CORS rules
+  allowing presigned PUTs from every app origin (localhost and the production domain);
+  reads need no CORS since the worker serves plain GETs.
 - **Removal**: the filesystem storage module and the public uploads directory are
   deleted completely. Existing local files and rows pointing at them are discarded, not
   migrated (dev-only data).
@@ -163,6 +164,7 @@ rationale and rejected alternatives.
   scripts, so the runtime presigned upload path here is our own design.
 - Vercel's ~4.5MB request-body cap is the forcing constraint that rules out relaying
   bytes through server actions; it is a platform limit, not a Next.js setting.
-- One-time manual setup before the feature works: two private R2 buckets (dev, prod),
-  an API token scoped to them, a CORS PUT rule per origin, and the deployed worker
-  (plus its custom domain, if any) whose base URL feeds the app's configuration.
+- One-time manual setup before the feature works: a private R2 bucket (shared by dev
+  and production for now), an API token scoped to it, CORS PUT rules for each app
+  origin, and the deployed worker (plus its custom domain, if any) whose base URL
+  feeds the app's configuration.

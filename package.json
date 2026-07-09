@@ -14,7 +14,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy",
+    "worker:typecheck": "tsc -p worker/tsconfig.json"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -34,6 +37,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
+    "@cloudflare/workers-types": "^5.20260708.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/react": "^19",
@@ -43,6 +47,7 @@
     "drizzle-kit": "^0.31.9",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "wrangler": "^4.107.1"
   }
 }

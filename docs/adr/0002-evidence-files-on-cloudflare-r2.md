@@ -42,7 +42,7 @@ Two deliberate choices a future reader will question:
   the app has auth, that worker would accept writes from anyone on the internet;
   presigned PUTs at least require the server to mint each one.
 - **Local-disk driver kept for dev behind a storage interface.** Rejected: two code paths
-  that drift, and dev would never exercise the presigned/CORS flow. Dev uses a separate
+  that drift, and dev would never exercise the presigned/CORS flow. Dev uses the real
   R2 bucket instead.
 
 ## Consequences
@@ -50,9 +50,14 @@ Two deliberate choices a future reader will question:
 - `storageUrl` remains a full URL (now the worker's URL); deletion derives the object
   key from the known URL prefix. Year-End Packages can embed these URLs durably.
 - The repo now contains two deployables: the Next.js app (Vercel) and the worker
-  (wrangler). Local dev runs both — the worker binds the dev bucket.
-- Local dev requires R2 credentials in `.env.local` (separate dev bucket); the app no
-  longer runs storage-free.
-- Buckets need a CORS rule allowing presigned PUTs from their origin (localhost / prod
-  domain); reads need no CORS since the worker serves plain GETs.
+  (wrangler). Local dev runs both.
+- Dev and production share one bucket for now — a deliberate simplification while the
+  app is pre-launch (one bucket to provision, one worker config). Dev junk therefore
+  lands next to real evidence; split into per-environment buckets when that starts to
+  matter, which touches only bucket names in config and env vars.
+- Local dev requires R2 credentials in `.env.local`; the app no longer runs
+  storage-free.
+- The bucket needs CORS rules allowing presigned PUTs from every app origin
+  (localhost and the production domain); reads need no CORS since the worker serves
+  plain GETs.
 - Existing local files and their rows were discarded, not migrated (dev-only data).
