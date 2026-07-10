@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Presigned upload replaces disk writes
 
@@ -41,23 +41,63 @@ running app against the dev bucket with the worker running.
 
 ## Acceptance criteria
 
-- [ ] Attaching a receipt from the transactions inbox uploads to R2 and the document
+- [x] Attaching a receipt from the transactions inbox uploads to R2 and the document
       appears in the transaction's linked documents
-- [ ] Attaching from the evidence sheet form works identically
-- [ ] A photo larger than 4.5MB uploads successfully (proves bytes bypass the server)
-- [ ] A file over 20MB or of an unsupported type is rejected with a clear message
+- [x] Attaching from the evidence sheet form works identically
+- [x] A photo larger than 4.5MB uploads successfully (proves bytes bypass the server)
+- [x] A file over 20MB or of an unsupported type is rejected with a clear message
       before any upload starts
-- [ ] Attaching evidence clears the transaction's missing-receipt Evidence Exception
-- [ ] The stored document link opens through the worker and renders the receipt, with
+- [x] Attaching evidence clears the transaction's missing-receipt Evidence Exception
+- [x] The stored document link opens through the worker and renders the receipt, with
       the original filename preserved on the record
-- [ ] Confirming against a key that was never uploaded fails; no document row is
+- [x] Confirming against a key that was never uploaded fails; no document row is
       created
-- [ ] An upload against a deleted transaction fails with a clear message at presign
-- [ ] Upload-policy unit tests pass alongside the existing suite; typecheck and lint
+- [x] An upload against a deleted transaction fails with a clear message at presign
+- [x] Upload-policy unit tests pass alongside the existing suite; typecheck and lint
       are green
-- [ ] No new upload writes anything under the app's public directory
+- [x] No new upload writes anything under the app's public directory
 
 ## Blocked by
 
 - .scratch/evidence-blob-uploads/issues/01-provision-r2-storage.md
 - .scratch/evidence-blob-uploads/issues/02-worker-read-path.md
+
+## Comments
+
+2026-07-09: Implemented the three-step presigned flow. New pure policy module
+`src/lib/evidence-upload-policy.ts` (file acceptance, 20MB cap, UUID-prefixed
+sanitized keys — same regex as the disk era, worker-URL ↔ key derivation, HEAD-result
+validation) with 20 vitest cases in the existing lib style. New server-only
+`src/lib/evidence-blob-storage.ts` signs with aws4fetch's `AwsV4Signer` directly using
+`allHeaders: true` + `signQuery: true` — required because aws4fetch treats
+content-type/content-length as unsignable by default, and pinning them is the point;
+missing env vars throw a named-variable error at first use. `evidence-actions.ts`
+replaces `uploadTransactionEvidence` with `presignTransactionEvidenceUpload` (plain
+try/catch — presign mints a URL, mutates nothing, so no runAction/cache invalidation)
+and `confirmTransactionEvidenceUpload` (runAction + tag invalidation; re-checks the
+transaction, HEAD-verifies, atomic documents+link `db.batch` with denormalized
+vendor/date/amount, storageUrl = `EVIDENCE_BASE_URL/<key>`). Client orchestration
+(presign → browser PUT → confirm) is `uploadTransactionEvidence` in the hook module
+`transaction-evidence-upload.ts`; both surfaces kept their exact call signature —
+only their import changed.
+
+**Verification** (real bucket + local worker, via agent-browser): PDF attach from the
+inbox and from the evidence sheet both landed in R2 and appeared as linked documents;
+a 5.76MB BMP uploaded (bytes bypass the server); a 21MB file and a .zip were rejected
+at presign with the right messages before any PUT (server log shows presign only, no
+confirm); Receipt exceptions cleared on both rows and property readiness shows
+"Missing receipts: Clear"; stored links serve through the worker with inline
+disposition, original filename, correct content type, immutable cache headers; a
+signed HEAD on a never-uploaded key returns 404 → confirm's policy check rejects
+before insert (documents count unchanged); a transaction deleted between page load
+and attach fails presign with "That transaction no longer exists."; `public/uploads`
+does not exist. Typecheck, lint, and the full suite (83 tests) green. Dev servers
+stopped afterward.
+
+**Review notes** (two-axis review): evidence-file-storage.ts now has dead exports
+(`saveEvidenceFile`, `cleanupStoredEvidenceFile`, `isSupportedEvidenceFile`) — left
+in place because issue 05 owns deleting that module completely;
+`evidenceObjectKeyFromStorageUrl` has no production caller yet — issue 04's delete
+path is its consumer, and this issue's test seam explicitly required it. A missing
+storage config surfaces to the user as the generic failure message (the named-variable
+detail lands in the server log) — judged acceptable for a dev-facing config error.

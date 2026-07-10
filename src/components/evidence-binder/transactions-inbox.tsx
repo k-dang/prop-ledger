@@ -8,6 +8,7 @@ import { Fragment, useRef, useState } from "react";
 import { TransactionAllocationControls } from "@/components/evidence-binder/allocation-controls";
 import {
   type UploadTransactionEvidence,
+  uploadTransactionEvidence,
   useTransactionEvidenceUpload,
 } from "@/components/evidence-binder/transaction-evidence-upload";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -37,7 +38,6 @@ import {
 } from "@/components/ui/table";
 import { setTransactionCategory } from "@/lib/allocation-actions";
 import type { LedgerEntryWithSplits } from "@/lib/allocations";
-import { uploadTransactionEvidence } from "@/lib/evidence-actions";
 import {
   entryMatchesCategory,
   entryYear,

@@ -1,7 +1,7 @@
 import { refresh, updateTag } from "next/cache";
 
 type ActionSuccess = { ok: true };
-type ActionFailure = { ok: false; error?: string };
+export type ActionFailure = { ok: false; error?: string };
 
 export type ActionResult = ActionSuccess | ActionFailure;
 

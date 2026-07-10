@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useReducer } from "react";
+import { uploadTransactionEvidence } from "@/components/evidence-binder/transaction-evidence-upload";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
 import {
   addLeaseDocument,
@@ -18,7 +19,6 @@ import {
   createManualTransaction,
   deleteEvidenceDocument,
   deleteManualTransaction,
-  uploadTransactionEvidence,
 } from "@/lib/evidence-actions";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {

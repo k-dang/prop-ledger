@@ -4,16 +4,27 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/index";
 import { documentLinks, documents, ledgerEntries } from "@/db/schema";
-import { type ActionResult, runAction } from "@/lib/action-utils";
+import {
+  type ActionFailure,
+  type ActionResult,
+  runAction,
+  SAVE_FAILED_MESSAGE,
+} from "@/lib/action-utils";
 import { validateLedgerCategory } from "@/lib/allocations";
 import { transactionMutationCacheTags } from "@/lib/cache-tags";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
-  cleanupStoredEvidenceFile,
-  deleteEvidenceFileBestEffort,
-  isSupportedEvidenceFile,
-  saveEvidenceFile,
-} from "@/lib/evidence-file-storage";
+  createPresignedEvidenceUploadUrl,
+  evidenceObjectStorageUrl,
+  headEvidenceObject,
+} from "@/lib/evidence-blob-storage";
+import { deleteEvidenceFileBestEffort } from "@/lib/evidence-file-storage";
+import {
+  createEvidenceObjectKey,
+  type EvidenceFileDeclaration,
+  validateEvidenceFileDeclaration,
+  validateUploadedEvidenceObject,
+} from "@/lib/evidence-upload-policy";
 
 export async function createManualTransaction(
   propertyId: string,
@@ -99,14 +110,62 @@ export async function deleteManualTransaction(
   );
 }
 
-export async function uploadTransactionEvidence(
+export type PresignedEvidenceUpload =
+  | { ok: true; uploadUrl: string; objectKey: string }
+  | ActionFailure;
+
+export async function presignTransactionEvidenceUpload(
   propertyId: string,
   transactionId: string,
-  formData: FormData,
+  declaration: EvidenceFileDeclaration,
+): Promise<PresignedEvidenceUpload> {
+  try {
+    const declarationError = validateEvidenceFileDeclaration(declaration);
+
+    if (declarationError !== undefined) {
+      return { ok: false, error: declarationError };
+    }
+
+    const transaction = await db.query.ledgerEntries.findFirst({
+      where: and(
+        eq(ledgerEntries.id, transactionId),
+        eq(ledgerEntries.propertyId, propertyId),
+      ),
+      columns: { id: true },
+    });
+
+    if (transaction === undefined) {
+      return { ok: false, error: "That transaction no longer exists." };
+    }
+
+    const objectKey = createEvidenceObjectKey(declaration.fileName);
+    const uploadUrl = await createPresignedEvidenceUploadUrl(
+      objectKey,
+      declaration,
+    );
+
+    return { ok: true, uploadUrl, objectKey };
+  } catch (error) {
+    console.error("Evidence upload presign failed", error);
+    return { ok: false, error: SAVE_FAILED_MESSAGE };
+  }
+}
+
+export async function confirmTransactionEvidenceUpload(
+  propertyId: string,
+  transactionId: string,
+  objectKey: string,
+  declaration: EvidenceFileDeclaration,
 ): Promise<ActionResult> {
   return runAction(
-    "Evidence upload mutation",
+    "Evidence upload confirm mutation",
     async () => {
+      const declarationError = validateEvidenceFileDeclaration(declaration);
+
+      if (declarationError !== undefined) {
+        return { ok: false, error: declarationError };
+      }
+
       const transaction = await db.query.ledgerEntries.findFirst({
         where: and(
           eq(ledgerEntries.id, transactionId),
@@ -118,46 +177,35 @@ export async function uploadTransactionEvidence(
         return { ok: false, error: "That transaction no longer exists." };
       }
 
-      const file = formData.get("file");
+      const storedObject = await headEvidenceObject(objectKey);
+      const integrityError = validateUploadedEvidenceObject(
+        storedObject,
+        declaration,
+      );
 
-      if (!(file instanceof File) || file.size === 0) {
-        return { ok: false, error: "Choose a PDF or image file." };
+      if (integrityError !== undefined) {
+        return { ok: false, error: integrityError };
       }
-
-      if (!isSupportedEvidenceFile(file)) {
-        return {
-          ok: false,
-          error: "Evidence files must be PDF or image files.",
-        };
-      }
-
-      const storedFile = await saveEvidenceFile(file);
 
       const documentId = crypto.randomUUID();
-      const document = {
-        id: documentId,
-        propertyId,
-        fileName: file.name,
-        documentType: "receipt",
-        storageUrl: storedFile.storageUrl,
-        vendor: transaction.vendor,
-        documentDate: transaction.date,
-        amount: transaction.amount,
-      };
 
-      try {
-        await db.batch([
-          db.insert(documents).values(document),
-          db.insert(documentLinks).values({
-            documentId,
-            targetType: "transaction",
-            targetId: transactionId,
-          }),
-        ]);
-      } catch (error) {
-        await cleanupStoredEvidenceFile(storedFile);
-        throw error;
-      }
+      await db.batch([
+        db.insert(documents).values({
+          id: documentId,
+          propertyId,
+          fileName: declaration.fileName,
+          documentType: "receipt",
+          storageUrl: evidenceObjectStorageUrl(objectKey),
+          vendor: transaction.vendor,
+          documentDate: transaction.date,
+          amount: transaction.amount,
+        }),
+        db.insert(documentLinks).values({
+          documentId,
+          targetType: "transaction",
+          targetId: transactionId,
+        }),
+      ]);
 
       return { ok: true };
     },
