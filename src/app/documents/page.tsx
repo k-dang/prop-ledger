@@ -2,6 +2,12 @@ import { FileText } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { DocumentDeleteButton } from "@/components/documents/document-delete-button";
+import {
+  DocumentLinksSheet,
+  type LinkedRecord,
+} from "@/components/documents/document-links-sheet";
+import { DocumentOpenLink } from "@/components/documents/document-open-link";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -20,7 +26,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getPortfolio } from "@/db/queries";
-import { buildSourceDocumentIndex } from "@/lib/evidence-binder";
+import type { DocumentLink, DocumentLinkTarget } from "@/db/schema";
+import {
+  buildSourceDocumentIndex,
+  formatLedgerCategory,
+} from "@/lib/evidence-binder";
+import type { RentalProperty } from "@/lib/property-workspace";
 import { formatMoney } from "@/lib/rent-ledger";
 import { toneSurface } from "@/lib/status-styles";
 
@@ -39,12 +50,19 @@ export default function DocumentsPage() {
 
 async function DocumentsContent() {
   const portfolio = await getPortfolio();
-  const rows = portfolio.properties.flatMap((property) =>
-    buildSourceDocumentIndex(property.documents).map((document) => ({
+  const rows = portfolio.properties.flatMap((property) => {
+    const linksByDocument = new Map(
+      property.documents.map((document) => [document.id, document.links]),
+    );
+
+    return buildSourceDocumentIndex(property.documents).map((document) => ({
       property,
       document,
-    })),
-  );
+      linkedRecords: (linksByDocument.get(document.documentId) ?? []).map(
+        (link) => resolveLinkedRecord(property, link),
+      ),
+    }));
+  });
 
   return (
     <section className="grid gap-4">
@@ -68,12 +86,14 @@ async function DocumentsContent() {
                   <TableHead>Property</TableHead>
                   <TableHead>Document</TableHead>
                   <TableHead>Metadata</TableHead>
-                  <TableHead>Attached to</TableHead>
                   <TableHead>Readable</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ property, document }) => (
+                {rows.map(({ property, document, linkedRecords }) => (
                   <TableRow key={document.documentId}>
                     <TableCell>
                       <Link
@@ -91,40 +111,46 @@ async function DocumentsContent() {
                     </TableCell>
                     <TableCell>
                       <div>{document.vendor ?? "No vendor"}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {[
-                          document.documentDate,
-                          formatOptionalMoney(document.amount),
-                        ]
-                          .filter(Boolean)
-                          .join(" | ") || "No date or amount"}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+                        <span>
+                          {[
+                            document.documentDate,
+                            formatOptionalMoney(document.amount),
+                          ]
+                            .filter(Boolean)
+                            .join(" | ") || "No date or amount"}
+                        </span>
+                        {linkedRecords.length === 0 ? (
+                          <Badge
+                            variant="outline"
+                            className={`rounded-md ${toneSurface.review}`}
+                          >
+                            not attached
+                          </Badge>
+                        ) : (
+                          <DocumentLinksSheet
+                            fileName={document.fileName}
+                            records={linkedRecords}
+                          />
+                        )}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {document.linkedTargets.length === 0 ? (
-                        <Badge
-                          variant="outline"
-                          className={`rounded-md ${toneSurface.review}`}
-                        >
-                          not attached
-                        </Badge>
-                      ) : (
-                        `${document.linkedTargets.length} link${
-                          document.linkedTargets.length === 1 ? "" : "s"
-                        }`
-                      )}
                     </TableCell>
                     <TableCell>
                       {document.readableUrl === null ? (
                         "No URL"
                       ) : (
-                        <a
-                          className="underline-offset-4 hover:underline"
-                          href={document.readableUrl}
-                        >
-                          Open
-                        </a>
+                        <DocumentOpenLink
+                          fileName={document.fileName}
+                          url={document.readableUrl}
+                        />
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <DocumentDeleteButton
+                        propertyId={property.id}
+                        documentId={document.documentId}
+                        fileName={document.fileName}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -139,4 +165,55 @@ async function DocumentsContent() {
 
 function formatOptionalMoney(value: number | null) {
   return value === null ? undefined : formatMoney(value);
+}
+
+const LINK_TARGET_LABELS: Record<DocumentLinkTarget, string> = {
+  lease: "Lease",
+  transaction: "Transaction",
+  rent_event: "Rent event",
+  mortgage_payment: "Mortgage payment",
+  year_end_package: "Year-end package",
+};
+
+function resolveLinkedRecord(
+  property: RentalProperty,
+  link: DocumentLink,
+): LinkedRecord {
+  if (link.targetType === "transaction") {
+    const entry = property.ledgerEntries.find(
+      (candidate) => candidate.id === link.targetId,
+    );
+
+    if (entry !== undefined) {
+      return {
+        id: link.id,
+        title: entry.vendor,
+        detail: [
+          entry.date,
+          formatMoney(entry.amount),
+          formatLedgerCategory(entry),
+        ].join(" | "),
+      };
+    }
+  }
+
+  if (link.targetType === "mortgage_payment") {
+    const payment = property.mortgagePayments.find(
+      (candidate) => candidate.id === link.targetId,
+    );
+
+    if (payment !== undefined) {
+      return {
+        id: link.id,
+        title: `${payment.lender} mortgage payment`,
+        detail: [payment.date, formatMoney(payment.totalAmount)].join(" | "),
+      };
+    }
+  }
+
+  return {
+    id: link.id,
+    title: LINK_TARGET_LABELS[link.targetType],
+    detail: null,
+  };
 }
