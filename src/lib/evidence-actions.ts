@@ -15,10 +15,10 @@ import { transactionMutationCacheTags } from "@/lib/cache-tags";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
   createPresignedEvidenceUploadUrl,
+  deleteEvidenceObjectBestEffort,
   evidenceObjectStorageUrl,
   headEvidenceObject,
 } from "@/lib/evidence-blob-storage";
-import { deleteEvidenceFileBestEffort } from "@/lib/evidence-file-storage";
 import {
   createEvidenceObjectKey,
   type EvidenceFileDeclaration,
@@ -239,7 +239,7 @@ export async function deleteEvidenceDocument(
             eq(documents.propertyId, propertyId),
           ),
         );
-      await deleteEvidenceFileBestEffort(document.storageUrl);
+      await deleteEvidenceObjectBestEffort(document.storageUrl);
 
       return { ok: true };
     },

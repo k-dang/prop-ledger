@@ -4,6 +4,7 @@ import { AwsClient, AwsV4Signer } from "aws4fetch";
 
 import {
   type EvidenceFileDeclaration,
+  evidenceObjectKeyFromStorageUrl,
   evidenceStorageUrl,
   type StoredEvidenceObject,
 } from "@/lib/evidence-upload-policy";
@@ -48,12 +49,7 @@ export async function headEvidenceObject(
   objectKey: string,
 ): Promise<StoredEvidenceObject | null> {
   const config = getEvidenceStorageConfig();
-  const client = new AwsClient({
-    accessKeyId: config.accessKeyId,
-    secretAccessKey: config.secretAccessKey,
-    service: "s3",
-    region: "auto",
-  });
+  const client = evidenceStorageClient(config);
 
   const response = await client.fetch(
     evidenceObjectApiUrl(config, objectKey).toString(),
@@ -81,6 +77,40 @@ export function evidenceObjectStorageUrl(objectKey: string) {
     getEvidenceStorageConfig().evidenceBaseUrl,
     objectKey,
   );
+}
+
+export async function deleteEvidenceObjectBestEffort(
+  storageUrl: string | null,
+) {
+  if (storageUrl === null) {
+    return;
+  }
+
+  try {
+    const config = getEvidenceStorageConfig();
+    const objectKey = evidenceObjectKeyFromStorageUrl(
+      config.evidenceBaseUrl,
+      storageUrl,
+    );
+
+    if (objectKey === null) {
+      return;
+    }
+
+    const client = evidenceStorageClient(config);
+    const response = await client.fetch(
+      evidenceObjectApiUrl(config, objectKey).toString(),
+      { method: "DELETE" },
+    );
+
+    if (!response.ok && response.status !== 404) {
+      throw new Error(
+        `Evidence object DELETE failed with status ${response.status}`,
+      );
+    }
+  } catch (error) {
+    console.error("Evidence object cleanup failed", error);
+  }
 }
 
 type EvidenceStorageConfig = {
@@ -116,6 +146,15 @@ function getEvidenceStorageConfig(): EvidenceStorageConfig {
     bucket: values.R2_BUCKET as string,
     evidenceBaseUrl: values.EVIDENCE_BASE_URL as string,
   };
+}
+
+function evidenceStorageClient(config: EvidenceStorageConfig) {
+  return new AwsClient({
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    service: "s3",
+    region: "auto",
+  });
 }
 
 function evidenceObjectApiUrl(

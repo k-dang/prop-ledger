@@ -208,8 +208,8 @@ export const yearEndPackages = pgTable("year_end_packages", {
 /**
  * Reusable evidence records. A document is uploaded once and linked to the
  * records it supports through `documentLinks`, so the same lease agreement or
- * receipt can back several ledger rows. `storageUrl` points at the local upload
- * path in Phase 3 and can later move to object storage without changing links.
+ * receipt can back several ledger rows. `storageUrl` is either a worker URL
+ * for an R2-backed upload or a pasted external link (lease documents).
  */
 export const documents = pgTable("documents", {
   id: uuid("id").primaryKey().defaultRandom(),
