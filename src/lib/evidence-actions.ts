@@ -26,11 +26,15 @@ import {
   validateUploadedEvidenceObject,
 } from "@/lib/evidence-upload-policy";
 
+export type ManualTransactionCreationResult =
+  | { ok: true; transactionId: string }
+  | ActionFailure;
+
 export async function createManualTransaction(
   propertyId: string,
   input: NewManualTransactionInput,
-): Promise<ActionResult> {
-  return runAction(
+): Promise<ManualTransactionCreationResult> {
+  return runAction<{ ok: true; transactionId: string }>(
     "Evidence transaction mutation",
     async () => {
       if (input.type === "expense" && input.amount <= 0) {
@@ -59,8 +63,12 @@ export async function createManualTransaction(
         isReconciled: true,
       };
 
-      await db.insert(ledgerEntries).values(transaction);
-      return { ok: true };
+      const [createdTransaction] = await db
+        .insert(ledgerEntries)
+        .values(transaction)
+        .returning({ id: ledgerEntries.id });
+
+      return { ok: true, transactionId: createdTransaction.id };
     },
     { invalidate: transactionMutationCacheTags(propertyId) },
   );

@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { type ReactNode, useState, useTransition } from "react";
 import { z } from "zod";
+import { DocumentOpenLink } from "@/components/documents/document-open-link";
 import { CapitalAssetControl } from "@/components/evidence-binder/capital-asset-control";
 import { useTransactionEvidenceUpload } from "@/components/evidence-binder/transaction-evidence-upload";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -19,7 +20,6 @@ import {
   optionalFormString,
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
-import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -54,6 +54,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { ManualTransactionCreationResult } from "@/lib/evidence-actions";
 import {
   createEmptyManualTransactionDraft,
   formatLedgerCategory,
@@ -103,6 +104,11 @@ const currencyFormatter = new Intl.NumberFormat("en-CA", {
   style: "currency",
   currency: "CAD",
 });
+const listFormatter = new Intl.ListFormat("en-CA", {
+  style: "long",
+  type: "conjunction",
+});
+const CURRENCY_INPUT_PATTERN = /^\d*(?:\.\d{0,2})?$/;
 
 export function EvidenceBinderPanel({
   property,
@@ -198,7 +204,11 @@ export function DeductionsAndIncomePanel({
   error?: string;
   evidenceError?: string;
   className?: string;
-  onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
+  onSubmit: (
+    input: NewManualTransactionInput,
+  ) =>
+    | ManualTransactionCreationResult
+    | Promise<ManualTransactionCreationResult>;
   onDeleteTransaction: (transactionId: string) => boolean | Promise<boolean>;
   onUploadEvidence: (
     transactionId: string,
@@ -226,7 +236,10 @@ export function DeductionsAndIncomePanel({
           </CardDescription>
         </div>
         <div className="sm:justify-self-end">
-          <AddManualTransactionSheet onSubmit={onSubmit} />
+          <AddManualTransactionSheet
+            onSubmit={onSubmit}
+            onUploadEvidence={onUploadEvidence}
+          />
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -285,16 +298,16 @@ function TransactionRecordsLedger({
   ) => boolean | Promise<boolean>;
 }) {
   return (
-    <div className="max-h-80 overflow-y-auto rounded-md border bg-background">
+    <div className="max-h-80 overflow-auto rounded-md border bg-background">
       <Table
         aria-label="Deduction and non-rent income records"
-        className="min-w-[34rem] table-fixed"
+        className="min-w-[36rem] table-fixed"
       >
         <colgroup>
           <col className="w-[6.75rem]" />
           <col />
           <col className="w-[7.5rem]" />
-          <col className="w-[4.5rem]" />
+          <col className="w-24" />
         </colgroup>
         <TableHeader className="sticky top-0 z-10 bg-muted/30">
           <TableRow className="hover:bg-transparent">
@@ -370,13 +383,13 @@ function TransactionRecordRow({
           {note ? <span> · {note}</span> : null}
         </p>
       </TableCell>
-      <TableCell className="px-2 py-2 text-right">
+      <TableCell className="whitespace-nowrap px-2 py-2 text-right">
         <span className="block font-semibold tabular-nums text-sm">
           {formatMoney(entry.amount)}
         </span>
       </TableCell>
       <TableCell className="px-2 py-2">
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex min-w-max items-center justify-end gap-1">
           <TransactionEvidenceControl
             compact
             documents={linked}
@@ -407,13 +420,41 @@ function TransactionRecordRow({
 
 function AddManualTransactionSheet({
   onSubmit,
+  onUploadEvidence,
 }: {
-  onSubmit: (input: NewManualTransactionInput) => boolean | Promise<boolean>;
+  onSubmit: (
+    input: NewManualTransactionInput,
+  ) =>
+    | ManualTransactionCreationResult
+    | Promise<ManualTransactionCreationResult>;
+  onUploadEvidence: (
+    transactionId: string,
+    formData: FormData,
+  ) => boolean | Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [draft, setDraft] = useState(createEmptyManualTransactionDraft);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [savedTransactionId, setSavedTransactionId] = useState<string | null>(
+    null,
+  );
+  const [submitError, setSubmitError] = useState<string | undefined>();
+  const [isSaving, startSaving] = useTransition();
   const transactionType = draft.type;
+  const missingRequiredFields = [
+    draft.date === "" ? "date" : null,
+    draft.vendor.trim() === ""
+      ? transactionType === "income"
+        ? "payer"
+        : "vendor"
+      : null,
+    draft.amount === "" || Number(draft.amount) <= 0 ? "amount" : null,
+  ].filter((field): field is string => field !== null);
+  const canSubmit = missingRequiredFields.length === 0;
+  const requiredFieldsMessage = canSubmit
+    ? undefined
+    : `Add ${listFormatter.format(missingRequiredFields)} to continue.`;
   const categoryOptions =
     transactionType === "expense"
       ? T776_CATEGORY_OPTIONS
@@ -423,21 +464,11 @@ function AddManualTransactionSheet({
       ?.label ?? "Select";
   const resetFormState = () => {
     setDraft(createEmptyManualTransactionDraft());
+    setReceiptFile(null);
+    setSavedTransactionId(null);
+    setSubmitError(undefined);
     setFormKey((key) => key + 1);
   };
-  const handleSubmit = createFormSubmit(
-    manualTransactionFormSchema,
-    async (input) => {
-      const saved = await onSubmit(input);
-
-      if (saved) {
-        resetFormState();
-        setOpen(false);
-      }
-
-      return saved;
-    },
-  );
 
   function updateDraft(patch: Partial<ManualTransactionFormDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -449,6 +480,54 @@ function AddManualTransactionSheet({
     if (!nextOpen) {
       resetFormState();
     }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const result = manualTransactionFormSchema.safeParse(
+      Object.fromEntries(new FormData(event.currentTarget)),
+    );
+
+    if (!result.success) {
+      return;
+    }
+
+    setSubmitError(undefined);
+    startSaving(async () => {
+      const transactionResult =
+        savedTransactionId === null
+          ? await onSubmit(result.data)
+          : { ok: true as const, transactionId: savedTransactionId };
+
+      if (!transactionResult.ok) {
+        setSubmitError(
+          transactionResult.error ??
+            "The record could not be saved. Please try again.",
+        );
+        return;
+      }
+
+      if (receiptFile !== null) {
+        const formData = new FormData();
+        formData.set("file", receiptFile);
+        const attached = await onUploadEvidence(
+          transactionResult.transactionId,
+          formData,
+        );
+
+        if (!attached) {
+          setSavedTransactionId(transactionResult.transactionId);
+          setSubmitError(
+            "The record was saved, but the receipt could not be attached. Try again or attach it later from the record.",
+          );
+          return;
+        }
+      }
+
+      resetFormState();
+      setOpen(false);
+    });
   }
 
   return (
@@ -497,7 +576,9 @@ function AddManualTransactionSheet({
               </Select>
             </Field>
             <Field>
-              <FieldLabel htmlFor="transactionDate">Date</FieldLabel>
+              <RequiredFieldLabel htmlFor="transactionDate">
+                Date
+              </RequiredFieldLabel>
               <DatePickerField
                 id="transactionDate"
                 name="date"
@@ -510,9 +591,9 @@ function AddManualTransactionSheet({
             </Field>
           </div>
           <Field>
-            <FieldLabel htmlFor="vendor">
+            <RequiredFieldLabel htmlFor="vendor">
               {transactionType === "income" ? "Payer" : "Vendor"}
-            </FieldLabel>
+            </RequiredFieldLabel>
             <Input
               id="vendor"
               name="vendor"
@@ -525,7 +606,7 @@ function AddManualTransactionSheet({
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="amount">Amount</FieldLabel>
+              <RequiredFieldLabel htmlFor="amount">Amount</RequiredFieldLabel>
               <Input
                 id="amount"
                 name="amount"
@@ -535,7 +616,11 @@ function AddManualTransactionSheet({
                 required
                 value={draft.amount}
                 onChange={(event) => {
-                  updateDraft({ amount: event.target.value });
+                  const nextAmount = event.target.value;
+
+                  if (CURRENCY_INPUT_PATTERN.test(nextAmount)) {
+                    updateDraft({ amount: nextAmount });
+                  }
                 }}
               />
             </Field>
@@ -596,6 +681,24 @@ function AddManualTransactionSheet({
               period, or personal-use portion.
             </FieldDescription>
           </Field>
+          <Field className="gap-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <FieldLabel htmlFor="receipt">Receipt or invoice</FieldLabel>
+              <span className="text-muted-foreground text-xs">Optional</span>
+            </div>
+            <Input
+              id="receipt"
+              type="file"
+              accept="application/pdf,image/*"
+              disabled={isSaving}
+              onChange={(event) => {
+                setReceiptFile(event.target.files?.[0] ?? null);
+              }}
+            />
+            <FieldDescription>
+              Attach it now and we’ll link it to this record when you save.
+            </FieldDescription>
+          </Field>
           {transactionType === "expense" ? (
             <FieldLabel
               className="flex items-center gap-2 text-sm"
@@ -605,13 +708,50 @@ function AddManualTransactionSheet({
               <span>Capital asset</span>
             </FieldLabel>
           ) : null}
-          <Button type="submit" className="justify-self-start">
-            <Plus data-icon="inline-start" />
-            Add record
-          </Button>
+          {submitError ? <FormErrorAlert message={submitError} /> : null}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Button
+              type="submit"
+              aria-describedby="required-fields-message"
+              disabled={isSaving || !canSubmit}
+            >
+              <Plus data-icon="inline-start" />
+              {isSaving
+                ? "Saving..."
+                : receiptFile !== null
+                  ? savedTransactionId === null
+                    ? "Add record & attach receipt"
+                    : "Attach receipt"
+                  : savedTransactionId === null
+                    ? "Add record"
+                    : "Finish"}
+            </Button>
+            <p
+              aria-live="polite"
+              className="text-muted-foreground text-xs"
+              id="required-fields-message"
+            >
+              {requiredFieldsMessage}
+            </p>
+          </div>
         </form>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function RequiredFieldLabel({
+  children,
+  htmlFor,
+}: {
+  children: ReactNode;
+  htmlFor: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <FieldLabel htmlFor={htmlFor}>{children}</FieldLabel>
+      <span className="text-muted-foreground text-xs">Required</span>
+    </div>
   );
 }
 
@@ -787,9 +927,19 @@ function TransactionEvidenceControl({
                       className="size-3.5 shrink-0 text-muted-foreground"
                       aria-hidden="true"
                     />
-                    <span className="min-w-0 flex-1 truncate text-sm">
-                      {document.fileName}
-                    </span>
+                    {document.storageUrl ? (
+                      <DocumentOpenLink
+                        fileName={document.fileName}
+                        url={document.storageUrl}
+                        triggerClassName="min-w-0 flex-1 truncate text-left text-sm underline underline-offset-2"
+                      >
+                        {document.fileName}
+                      </DocumentOpenLink>
+                    ) : (
+                      <span className="min-w-0 flex-1 truncate text-sm">
+                        {document.fileName}
+                      </span>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"

@@ -19,6 +19,7 @@ import {
   createManualTransaction,
   deleteEvidenceDocument,
   deleteManualTransaction,
+  type ManualTransactionCreationResult,
 } from "@/lib/evidence-actions";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import {
@@ -136,10 +137,13 @@ export function PropertyWorkspace({
 
   async function handleCreateManualTransaction(
     input: NewManualTransactionInput,
-  ) {
-    return runWorkspaceMutation("transaction", () =>
-      createManualTransaction(selectedId, input),
-    );
+  ): Promise<ManualTransactionCreationResult> {
+    const result = await createManualTransaction(selectedId, input);
+    dispatchError({
+      key: "transaction",
+      error: result.ok ? undefined : result.error,
+    });
+    return result;
   }
 
   async function handleUploadTransactionEvidence(

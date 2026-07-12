@@ -8,6 +8,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - Use `pnpm` for project commands and dependency operations.
 
+## Running the dev server
+
+Use `portless` (not `pnpm dev` directly) to start the dev server — it proxies `next dev` behind a stable `https://<name>.localhost` URL and avoids port conflicts.
+
 ## Code organization
 
 - Keep server actions and shared helpers in `src/lib/` (e.g. `src/lib/actions.ts`), not under `src/app/`.

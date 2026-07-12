@@ -20,7 +20,7 @@ export async function runAction<Success extends ActionSuccess>(
   label: string,
   mutate: () => Promise<Success | ActionFailure>,
   options?: RunActionOptions<Success>,
-): Promise<ActionResult> {
+): Promise<Success | ActionFailure> {
   try {
     const result = await mutate();
 
@@ -29,7 +29,7 @@ export async function runAction<Success extends ActionSuccess>(
       refresh();
     }
 
-    return result.ok ? { ok: true } : { ok: false, error: result.error };
+    return result;
   } catch (error) {
     console.error(`${label} failed`, error);
     return { ok: false, error: SAVE_FAILED_MESSAGE };

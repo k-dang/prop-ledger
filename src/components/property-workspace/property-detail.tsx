@@ -73,6 +73,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { ManualTransactionCreationResult } from "@/lib/evidence-actions";
 import type { NewManualTransactionInput } from "@/lib/evidence-binder";
 import { createOwnershipPeriodTimeline } from "@/lib/ownership-period-timeline";
 import {
@@ -196,7 +197,9 @@ export function PropertyWorkspaceDetail({
   ) => boolean | Promise<boolean>;
   onCreateManualTransaction: (
     input: NewManualTransactionInput,
-  ) => boolean | Promise<boolean>;
+  ) =>
+    | ManualTransactionCreationResult
+    | Promise<ManualTransactionCreationResult>;
   onDeleteManualTransaction: (
     transactionId: string,
   ) => boolean | Promise<boolean>;
@@ -356,11 +359,14 @@ function WorkflowDetails({
   open: boolean;
   children: ReactNode;
 }) {
+  // Freeze the uncontrolled Accordion's initial state; `open` is derived from
+  // live readiness data and changes across re-renders.
+  const [initialOpen] = useState(() => (open ? [id] : []));
   return (
     <section id={id} className="scroll-mt-4">
       <Card className="rounded-md py-0">
         <h2 className="sr-only">{title}</h2>
-        <Accordion defaultValue={open ? [id] : []}>
+        <Accordion defaultValue={initialOpen}>
           <AccordionItem value={id} className="border-b-0">
             <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
               <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
@@ -641,11 +647,14 @@ function SetupSection({
     property.owners.length,
     "owner",
   )}`;
+  // Freeze the uncontrolled Accordion's initial state; `complete` changes as
+  // setup gaps are resolved.
+  const [initialOpen] = useState(() => (complete ? [] : ["setup"]));
 
   return (
     <Card id="property-setup" className="rounded-md py-0">
       <h2 className="sr-only">Property setup</h2>
-      <Accordion defaultValue={complete ? [] : ["setup"]}>
+      <Accordion defaultValue={initialOpen}>
         <AccordionItem value="setup" className="border-b-0">
           <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
             <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">

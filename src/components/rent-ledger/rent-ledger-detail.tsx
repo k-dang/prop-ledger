@@ -316,6 +316,9 @@ function LeasesPanel({
   const hasLeases = ledger.leases.length > 0;
   const hasErrors = Boolean(leaseError || documentError);
   const shouldOpen = defaultOpen ?? (!hasUnits || !hasLeases || hasErrors);
+  // Freeze the uncontrolled Accordion's initial state; `shouldOpen` is derived
+  // from live ledger data and changes across re-renders.
+  const [initialOpen] = useState(() => (shouldOpen ? ["leases"] : []));
   const linkedDocumentCount = ledger.documents.filter((document) =>
     document.links.some((link) => link.targetType === "lease"),
   ).length;
@@ -333,7 +336,7 @@ function LeasesPanel({
   return (
     <Card className="rounded-md py-0">
       <h2 className="sr-only">Leases</h2>
-      <Accordion defaultValue={shouldOpen ? ["leases"] : []}>
+      <Accordion defaultValue={initialOpen}>
         <AccordionItem value="leases" className="border-b-0">
           <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
             <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
