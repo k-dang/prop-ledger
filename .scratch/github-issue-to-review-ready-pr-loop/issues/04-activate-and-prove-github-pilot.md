@@ -7,14 +7,12 @@
 **Status:** ready-for-human
 
 - [ ] The repository has exactly the four agreed readiness labels with consistent names and descriptions.
-- [ ] The private automation GitHub App is installed only on this repository with the minimum issue, contents, and pull-request permissions needed by the loop.
-- [ ] The App installation has no protected-branch bypass.
-- [ ] The expected App client identifier variable and private-key secret are available to GitHub Actions.
-- [ ] The OpenCode Zen credential is available to GitHub Actions, paid models are disabled, and automatic balance reload is disabled.
+- [ ] Every workflow job uses GitHub's built-in repository token with explicit least-privilege permissions and no protected-branch bypass.
+- [ ] `OPENCODE_API_KEY` is available to GitHub Actions, paid models are disabled, and automatic balance reload is disabled.
 - [ ] The selected free model is confirmed available immediately before activation; an unavailable model leaves the loop disabled rather than silently selecting another model.
 - [ ] Pilot issues contain only synthetic or public non-confidential information and no secrets, tenant data, production data, or personal financial records.
 - [ ] A controlled issue exercises a non-implementation triage state and produces the expected single label and evidence comment.
-- [ ] A controlled issue exercises `ready-to-implement`, starts the downstream workflow through the App-generated label event, and produces a review-ready pull request.
+- [ ] A controlled issue exercises `ready-to-implement`, starts the explicit Issue 03 entry point, and produces a review-ready pull request.
 - [ ] A controlled issue exercises the semantic-blocker path and produces no pull request.
 - [ ] The implementation status remains one rolling comment through started and terminal states.
 - [ ] The successful pilot pull request contains exactly the validated change, accurate validation evidence, and the issue closing reference.

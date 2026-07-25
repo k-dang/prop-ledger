@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# local issue-triage runtime data
+/.triage/
+
 # next.js
 /.next/
 /out/

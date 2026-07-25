@@ -1,0 +1,117 @@
+name: Triage newly opened issues
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: triage-${{ github.repository }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    name: Triage issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      result: ${{ steps.result.outputs.result }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.10.0
+
+      - name: Fetch issue context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          mkdir -p .triage
+          gh issue view "$ISSUE_NUMBER" --repo "$REPO" \
+            --json number,title,body,comments,labels,author,createdAt,updatedAt,url \
+            > .triage/issue.json
+          gh issue list --repo "$REPO" --state open --limit 100 \
+            --json number,title,body,labels,author,updatedAt,url \
+            > .triage/related-issues.json
+          jq -n \
+            --slurpfile issue .triage/issue.json \
+            --slurpfile related .triage/related-issues.json \
+            '{issue: $issue[0], relatedOpenIssues: ($related[0] | map(select(.number != $issue[0].number)))}' \
+            > .triage/issue-context.json
+
+      - name: Run read-only OpenCode triage
+        timeout-minutes: 10
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: |
+          pnpm dlx opencode-ai@1.17.7 run \
+            --agent triage \
+            --model opencode/north-mini-code-free \
+            --format json \
+            --title "Issue ${{ github.event.issue.number }} triage" \
+            "Use the skill tool to load the skill named triage before doing any analysis. Then read .triage/issue-context.json and return the JSON decision only." \
+            > .triage/opencode-events.jsonl
+
+      - name: Export triage result
+        id: result
+        run: |
+          set -euo pipefail
+          result="$(jq -ers '
+            [ .[] | select(.type == "text") | .part.text ] |
+            if length == 1 then .[0] else error("expected exactly one result") end
+          ' .triage/opencode-events.jsonl)"
+          delimiter="triage_$(openssl rand -hex 8)"
+          {
+            echo "result<<$delimiter"
+            printf '%s\n' "$result"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+  apply:
+    name: Apply triage result
+    needs: triage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+
+    steps:
+      - name: Apply label and comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          TRIAGE_RESULT: ${{ needs.triage.outputs.result }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$TRIAGE_RESULT" > triage-result.json
+          jq -e '
+            type == "object" and
+            (.label == "ready-to-implement" or
+             .label == "ready-to-spec" or
+             .label == "needs-info" or
+             .label == "wait-to-implement") and
+            (.comment | type == "string" and length > 0)
+          ' triage-result.json > /dev/null
+
+          label="$(jq -r '.label' triage-result.json)"
+          for old_label in ready-to-implement ready-to-spec needs-info wait-to-implement; do
+            if [ "$old_label" != "$label" ]; then
+              gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label "$old_label" 2>/dev/null || true
+            fi
+          done
+
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "$label"
+          jq -r '.comment' triage-result.json > triage-comment.md
+          gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body-file triage-comment.md
