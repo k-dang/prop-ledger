@@ -8,25 +8,84 @@ concurrency:
   group: triage-${{ github.repository }}-${{ github.event.issue.number }}
   cancel-in-progress: true
 
-permissions: {}
-
 jobs:
-  probe:
-    name: Record issue-open trigger
+  triage:
+    name: Run read-only triage
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
 
     steps:
-      - name: Write trigger summary
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.10.0
+
+      - name: Fetch issue context
         env:
-          EVENT_ACTION: ${{ github.event.action }}
+          GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          REPOSITORY: ${{ github.repository }}
+          REPO: ${{ github.repository }}
         run: |
+          set -euo pipefail
+          mkdir -p .triage
+          gh issue view "$ISSUE_NUMBER" --repo "$REPO" \
+            --json number,title,body,comments,labels,author,createdAt,updatedAt,url \
+            > .triage/issue.json
+          gh issue list --repo "$REPO" --state open --limit 100 \
+            --json number,title,body,labels,author,updatedAt,url \
+            > .triage/related-issues.json
+          jq -n \
+            --slurpfile issue .triage/issue.json \
+            --slurpfile related .triage/related-issues.json \
+            '{issue: $issue[0], relatedOpenIssues: ($related[0] | map(select(.number != $issue[0].number)))}' \
+            > .triage/issue-context.json
+
+      - name: Run OpenCode triage
+        timeout-minutes: 10
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: |
+          pnpm dlx opencode-ai@1.17.7 run \
+            --agent triage \
+            --model opencode/north-mini-code-free \
+            --format json \
+            --title "Issue ${{ github.event.issue.number }} triage" \
+            "Use the skill tool to load the skill named triage before doing any analysis. Then read .triage/issue-context.json and return the JSON decision only." \
+            > .triage/opencode-events.jsonl
+
+      - name: Write read-only decision summary
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          result="$(jq -ers '
+            [ .[] | select(.type == "text") | .part.text ] |
+            if length == 1 then .[0] else error("expected exactly one result") end
+          ' .triage/opencode-events.jsonl)"
+          label="$(printf '%s' "$result" | jq -er '
+            if
+              type == "object" and
+              (.label == "ready-to-implement" or
+               .label == "ready-to-spec" or
+               .label == "needs-info" or
+               .label == "wait-to-implement") and
+              (.comment | type == "string" and length > 0)
+            then .label
+            else error("invalid triage result")
+            end
+          ')"
           {
-            echo "### New issue trigger received"
+            echo "### Read-only triage decision"
             echo
-            echo "- Repository: \`$REPOSITORY\`"
             echo "- Issue: #$ISSUE_NUMBER"
-            echo "- Action: \`$EVENT_ACTION\`"
+            echo "- Suggested label: \`$label\`"
+            echo "- GitHub mutation: none"
           } >> "$GITHUB_STEP_SUMMARY"
