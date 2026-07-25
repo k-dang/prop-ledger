@@ -1,0 +1,32 @@
+name: Triage newly opened issues
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: triage-${{ github.repository }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  probe:
+    name: Record issue-open trigger
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Write trigger summary
+        env:
+          EVENT_ACTION: ${{ github.event.action }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          {
+            echo "### New issue trigger received"
+            echo
+            echo "- Repository: \`$REPOSITORY\`"
+            echo "- Issue: #$ISSUE_NUMBER"
+            echo "- Action: \`$EVENT_ACTION\`"
+          } >> "$GITHUB_STEP_SUMMARY"
