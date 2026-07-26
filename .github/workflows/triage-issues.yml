@@ -16,6 +16,8 @@ jobs:
     permissions:
       contents: read
       issues: read
+    outputs:
+      result: ${{ steps.result.outputs.result }}
 
     steps:
       - name: Check out repository
@@ -50,8 +52,6 @@ jobs:
 
       - name: Run OpenCode triage
         timeout-minutes: 10
-        env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         run: |
           pnpm dlx opencode-ai@1.17.7 run \
             --agent triage \
@@ -61,7 +61,8 @@ jobs:
             "Use the skill tool to load the skill named triage before doing any analysis. Then read .triage/issue-context.json and return the JSON decision only." \
             > .triage/opencode-events.jsonl
 
-      - name: Write read-only decision summary
+      - name: Export and log triage decision
+        id: result
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
@@ -70,7 +71,7 @@ jobs:
             [ .[] | select(.type == "text") | .part.text ] |
             if length == 1 then .[0] else error("expected exactly one result") end
           ' .triage/opencode-events.jsonl)"
-          label="$(printf '%s' "$result" | jq -er '
+          normalized_result="$(printf '%s' "$result" | jq -cer '
             if
               type == "object" and
               (.label == "ready-to-implement" or
@@ -78,14 +79,51 @@ jobs:
                .label == "needs-info" or
                .label == "wait-to-implement") and
               (.comment | type == "string" and length > 0)
-            then .label
+            then {label, comment}
             else error("invalid triage result")
             end
           ')"
+          label="$(printf '%s' "$normalized_result" | jq -r '.label')"
+
+          printf 'Triage result: %s\n' "$normalized_result"
+
+          printf 'result=%s\n' "$normalized_result" >> "$GITHUB_OUTPUT"
+
           {
             echo "### Read-only triage decision"
             echo
             echo "- Issue: #$ISSUE_NUMBER"
             echo "- Suggested label: \`$label\`"
-            echo "- GitHub mutation: none"
+            echo "- OpenCode mutation: none; a separate job applies this decision"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  apply:
+    name: Apply triage decision
+    needs: triage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+
+    steps:
+      - name: Apply label and comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          TRIAGE_RESULT: ${{ needs.triage.outputs.result }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$TRIAGE_RESULT" > triage-result.json
+          label="$(jq -r '.label' triage-result.json)"
+          current_labels="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')"
+
+          for old_label in ready-to-implement ready-to-spec needs-info wait-to-implement; do
+            if [ "$old_label" != "$label" ] && printf '%s\n' "$current_labels" | grep -Fxq "$old_label"; then
+              gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label "$old_label"
+            fi
+          done
+
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "$label"
+          jq -r '.comment' triage-result.json > triage-comment.md
+          gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body-file triage-comment.md
