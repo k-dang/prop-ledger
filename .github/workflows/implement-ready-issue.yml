@@ -1,0 +1,101 @@
+name: Implement ready issue
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Open issue currently labeled ready-to-implement
+        required: true
+        type: string
+
+concurrency:
+  group: implement-${{ github.repository }}-${{ inputs.issue_number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  implement:
+    name: Implement issue and open pull request
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-implement'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      actions: write
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.10.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Implement issue with OpenCode
+        timeout-minutes: 70
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Issue number must be a positive integer" >&2
+            exit 1
+          fi
+          pnpm dlx opencode-ai@1.17.7 run \
+            --model opencode/north-mini-code-free \
+            --title "Issue $ISSUE_NUMBER implementation" \
+            "Load and follow the skill named implement-ready-issue. Implement issue #$ISSUE_NUMBER in $REPO and carry it through to a review-ready pull request."
+
+      - name: Upload visible-behavior evidence
+        if: ${{ !cancelled() && hashFiles('.implementation/evidence/**') != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: implementation-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .implementation/evidence
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Record an operational failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            exit 0
+          fi
+
+          marker='<!-- opencode-implementation-status -->'
+          body="$(printf '%s\n\n%s\n\n%s' \
+            "$marker" \
+            'Implementation stopped unexpectedly. Check for a linked branch or pull request before rerunning.' \
+            "See the [Actions run]($RUN_URL) for operational details and recovery context.")"
+          comment_id="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            --jq '.[] | select((.body // "") | contains("<!-- opencode-implementation-status -->")) | .id' \
+            | jq -s 'first // empty')"
+
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$comment_id" \
+              -f "body=$body" > /dev/null
+          else
+            gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$body"
+          fi
