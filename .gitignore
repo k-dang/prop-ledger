@@ -48,3 +48,6 @@ next-env.d.ts
 opensrc/
 
 .vercel
+
+# triage workflow artifacts
+/.triage/
