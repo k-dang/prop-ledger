@@ -86,8 +86,10 @@ For changes with no user-visible behavior, record browser verification as not ap
    - known limitations or follow-up work;
    - `Closes #$ISSUE_NUMBER` only when the implementation fully resolves the issue.
 5. Capture the pull request URL returned by `gh pr create`. Do not report success without it.
-6. Dispatch `verify.yml` for the implementation branch with `gh workflow run`. If dispatch fails,
-   report the verification gap accurately instead of claiming the check started.
+6. Dispatch `verify.yml` for the implementation branch with
+   `gh workflow run verify.yml --ref "automation/issue-$ISSUE_NUMBER-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"`.
+   Keep this manual branch run distinct from the pull-request-triggered Verify run. If dispatch
+   fails, report the verification gap accurately instead of claiming the check started.
 7. Update the rolling issue status with the pull request URL, validation and visible-behavior
    summary, any verification gap, and the current Actions run link. Leave the issue open for human
    review and merge.

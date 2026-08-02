@@ -45,6 +45,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Implement issue with OpenCode
+        id: implement
         timeout-minutes: 70
         env:
           GH_TOKEN: ${{ github.token }}
@@ -72,7 +73,7 @@ jobs:
           retention-days: 14
 
       - name: Record an operational failure
-        if: failure()
+        if: ${{ failure() && steps.implement.outcome == 'failure' }}
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
