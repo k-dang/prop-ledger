@@ -11,15 +11,29 @@ evidence-based triage.
 
 ## Entry points
 
-- [ ] A maintainer applying `ready-to-implement` starts implementation through the
+- [x] A maintainer applying `ready-to-implement` starts implementation through the
   `issues.labeled` event. Other labels do nothing.
-- [ ] Automated triage explicitly dispatches the implementation workflow after applying
+- [x] Automated triage explicitly dispatches the implementation workflow after applying
   `ready-to-implement`; it does not rely on an event created with `GITHUB_TOKEN` to start another
   workflow.
-- [ ] Both entry points pass an issue number to the same implementation path, which confirms the
+- [x] Both entry points pass an issue number to the same implementation path, which confirms the
   issue is open and still has `ready-to-implement` before doing work.
-- [ ] Concurrency is scoped to the repository and issue. A second event does not cancel an active
+- [x] Concurrency is scoped to the repository and issue. A second event does not cancel an active
   implementation run, and the pilot adds no persistent deduplication.
+
+## Tracer-bullet proof
+
+- [x] The first rollout uses the final workflow filename, triggers, issue-number interface, and
+  issue-scoped concurrency so the later implementation deepens the same path instead of replacing
+  it with a second entry point.
+- [x] Deterministic shell logic refetches the current issue through GitHub and confirms it is open
+  and still labeled `ready-to-implement`.
+- [x] The tracer writes only a GitHub Actions step summary identifying the repository, issue,
+  trigger event, and explicit fact that implementation did not start.
+- [x] The tracer has only `issues: read`, performs no checkout or dependency setup, makes no
+  OpenCode call or GitHub mutation, and has a two-minute overall timeout.
+- [ ] A controlled issue on the default branch proves the manual-label and triage-dispatch paths,
+  issue validation, and Actions summary without starting implementation.
 
 ## Implementation and validation
 
@@ -79,8 +93,10 @@ evidence-based triage.
 
 ## Tracer-bullet rollout
 
-1. Land the two entry points and issue-scoped concurrency with logging only.
-2. Run OpenCode read-only against a synthetic ready issue and retain the patch as an artifact,
-   without publishing it.
-3. Add deterministic validation, publication, rolling status updates, and the explicit Verify
-   dispatch.
+1. Land the final two entry points and issue-scoped concurrency with a deterministic trigger probe.
+   Prove the real events and ready-issue validation without checking out code or invoking OpenCode.
+2. Run the tracer against a controlled ready issue on the default branch and record the live result
+   before enabling repository publication.
+3. Add OpenCode and the repository implementation skill in the following pull request so it
+   implements and validates the issue, creates the branch and pull request, retains
+   visible-behavior evidence, and explicitly dispatches Verify.

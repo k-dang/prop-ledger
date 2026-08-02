@@ -103,6 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: write
       issues: write
 
     steps:
@@ -127,3 +128,9 @@ jobs:
           gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "$label"
           jq -r '.comment' triage-result.json > triage-comment.md
           gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body-file triage-comment.md
+
+          if [ "$label" = "ready-to-implement" ]; then
+            gh workflow run implement-ready-issue.yml --repo "$REPO" \
+              --ref "$GITHUB_REF_NAME" \
+              -f "issue_number=$ISSUE_NUMBER"
+          fi
