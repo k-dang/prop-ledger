@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
@@ -54,6 +56,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          gh auth setup-git --hostname github.com --force
           if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
             echo "Issue number must be a positive integer" >&2
             exit 1
