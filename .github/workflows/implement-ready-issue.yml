@@ -1,4 +1,4 @@
-name: Probe ready issue trigger
+name: Implement ready issue
 
 on:
   issues:
@@ -15,20 +15,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  probe:
-    name: Record ready-issue trigger
+  implement:
+    name: Implement issue and open pull request
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-implement'
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 90
     permissions:
-      issues: read
+      actions: write
+      contents: write
+      issues: write
+      pull-requests: write
 
     steps:
-      - name: Validate and summarize ready issue
+      - name: Check out repository
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.10.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Implement issue with OpenCode
+        timeout-minutes: 70
         env:
-          EVENT_NAME: ${{ github.event_name }}
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -36,22 +57,45 @@ jobs:
             echo "Issue number must be a positive integer" >&2
             exit 1
           fi
+          pnpm dlx opencode-ai@1.17.7 run \
+            --model opencode/north-mini-code-free \
+            --title "Issue $ISSUE_NUMBER implementation" \
+            "Load and follow the skill named implement-ready-issue. Implement issue #$ISSUE_NUMBER in $REPO and carry it through to a review-ready pull request."
 
-          state="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json state --jq '.state')"
-          has_ready_label="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json labels \
-            --jq 'any(.labels[]; .name == "ready-to-implement")')"
+      - name: Upload visible-behavior evidence
+        if: ${{ !cancelled() && hashFiles('.implementation/evidence/**') != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: implementation-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .implementation/evidence
+          if-no-files-found: ignore
+          retention-days: 14
 
-          if [ "$state" != "OPEN" ] || [ "$has_ready_label" != "true" ]; then
-            echo "Issue must be open and labeled ready-to-implement" >&2
-            exit 1
+      - name: Record an operational failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            exit 0
           fi
 
-          {
-            echo "### Ready-issue trigger received"
-            echo
-            echo "- Repository: \`$REPO\`"
-            echo "- Issue: #$ISSUE_NUMBER"
-            echo "- Event: \`$EVENT_NAME\`"
-            echo "- State: open and ready to implement"
-            echo "- Implementation: not started by this tracer"
-          } >> "$GITHUB_STEP_SUMMARY"
+          marker='<!-- opencode-implementation-status -->'
+          body="$(printf '%s\n\n%s\n\n%s' \
+            "$marker" \
+            'Implementation stopped unexpectedly. Check for a linked branch or pull request before rerunning.' \
+            "See the [Actions run]($RUN_URL) for operational details and recovery context.")"
+          comment_id="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            --jq '.[] | select((.body // "") | contains("<!-- opencode-implementation-status -->")) | .id' \
+            | jq -s 'first // empty')"
+
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$comment_id" \
+              -f "body=$body" > /dev/null
+          else
+            gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$body"
+          fi

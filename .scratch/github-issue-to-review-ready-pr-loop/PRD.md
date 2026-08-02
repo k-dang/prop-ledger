@@ -23,12 +23,11 @@ deterministic step confirms the label is allowed and the comment is non-empty, t
 one readiness label and posts the supporting evidence. This triage stage stops after routing the
 issue; the later implementation workflow owns how ready issues enter implementation.
 
-The implementation workflow separates read-only OpenCode execution from write-capable status and
-publication jobs. OpenCode makes working-tree changes and discovers and runs the appropriate
-repository validation. Deterministic steps independently enforce protected-path and validation
-gates, create the Git history, push an automation branch, open a review-ready pull request, and
-maintain one concise status comment on the issue. Human review, merge, deployment, and production
-observation remain outside this first loop.
+The implementation workflow gives OpenCode the repository-scoped permissions needed to own one
+complete issue-to-pull-request attempt. The implementation skill fetches the current issue, keeps
+one concise status comment updated, changes and validates the code, creates the Git history, pushes
+an automation branch, opens a review-ready pull request, and explicitly starts Verify. Human
+review, merge, deployment, and production observation remain outside this first loop.
 
 ## User Stories
 
@@ -55,26 +54,26 @@ observation remain outside this first loop.
 21. As an issue reporter, I want a single concise comment showing that implementation started, so that I know the issue is being acted on.
 22. As an issue reporter, I want that same comment updated rather than receiving a stream of progress messages, so that the discussion remains readable.
 23. As an issue reporter, I want the status comment to link to the GitHub Actions run, so that authorized maintainers can follow operational progress.
-24. As a maintainer, I want OpenCode to receive no valid GitHub mutation credential, so that the agent cannot directly label, commit, push, comment, or open pull requests.
-25. As a maintainer, I want OpenCode to leave working-tree changes without changing Git history, so that publication is mechanically controlled after validation.
+24. As a maintainer, I want the implementation skill to own status, Git, and pull-request operations, so that the issue-to-review loop is easy to understand and operate.
+25. As a maintainer, I want OpenCode to create one focused branch and commit only after validation succeeds, so that successful attempts are immediately reviewable.
 26. As a maintainer, I want the implementation worker to make the smallest cohesive change that completely addresses the bounded issue, so that review remains focused.
 27. As a maintainer, I want the implementation worker to discover validation from repository instructions, package scripts, workflows, and the affected subsystem, so that its checks evolve with the repository.
 28. As a maintainer, I want the implementation worker to investigate and fix failures caused by its own changes, so that it does not hand obvious breakage to reviewers.
-29. As a maintainer, I want deterministic validation rerun after OpenCode exits, so that success does not depend only on the agent's claim.
+29. As a maintainer, I want the implementation skill to run the repository verification contract before publishing, so that failed changes do not become review-ready pull requests.
 30. As a maintainer, I want autonomous changes to the loop's own control plane rejected, so that an issue cannot weaken the workflow, skills, OpenCode configuration, or agent instructions that govern it.
-31. As a maintainer, I want publication to include exactly the validated diff, so that unrelated or post-validation changes do not enter the pull request.
-32. As a maintainer, I want deterministic publishing to create the branch, one commit, and the pull request without model judgment, so that GitHub mutations are reproducible and auditable.
+31. As a maintainer, I want the skill to inspect and commit only the intended validated diff, so that unrelated changes do not enter the pull request.
+32. As a maintainer, I want the implementation skill to create the branch, commit, push, pull request, and status update as one coherent workflow.
 33. As a reviewer, I want every successful automation pull request to be a normal review-ready pull request, so that it enters the existing human review process without a special review mode.
 34. As a reviewer, I want the pull request to link and close the originating issue only after merge, so that an opened pull request is not mistaken for completed work.
-35. As a reviewer, I want validation evidence summarized accurately in the pull request, so that failed or skipped checks are never presented as passing.
+35. As a reviewer, I want the pull request to identify the specifications used, exact validation results, and visible-behavior evidence or gaps, so that I can evaluate the change without reconstructing the implementation run.
 36. As a maintainer, I want an implementation that discovers material ambiguity or larger-than-expected scope to stop without opening a partial pull request, so that mis-triage does not produce misleading success.
 37. As an issue reporter, I want a semantic blocker summarized in the rolling status comment with one concrete next step, so that the issue can move forward deliberately.
 38. As an issue reporter, I want operational failures described only as a generic stopped run, so that internal error details are not exposed or confused with a product decision.
-39. As a maintainer, I want crashes, timeouts, unavailable models, and malformed output to fail closed, so that the workflow never silently changes provider or claims success.
+39. As a maintainer, I want crashes, timeouts, and unavailable models to fail closed, so that the workflow never silently changes provider or claims success.
 40. As a maintainer, I want explicit time limits and no automatic agent retries, so that cost and runaway execution remain bounded.
 41. As a maintainer, I want the free model selected explicitly with paid models and automatic fallback disabled, so that the pilot cannot create an unexpected model bill.
 42. As a repository owner, I want confidential records, production data, tenant data, and secrets excluded from free-model prompts, so that the pilot respects the selected model's retention limitations.
-43. As a repository owner, I want workflow mutations to use GitHub's repository-scoped built-in token with only the permissions required by each job, so that the pilot needs no additional automation identity.
+43. As a repository owner, I want implementation mutations to use GitHub's repository-scoped built-in token, so that the pilot needs no additional automation identity.
 44. As a repository owner, I want the automation identity unable to bypass the protected main branch, so that a human approval remains mandatory.
 45. As a maintainer, I want pull requests and pushes to main to run the aggregate repository verification contract, so that human and automated changes use the same gate.
 46. As a maintainer, I want first-run success, reviewer corrections, reversions, latency, and agent cost measured, so that later autonomy decisions are evidence-based.
@@ -88,8 +87,8 @@ observation remain outside this first loop.
 - GitHub Actions is the initial orchestrator and OpenCode is the initial agent runner. The design
   does not use Oz and does not introduce reusable workflows or a generic provider abstraction.
 - The repository defines separate triage and implementation skills. Skills contain worker
-  behavior and success/failure contracts; workflows contain triggers, permissions, sequencing,
-  concurrency, and deterministic state transitions.
+  behavior and success/failure contracts; workflows contain triggers, permissions, concurrency,
+  environment setup, and a generic operational-failure fallback.
 - New issue creation triggers initial triage. Issue edits and comments do not trigger triage.
   Re-triage is a maintainer manually replacing the existing readiness label.
 - The readiness labels are mutually exclusive: `ready-to-implement`, `ready-to-spec`,
@@ -118,26 +117,31 @@ observation remain outside this first loop.
   that path into the complete implementation and publication lifecycle.
 - The triage workflow uses a 15-minute read-only analysis job followed by a five-minute apply job.
   The OpenCode step has its own 10-minute limit.
-- The implementation workflow has a 90-minute overall limit, including a 60-minute OpenCode limit, a
-  20-minute deterministic validation allowance, and a five-minute publishing allowance.
+- The implementation workflow has a 90-minute overall limit, including a 70-minute OpenCode limit.
 - There are no automatic agent retries. Maintainers explicitly rerun operational failures.
 - Triage has no dedicated configuration preflight. An unavailable model, malformed result, or
   failed analysis stops the read-only job, so the apply job never changes the issue.
-- The implementation workflow maintains one marker-backed status comment per issue. It creates
-  or reuses the comment at start, records the Actions run link, and edits the same comment on
-  success, semantic blockage, or operational failure.
-- The generic operational-failure status says the run stopped before producing a result and
-  retains the Actions link. It contains no internal error details.
-- Agent jobs receive repository and issue read access but no write-capable GitHub token.
-  Deterministic mutation and publication jobs request built-in token permissions only after agent
-  work and required checks complete.
-- Read-only agent work and write-capable GitHub mutations use separate jobs so model execution
-  does not share the write-capable token's runner environment.
-- OpenCode may inspect, edit, and validate the working tree. It may not create commits, branches,
-  tags, pushes, comments, labels, or pull requests.
-- Deterministic validation confirms the original commit remains checked out, inspects every
-  changed path, rejects forbidden control-plane changes, and reruns the repository-owned
-  aggregate and targeted checks.
+- The implementation skill maintains one marker-backed status comment per issue. It creates or
+  reuses the comment at start, records the Actions run link, and edits the same comment on success
+  or semantic blockage. A final workflow step records a generic operational failure when the agent
+  run fails.
+- The generic operational-failure status says the run stopped unexpectedly, directs maintainers to
+  check for a linked branch or pull request before rerunning, and retains the Actions link. It
+  contains no internal error details or unsupported claim about how far the run progressed.
+- The implementation job gives OpenCode GitHub's built-in token with Actions, contents, issues,
+  and pull-request write permissions. This deliberately trusts the implementation skill to own
+  status updates, validation, Git history, branch publication, and pull-request creation.
+- OpenCode inspects every changed path, avoids protected control-plane areas, runs targeted checks
+  while iterating, and runs the repository-owned aggregate verification command before publishing.
+- Before implementation, OpenCode finds linked and checked-in product, technical, and architecture
+  specifications. Material conflicts among the issue, maintainer decisions, and authoritative
+  specifications are semantic blockers rather than invitations to guess.
+- Changes to UI or other user-visible interactions use the repository's `agent-browser` skill to
+  exercise affected acceptance criteria when the application is runnable. Change-caused behavior
+  failures block publication; environmental verification gaps must be explicit in the pull request
+  and rolling status and must never be described as passing.
+- Useful browser screenshots, video, or concise evidence records are kept outside the commit under
+  `.implementation/evidence/` and retained as a short-lived Actions artifact when present.
 - Protected control-plane areas include workflow definitions, repository agent instructions,
   agent skills, and OpenCode configuration. Issues requiring those changes must use a
   human-authored path during the pilot.
@@ -149,20 +153,21 @@ observation remain outside this first loop.
 - A change-caused validation failure blocks publication. A proven pre-existing or environmental
   failure may accompany a pull request only when the gap is prominent, reproducible, and reported
   accurately in both implementation evidence and reviewer-facing text.
-- The implementation worker reports complete success, semantic blockage, or operational failure.
-  Only complete work that passes the deterministic repository checks may proceed to publication.
+- The implementation worker reports complete success or semantic blockage through the rolling
+  issue comment. An operational failure fails the workflow and triggers its generic fallback.
 - A semantic blocker contains evidence and a concrete next step, creates no pull request, and does
   not relabel the issue. A maintainer later changes the readiness label when appropriate.
 - A successful result must completely address the bounded issue. Partial implementations are not
   a successful terminal state.
-- Deterministic publishing owns all Git history and GitHub mutation. It creates a unique
-  automation branch, makes one commit containing the validated diff, pushes it, opens a normal
-  pull request, and updates the rolling status comment.
-- The pull request body summarizes the change and validation evidence and contains a closing
-  reference to the originating issue. The issue closes only after human merge.
-- Every job uses GitHub's built-in repository token with explicit least-privilege permissions.
-  Read-only jobs request only read access; deterministic mutation and publication jobs request
-  only the issue, contents, or pull-request writes they need. No additional automation identity or
+- The implementation skill owns Git history and GitHub mutation. After validation, it creates a
+  unique automation branch, makes one commit containing the intended diff, pushes it, opens a
+  normal pull request, dispatches Verify, and updates the rolling status comment.
+- The pull request body links the originating issue and specifications used, summarizes the change,
+  records exact validation and visible-behavior evidence or gaps, identifies known limitations, and
+  contains a closing reference only for a complete implementation. The issue closes only after
+  human merge.
+- The implementation job uses GitHub's built-in repository token with the Actions, contents,
+  issues, and pull-request permissions needed by the skill. No additional automation identity or
   personal access token is required.
 - OpenCode and all third-party actions are pinned to reviewed versions. OpenCode automatic update
   and conversation sharing are disabled.
@@ -176,8 +181,9 @@ observation remain outside this first loop.
 - The protected main branch continues to require a pull request and one human approval and to
   reject deletion and force pushes. The aggregate Verify check becomes required only after GitHub
   has observed it successfully.
-- The first rollout establishes the Verify baseline, pilots triage against real issues, enables
-  deterministic routing, and only then enables implementation publication.
+- The rollout establishes the Verify baseline, pilots triage against real issues, enables
+  deterministic routing, lands and exercises the ready-issue tracer, and only then enables
+  implementation publication.
 
 ## Testing Decisions
 
@@ -186,8 +192,8 @@ observation remain outside this first loop.
 - Keep the triage workflow self-contained while its deterministic logic remains small. Do not add
   a separate automation library or fixture harness solely for this workflow.
 - Check workflow syntax and expressions with YAML parsing and `actionlint`.
-- Smoke-test OpenCode agent and skill discovery, JSONL result extraction, and representative valid
-  and invalid label/comment results locally.
+- Smoke-test OpenCode skill discovery, triage JSONL result extraction, and representative valid and
+  invalid triage results locally.
 - Use a controlled issue on the default branch to prove the real `issues.opened` trigger,
   repository permissions, label replacement, and reporter-facing comment. Confirm that later issue
   edits and comments do not retrigger triage.
@@ -199,15 +205,16 @@ observation remain outside this first loop.
 - Validate that the rolling status comment is reused on rerun and transitions among started,
   successful, semantically blocked, and operationally stopped states without producing a comment
   stream.
-- Validate that OpenCode runs in a read-only job and that write permissions exist only in separate
-  deterministic mutation or publication jobs.
-- Validate implementation success only when the original checked-out commit is unchanged, the
-  diff is non-empty, all changed paths are allowed, and required repository validation succeeds.
-- Validate rejection of commits, branches, tags, unexpected remotes, empty diffs, malformed
-  reports, and modifications to any protected control-plane area.
-- Validate that deterministic publishing creates one branch and one commit from exactly the
-  validated diff, opens a normal pull request, adds the issue closing reference, and updates the
-  status comment with the PR link.
+- Validate that the implementation job has the GitHub permissions needed for status, branch,
+  pull-request, and Verify operations without an additional automation identity.
+- Validate that the implementation skill requires a non-empty intended diff, avoids protected
+  control-plane paths, and runs required repository validation before publication.
+- Validate that material specification conflicts stop implementation and that visible-behavior
+  changes require browser verification or a prominent, accurate environmental gap.
+- Validate that optional browser evidence stays outside the commit and is retained by the workflow
+  when `.implementation/evidence/` is present.
+- Validate that the skill creates one branch and commit, opens a normal pull request, adds the
+  issue closing reference, dispatches Verify, and updates the status comment with the PR link.
 - Validate semantic blockage as a no-PR outcome with an evidence-based next step and no automatic
   relabeling.
 - Validate operational failure as a failed workflow with only the generic issue status and Actions
@@ -223,7 +230,7 @@ observation remain outside this first loop.
 - Automatic specification generation for `ready-to-spec` issues.
 - Automatic re-triage after issue edits or comments.
 - A separate re-triage label, slash command, or scheduled re-triage process.
-- Independent review agents, verification agents, security-review agents, or monitoring agents.
+- Always-on independent review, security-review, or monitoring agents.
 - Automatic merge, protected-branch bypass, deployment, rollback, or production observation.
 - A generic multi-provider runner abstraction or reusable-workflow framework.
 - Support for Oz, Pi, or a second coding-agent runner in the first implementation.
@@ -242,8 +249,9 @@ observation remain outside this first loop.
   labels are allowed to fail the workflow rather than adding configuration preflight logic.
 - North Mini Code Free is available only temporarily and may retain submitted content for model
   improvement. The pilot must use synthetic or public, non-confidential issue content.
-- Read-only model execution and write-capable mutations remain in separate jobs. A compromised
-  runner is still an operational risk within the permissions granted to that individual job.
+- The implementation model runs with write-capable repository permissions. This is a deliberate
+  simplicity tradeoff: the skill owns the complete lifecycle, while protected-main review and the
+  required Verify check remain the final human and deterministic boundaries.
 - The active protected-main ruleset already supplies the required human-review boundary. The
   Verify status should be added to that ruleset only after its first successful GitHub run.
 - The loop should be evaluated on maintainer agreement with triage, review-ready PR yield,
