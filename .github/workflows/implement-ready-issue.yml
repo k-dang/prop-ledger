@@ -1,0 +1,57 @@
+name: Probe ready issue trigger
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Open issue currently labeled ready-to-implement
+        required: true
+        type: string
+
+concurrency:
+  group: implement-${{ github.repository }}-${{ inputs.issue_number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Record ready-issue trigger
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-implement'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      issues: read
+
+    steps:
+      - name: Validate and summarize ready issue
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Issue number must be a positive integer" >&2
+            exit 1
+          fi
+
+          state="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json state --jq '.state')"
+          has_ready_label="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json labels \
+            --jq 'any(.labels[]; .name == "ready-to-implement")')"
+
+          if [ "$state" != "OPEN" ] || [ "$has_ready_label" != "true" ]; then
+            echo "Issue must be open and labeled ready-to-implement" >&2
+            exit 1
+          fi
+
+          {
+            echo "### Ready-issue trigger received"
+            echo
+            echo "- Repository: \`$REPO\`"
+            echo "- Issue: #$ISSUE_NUMBER"
+            echo "- Event: \`$EVENT_NAME\`"
+            echo "- State: open and ready to implement"
+            echo "- Implementation: not started by this tracer"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -111,6 +111,11 @@ observation remain outside this first loop.
 - The implementation workflow uses issue-scoped concurrency and does not cancel a run already in
   progress. The pilot accepts the operator-controlled risk of a later manual rerun creating a
   duplicate attempt and does not add persistent deduplication.
+- Issue 03 lands in two reviewable increments behind the same workflow filename, issue-number
+  input, and concurrency key. The first is a deterministic tracer with only issue read access: it
+  proves both triggers and current issue validation without checkout, dependency setup, OpenCode,
+  or GitHub mutation. The following increment adds OpenCode and the repository skill, then deepens
+  that path into the complete implementation and publication lifecycle.
 - The triage workflow uses a 15-minute read-only analysis job followed by a five-minute apply job.
   The OpenCode step has its own 10-minute limit.
 - The implementation workflow has a 90-minute overall limit, including a 60-minute OpenCode limit, a
@@ -188,6 +193,9 @@ observation remain outside this first loop.
   edits and comments do not retrigger triage.
 - Issue 03 defines and tests the downstream implementation trigger separately; Issue 02 does not
   rely on a workflow-generated label event.
+- Before introducing OpenCode or enabling implementation publication, run the tracer bullet against
+  a controlled ready issue on the default branch and prove manual-label and triage-dispatch entry,
+  current issue validation, and the Actions summary.
 - Validate that the rolling status comment is reused on rerun and transitions among started,
   successful, semantically blocked, and operationally stopped states without producing a comment
   stream.
