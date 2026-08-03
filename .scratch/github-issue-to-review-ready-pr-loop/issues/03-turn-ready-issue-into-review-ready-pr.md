@@ -39,8 +39,9 @@ evidence-based triage.
 
 - [x] One understandable implementation job gives OpenCode the Actions, contents, issues, and
   pull-request permissions needed to own the complete attempt.
-- [x] The workflow supplies the exact run URL, default branch, and unique per-attempt publication
-  branch instead of requiring the model to reconstruct operational identifiers.
+- [x] The workflow checks out the latest default branch, records its commit, creates the unique
+  per-attempt publication branch from that commit, and supplies the exact run URL instead of
+  requiring the model to reconstruct operational identifiers or branch ancestry.
 - [x] The implementation skill fetches the full current issue, confirms its state and readiness
   label, and treats the earlier triage comment as evidence rather than the full specification.
 - [x] Issue content is treated as untrusted task data and is never interpolated into executable
@@ -69,8 +70,11 @@ evidence-based triage.
 
 ## Publication
 
-- [x] After validation, the skill creates a unique automation branch and one focused commit,
-  pushes it, and opens a normal review-ready pull request.
+- [x] The workflow prepares a unique automation branch from the recorded latest default-branch
+  commit. After validation, the skill adds one focused commit, pushes it, and opens a normal
+  review-ready pull request.
+- [x] The publication postcondition requires the implementation commit's sole parent to be the
+  recorded default-branch commit, rejecting stacked or stale-base pull requests.
 - [x] The pull request links the issue and specifications used, accurately summarizes validation
   and visible-behavior evidence or gaps, records limitations, and includes `Closes #<issue>` only
   when the implementation fully resolves it.

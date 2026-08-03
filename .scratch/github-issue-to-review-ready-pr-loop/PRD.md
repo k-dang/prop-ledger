@@ -54,8 +54,8 @@ review, merge, deployment, and production observation remain outside this first 
 21. As an issue reporter, I want a single concise comment showing that implementation started, so that I know the issue is being acted on.
 22. As an issue reporter, I want that same comment updated rather than receiving a stream of progress messages, so that the discussion remains readable.
 23. As an issue reporter, I want the status comment to link to the GitHub Actions run, so that authorized maintainers can follow operational progress.
-24. As a maintainer, I want the implementation skill to own status, Git, and pull-request operations, so that the issue-to-review loop is easy to understand and operate.
-25. As a maintainer, I want OpenCode to create one focused branch and commit only after validation succeeds, so that successful attempts are immediately reviewable.
+24. As a maintainer, I want the workflow to own deterministic branch setup and the implementation skill to own status, commit, push, and pull-request operations, so that the issue-to-review loop is easy to understand and operate.
+25. As a maintainer, I want each implementation to start from the latest default-branch commit and add one focused commit only after validation succeeds, so that successful attempts are immediately reviewable.
 26. As a maintainer, I want the implementation worker to make the smallest cohesive change that completely addresses the bounded issue, so that review remains focused.
 27. As a maintainer, I want the implementation worker to discover validation from repository instructions, package scripts, workflows, and the affected subsystem, so that its checks evolve with the repository.
 28. As a maintainer, I want the implementation worker to investigate and fix failures caused by its own changes, so that it does not hand obvious breakage to reviewers.
@@ -165,10 +165,14 @@ review, merge, deployment, and production observation remain outside this first 
 - A successful result must completely address the bounded issue. Partial implementations are not
   a successful terminal state.
 - The implementation skill owns Git history and GitHub mutation. After validation, it creates a
-  unique automation branch, makes one commit containing the intended diff, pushes it, opens a
+  single commit containing the intended diff on the prepared automation branch, pushes it, opens a
   normal pull request, dispatches Verify, and updates the rolling status comment.
-- The workflow provides the exact branch name, default branch, and Actions run URL. The skill uses
-  those values literally, never force-pushes another attempt, and never reconstructs run metadata.
+- The workflow checks out the latest default branch, records its commit, and creates the exact
+  per-attempt implementation branch from that commit before OpenCode starts. The skill uses the
+  provided branch, default branch, and Actions run URL literally, never changes branch ancestry,
+  never force-pushes another attempt, and never reconstructs run metadata.
+- The workflow's publication postcondition requires the implementation commit's sole parent to be
+  the recorded default-branch commit, so a stacked or stale-base pull request cannot report success.
 - The pull request body links the originating issue and specifications used, summarizes the change,
   records exact validation and visible-behavior evidence or gaps, identifies known limitations, and
   contains a closing reference only for a complete implementation. The issue closes only after
@@ -220,7 +224,8 @@ review, merge, deployment, and production observation remain outside this first 
   changes require browser verification or a prominent, accurate environmental gap.
 - Validate that optional browser evidence stays outside the commit and is retained by the workflow
   when `.implementation/evidence/` is present.
-- Validate that the skill creates one branch and commit, opens a normal pull request, adds the
+- Validate that the workflow creates the implementation branch from the recorded latest
+  default-branch commit and that the skill adds one commit, opens a normal pull request, adds the
   issue closing reference, dispatches Verify, and updates the status comment with the PR link.
 - Validate semantic blockage as a no-PR outcome with an evidence-based next step and no automatic
   relabeling.

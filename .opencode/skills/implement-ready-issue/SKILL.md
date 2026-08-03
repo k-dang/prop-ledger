@@ -7,9 +7,10 @@ description: Implement one ready GitHub issue, validate it, and open a review-re
 
 Own one complete implementation attempt from issue context through a review-ready pull request.
 The workflow provides `ISSUE_NUMBER`, `REPO`, `RUN_URL`, `IMPLEMENTATION_BRANCH`,
-`DEFAULT_BRANCH`, GitHub's authenticated `gh` CLI, and the current Actions environment. Treat
-those provided values as immutable inputs: use them exactly and never infer, replace, or hard-code
-run IDs, attempts, branch names, or the default branch.
+`DEFAULT_BRANCH`, GitHub's authenticated `gh` CLI, and a clean local implementation branch created
+from the latest default-branch commit before OpenCode starts. Treat those provided values and the
+prepared branch as immutable inputs: use them exactly and never infer, replace, or hard-code run
+IDs, attempts, branch names, or the default branch.
 
 Never enumerate the process environment or print authentication state. Do not run `env`,
 `printenv`, `set`, `gh auth token`, or an equivalent command. Read only the named non-secret inputs
@@ -48,6 +49,9 @@ above when needed.
    material product or technical decision.
 6. If the issue is ambiguous, unexpectedly broad, or blocked, make no commit or pull request.
    Finish it as a blocked attempt using the contract below.
+7. Confirm the current branch is exactly `IMPLEMENTATION_BRANCH` before editing. The workflow
+   created it from the latest `DEFAULT_BRANCH` commit. Do not switch, recreate, reset, merge, or
+   rebase it.
 
 ## Implement and validate
 
@@ -84,7 +88,8 @@ For changes with no user-visible behavior, record browser verification as not ap
 ## Finish a blocked attempt
 
 Whenever an intentional implementation decision stops the run without a pull request—including
-ambiguity, a specification conflict, or validation that cannot pass—make no commit or branch.
+ambiguity, a specification conflict, or validation that cannot pass—make no commit and do not push
+the prepared branch.
 Update the one rolling status with concise evidence, one concrete next step, `RUN_URL`, and
 `<!-- opencode-implementation-outcome: blocked -->`. Do this for every valid no-pull-request
 terminal state; without that marker, the workflow treats the run as an operational failure.
@@ -92,8 +97,9 @@ terminal state; without that marker, the workflow treats the run as an operation
 ## Publish the validated change
 
 1. Require a non-empty diff and successful validation.
-2. Create the branch named by `IMPLEMENTATION_BRANCH`. Never reuse, rename, or force-push another
-   attempt's branch.
+2. Confirm the current branch is still `IMPLEMENTATION_BRANCH`. The workflow created this unique
+   branch from the latest default-branch commit before implementation began. Never recreate,
+   switch, merge, rebase, rename, or force-push it.
 3. Configure the commit author as `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`,
    stage only the intended implementation, and create one commit named `Implement issue
    #$ISSUE_NUMBER`. The workflow already set that identity in the repository-local Git config; do
