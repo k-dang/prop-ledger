@@ -88,7 +88,8 @@ review, merge, deployment, and production observation remain outside this first 
   does not use Oz and does not introduce reusable workflows or a generic provider abstraction.
 - The repository defines separate triage and implementation skills. Skills contain worker
   behavior and success/failure contracts; workflows contain triggers, permissions, concurrency,
-  environment setup, and a generic operational-failure fallback.
+  environment setup, immutable operational identifiers, a deterministic terminal-outcome check,
+  and a generic operational-failure fallback.
 - New issue creation triggers initial triage. Issue edits and comments do not trigger triage.
   Re-triage is a maintainer manually replacing the existing readiness label.
 - The readiness labels are mutually exclusive: `ready-to-implement`, `ready-to-spec`,
@@ -125,6 +126,10 @@ review, merge, deployment, and production observation remain outside this first 
   reuses the comment at start, records the Actions run link, and edits the same comment on success
   or semantic blockage. A final workflow step records a generic operational failure when the agent
   run fails.
+- The implementation skill adds a machine-readable terminal marker to its rolling status after a
+  valid semantic blockage or complete publication. The workflow verifies that marker against
+  GitHub state so a zero-exit agent process cannot make a partial branch or missing Verify dispatch
+  appear successful.
 - The generic operational-failure status says the run stopped unexpectedly, directs maintainers to
   check for a linked branch or pull request before rerunning, and retains the Actions link. It
   contains no internal error details or unsupported claim about how far the run progressed.
@@ -162,6 +167,8 @@ review, merge, deployment, and production observation remain outside this first 
 - The implementation skill owns Git history and GitHub mutation. After validation, it creates a
   unique automation branch, makes one commit containing the intended diff, pushes it, opens a
   normal pull request, dispatches Verify, and updates the rolling status comment.
+- The workflow provides the exact branch name, default branch, and Actions run URL. The skill uses
+  those values literally, never force-pushes another attempt, and never reconstructs run metadata.
 - The pull request body links the originating issue and specifications used, summarizes the change,
   records exact validation and visible-behavior evidence or gaps, identifies known limitations, and
   contains a closing reference only for a complete implementation. The issue closes only after

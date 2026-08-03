@@ -20,6 +20,12 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-implement'
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      IMPLEMENTATION_BRANCH: automation/issue-${{ inputs.issue_number || github.event.issue.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+      ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+      REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     permissions:
       actions: write
       contents: write
@@ -51,9 +57,7 @@ jobs:
         timeout-minutes: 70
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           gh auth setup-git --hostname github.com --force
@@ -64,7 +68,7 @@ jobs:
           pnpm dlx opencode-ai@1.17.7 run \
             --model opencode/north-mini-code-free \
             --title "Issue $ISSUE_NUMBER implementation" \
-            "Load and follow the skill named implement-ready-issue. Implement issue #$ISSUE_NUMBER in $REPO and carry it through to a review-ready pull request."
+            "Load and follow the skill named implement-ready-issue. Implement issue #$ISSUE_NUMBER in $REPO and carry it through to a review-ready pull request. Use the provided IMPLEMENTATION_BRANCH, DEFAULT_BRANCH, and RUN_URL environment values exactly; do not infer or replace them."
 
       - name: Upload visible-behavior evidence
         if: ${{ !cancelled() && hashFiles('.implementation/evidence/**') != '' }}
@@ -75,13 +79,71 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Record an operational failure
-        if: ${{ failure() && steps.implement.outcome == 'failure' }}
+      - name: Verify implementation outcome
+        id: outcome
+        if: ${{ !cancelled() && steps.implement.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
-          REPO: ${{ github.repository }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          marker='<!-- opencode-implementation-status -->'
+          comment_ids="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            --jq ".[] | select((.body // \"\") | contains(\"$marker\")) | .id")"
+          comment_count="$(printf '%s\n' "$comment_ids" | sed '/^$/d' | wc -l | tr -d ' ')"
+          if [ "$comment_count" != '1' ]; then
+            echo "Expected exactly one implementation status comment, found $comment_count" >&2
+            exit 1
+          fi
+
+          comment_body="$(gh api "repos/$REPO/issues/comments/$comment_ids" --jq '.body')"
+          if [[ "$comment_body" != *"$RUN_URL"* ]]; then
+            echo "Implementation status does not link to the current Actions run" >&2
+            exit 1
+          fi
+
+          if [[ "$comment_body" = *'<!-- opencode-implementation-outcome: blocked -->'* ]]; then
+            if gh api "repos/$REPO/git/ref/heads/$IMPLEMENTATION_BRANCH" > /dev/null 2>&1; then
+              echo "Blocked implementation unexpectedly published $IMPLEMENTATION_BRANCH" >&2
+              exit 1
+            fi
+            exit 0
+          fi
+
+          if [[ "$comment_body" != *'<!-- opencode-implementation-outcome: published -->'* ]]; then
+            echo "Implementation status does not contain a terminal outcome" >&2
+            exit 1
+          fi
+
+          pull_requests="$(gh pr list --repo "$REPO" --state open --head "$IMPLEMENTATION_BRANCH" \
+            --json url,baseRefName,headRefName,isDraft)"
+          if ! jq -e --arg base "$DEFAULT_BRANCH" --arg head "$IMPLEMENTATION_BRANCH" \
+            'length == 1 and .[0].baseRefName == $base and .[0].headRefName == $head and (.[0].isDraft | not)' \
+            <<< "$pull_requests" > /dev/null; then
+            echo "Expected one review-ready pull request from $IMPLEMENTATION_BRANCH to $DEFAULT_BRANCH" >&2
+            exit 1
+          fi
+          pull_request_url="$(jq -r '.[0].url' <<< "$pull_requests")"
+
+          if [[ "$comment_body" != *"$pull_request_url"* ]]; then
+            echo "Implementation status does not link to $pull_request_url" >&2
+            exit 1
+          fi
+
+          head_sha="$(gh api "repos/$REPO/git/ref/heads/$IMPLEMENTATION_BRANCH" --jq '.object.sha')"
+          verify_url="$(gh run list --repo "$REPO" --workflow verify.yml --event workflow_dispatch \
+            --branch "$IMPLEMENTATION_BRANCH" --limit 20 --json headSha,url \
+            | jq -r --arg head "$head_sha" 'map(select(.headSha == $head)) | first | .url // empty')"
+          if [ -z "$verify_url" ]; then
+            echo "Verify was not dispatched for $IMPLEMENTATION_BRANCH at $head_sha" >&2
+            exit 1
+          fi
+
+          echo "Published $pull_request_url and dispatched $verify_url"
+
+      - name: Record an operational failure
+        if: ${{ failure() && (steps.implement.outcome == 'failure' || steps.outcome.outcome == 'failure') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then

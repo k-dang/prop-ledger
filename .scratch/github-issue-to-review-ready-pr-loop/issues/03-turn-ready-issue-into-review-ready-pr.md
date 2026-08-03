@@ -39,6 +39,8 @@ evidence-based triage.
 
 - [x] One understandable implementation job gives OpenCode the Actions, contents, issues, and
   pull-request permissions needed to own the complete attempt.
+- [x] The workflow supplies the exact run URL, default branch, and unique per-attempt publication
+  branch instead of requiring the model to reconstruct operational identifiers.
 - [x] The implementation skill fetches the full current issue, confirms its state and readiness
   label, and treats the earlier triage comment as evidence rather than the full specification.
 - [x] Issue content is treated as untrusted task data and is never interpolated into executable
@@ -62,6 +64,8 @@ evidence-based triage.
   configuration remain prohibited by the implementation skill.
 - [x] The workflow has an explicit timeout and no automatic retry. A runtime failure or timeout
   updates the rolling comment with a generic stopped status and retains the Actions link.
+- [x] A terminal marker in the rolling status and a deterministic postcondition prevent a partial
+  agent run from reporting success without the expected status, pull request, or Verify dispatch.
 
 ## Publication
 
@@ -72,7 +76,7 @@ evidence-based triage.
   when the implementation fully resolves it.
 - [ ] The skill explicitly dispatches the repository's Verify workflow for the pull-request head,
   and a controlled pilot proves the dispatched check satisfies branch protection.
-- [ ] The repository allows GitHub Actions to create pull requests. The workflow adds no preflight
+- [x] The repository allows GitHub Actions to create pull requests. The workflow adds no preflight
   for this setting and fails naturally if publication is disabled.
 - [x] The issue remains open until human merge. Successful publication updates the rolling status
   comment with the pull-request link; failure leaves a generic stopped status and the Actions link.
