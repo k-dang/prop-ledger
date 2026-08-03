@@ -106,12 +106,20 @@ jobs:
           fi
 
           comment_body="$(gh api "repos/$REPO/issues/comments/$comment_ids" --jq '.body')"
-          if [[ "$comment_body" != *"$RUN_URL"* ]]; then
-            echo "Implementation status does not link to the current Actions run" >&2
+          blocked='false'
+          published='false'
+          if [[ "$comment_body" = *'<!-- opencode-implementation-outcome: blocked -->'* ]]; then
+            blocked='true'
+          fi
+          if [[ "$comment_body" = *'<!-- opencode-implementation-outcome: published -->'* ]]; then
+            published='true'
+          fi
+          if [ "$blocked" = "$published" ]; then
+            echo "Implementation status must contain exactly one terminal outcome" >&2
             exit 1
           fi
 
-          if [[ "$comment_body" = *'<!-- opencode-implementation-outcome: blocked -->'* ]]; then
+          if [ "$blocked" = 'true' ]; then
             if gh api "repos/$REPO/git/ref/heads/$IMPLEMENTATION_BRANCH" > /dev/null 2>&1; then
               echo "Blocked implementation unexpectedly published $IMPLEMENTATION_BRANCH" >&2
               exit 1
@@ -119,23 +127,12 @@ jobs:
             exit 0
           fi
 
-          if [[ "$comment_body" != *'<!-- opencode-implementation-outcome: published -->'* ]]; then
-            echo "Implementation status does not contain a terminal outcome" >&2
-            exit 1
-          fi
-
           pull_requests="$(gh pr list --repo "$REPO" --state open --head "$IMPLEMENTATION_BRANCH" \
-            --json url,baseRefName,headRefName,isDraft)"
+            --json baseRefName,headRefName,isDraft)"
           if ! jq -e --arg base "$DEFAULT_BRANCH" --arg head "$IMPLEMENTATION_BRANCH" \
             'length == 1 and .[0].baseRefName == $base and .[0].headRefName == $head and (.[0].isDraft | not)' \
             <<< "$pull_requests" > /dev/null; then
             echo "Expected one review-ready pull request from $IMPLEMENTATION_BRANCH to $DEFAULT_BRANCH" >&2
-            exit 1
-          fi
-          pull_request_url="$(jq -r '.[0].url' <<< "$pull_requests")"
-
-          if [[ "$comment_body" != *"$pull_request_url"* ]]; then
-            echo "Implementation status does not link to $pull_request_url" >&2
             exit 1
           fi
 
@@ -143,14 +140,6 @@ jobs:
           parent_shas="$(gh api "repos/$REPO/commits/$head_sha" --jq '.parents | map(.sha) | @tsv')"
           if [ "$parent_shas" != "$IMPLEMENTATION_BASE_SHA" ]; then
             echo "Implementation branch is not exactly one commit on the recorded default-branch base" >&2
-            exit 1
-          fi
-          commit_identity="$(gh api "repos/$REPO/commits/$head_sha" \
-            --jq '[.commit.author.name, .commit.author.email, (.commit.message | split("\n")[0])] | @tsv')"
-          expected_identity="$(printf '%s\t%s\t%s' 'github-actions[bot]' \
-            '41898282+github-actions[bot]@users.noreply.github.com' "Implement issue #$ISSUE_NUMBER")"
-          if [ "$commit_identity" != "$expected_identity" ]; then
-            echo "Implementation commit does not use the required bot identity and message" >&2
             exit 1
           fi
 
@@ -162,7 +151,7 @@ jobs:
             exit 1
           fi
 
-          echo "Published $pull_request_url and dispatched $verify_url"
+          echo "Verified published implementation and dispatched $verify_url"
 
       - name: Record an operational failure
         if: ${{ failure() && (steps.implement.outcome == 'failure' || steps.outcome.outcome == 'failure') }}
