@@ -11,6 +11,10 @@ The workflow provides `ISSUE_NUMBER`, `REPO`, `RUN_URL`, `IMPLEMENTATION_BRANCH`
 those provided values as immutable inputs: use them exactly and never infer, replace, or hard-code
 run IDs, attempts, branch names, or the default branch.
 
+Never enumerate the process environment or print authentication state. Do not run `env`,
+`printenv`, `set`, `gh auth token`, or an equivalent command. Read only the named non-secret inputs
+above when needed.
+
 ## Confirm the issue and report progress
 
 1. Require `ISSUE_NUMBER` to be a positive integer.
@@ -21,7 +25,11 @@ run IDs, attempts, branch names, or the default branch.
 4. Create or reuse the issue comment containing `<!-- opencode-implementation-status -->`. Find it
    through the issue comments API and update that one comment throughout the run instead of posting
    a progress stream. Its initial state says implementation is in progress and links to `RUN_URL`.
-   Never create a second marker-backed comment when one already exists.
+   Never create a second marker-backed comment when one already exists. `gh issue comment` has no
+   `list` or `create` subcommands: list comments with `gh api`, select the existing marker comment's
+   ID, and update it with `gh api --method PATCH`. Use `gh issue comment` only when the API lookup
+   proves no marker comment exists. Treat any prior status body as history to replace, not as proof
+   that the current attempt published anything.
 
 ## Inspect before changing code
 
