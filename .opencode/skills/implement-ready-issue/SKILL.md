@@ -29,7 +29,8 @@ above when needed.
    `list` or `create` subcommands: list comments with `gh api`, select the existing marker comment's
    ID, and update it with `gh api --method PATCH`. Use `gh issue comment` only when the API lookup
    proves no marker comment exists. Treat any prior status body as history to replace, not as proof
-   that the current attempt published anything.
+   that the current attempt published anything. Put Markdown bodies under `.implementation/` and
+   read them from there; the OpenCode sandbox rejects writes to `/tmp` and other external paths.
 
 ## Inspect before changing code
 
@@ -95,13 +96,14 @@ terminal state; without that marker, the workflow treats the run as an operation
    attempt's branch.
 3. Configure the commit author as `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`,
    stage only the intended implementation, and create one commit named `Implement issue
-   #$ISSUE_NUMBER`.
+   #$ISSUE_NUMBER`. The workflow already set that identity in the repository-local Git config; do
+   not replace it with another author.
 4. The workflow already configured authenticated Git access. Do not change the origin URL, expose a
    token in a URL, write a credentials file, or replace the credential helper. Push
    `IMPLEMENTATION_BRANCH` without `--force` and open a normal, review-ready pull request against
-   `DEFAULT_BRANCH`. Write Markdown bodies to a temporary file and pass them with `--body-file`;
-   never interpolate Markdown containing backticks into a shell command. The pull request body must
-   contain:
+   `DEFAULT_BRANCH`. Write the pull request body to `.implementation/pull-request.md` and pass it
+   with `--body-file`; never write outside the workspace or interpolate Markdown containing
+   backticks into a shell command. The pull request body must contain:
    - a direct link to the original issue;
    - links to the product, technical, or architecture specifications used;
    - a concise implementation summary;
