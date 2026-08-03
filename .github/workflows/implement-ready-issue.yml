@@ -98,10 +98,10 @@ jobs:
           set -euo pipefail
           marker='<!-- opencode-implementation-status -->'
           comment_ids="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
-            --jq ".[] | select((.body // \"\") | contains(\"$marker\")) | .id")"
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and ((.body // \"\") | contains(\"$marker\"))) | .id")"
           comment_count="$(printf '%s\n' "$comment_ids" | sed '/^$/d' | wc -l | tr -d ' ')"
           if [ "$comment_count" != '1' ]; then
-            echo "Expected exactly one implementation status comment, found $comment_count" >&2
+            echo "Expected exactly one trusted implementation status comment, found $comment_count" >&2
             exit 1
           fi
 
@@ -154,7 +154,7 @@ jobs:
           echo "Verified published implementation and dispatched $verify_url"
 
       - name: Record an operational failure
-        if: ${{ failure() && (steps.implement.outcome == 'failure' || steps.outcome.outcome == 'failure') }}
+        if: ${{ failure() && steps.implement.outcome == 'failure' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -168,13 +168,20 @@ jobs:
             "$marker" \
             'Implementation stopped unexpectedly. Check for a linked branch or pull request before rerunning.' \
             "See the [Actions run]($RUN_URL) for operational details and recovery context.")"
-          comment_id="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
-            --jq '.[] | select((.body // "") | contains("<!-- opencode-implementation-status -->")) | .id' \
-            | jq -s 'first // empty')"
+          comment_ids="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and ((.body // \"\") | contains(\"$marker\"))) | .id")"
+          comment_count="$(printf '%s\n' "$comment_ids" | sed '/^$/d' | wc -l | tr -d ' ')"
 
-          if [ -n "$comment_id" ]; then
-            gh api --method PATCH "repos/$REPO/issues/comments/$comment_id" \
-              -f "body=$body" > /dev/null
-          else
-            gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$body"
-          fi
+          case "$comment_count" in
+            0)
+              gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$body"
+              ;;
+            1)
+              gh api --method PATCH "repos/$REPO/issues/comments/$comment_ids" \
+                -f "body=$body" > /dev/null
+              ;;
+            *)
+              echo "Refusing to update $comment_count trusted implementation status comments" >&2
+              exit 1
+              ;;
+          esac

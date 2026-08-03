@@ -62,7 +62,7 @@ review, merge, deployment, and production observation remain outside this first 
 29. As a maintainer, I want the implementation skill to run the repository verification contract before publishing, so that failed changes do not become review-ready pull requests.
 30. As a maintainer, I want autonomous changes to the loop's own control plane rejected, so that an issue cannot weaken the workflow, skills, OpenCode configuration, or agent instructions that govern it.
 31. As a maintainer, I want the skill to inspect and commit only the intended validated diff, so that unrelated changes do not enter the pull request.
-32. As a maintainer, I want the implementation skill to create the branch, commit, push, pull request, and status update as one coherent workflow.
+32. As a maintainer, I want the workflow to create the deterministic branch and the implementation skill to use that prepared branch for validation, commit, push, pull-request, and status operations as one coherent workflow.
 33. As a reviewer, I want every successful automation pull request to be a normal review-ready pull request, so that it enters the existing human review process without a special review mode.
 34. As a reviewer, I want the pull request to link and close the originating issue only after merge, so that an opened pull request is not mistaken for completed work.
 35. As a reviewer, I want the pull request to identify the specifications used, exact validation results, and visible-behavior evidence or gaps, so that I can evaluate the change without reconstructing the implementation run.
