@@ -76,7 +76,7 @@ jobs:
             exit 1
           fi
           pnpm dlx opencode-ai@1.17.7 run \
-            --model opencode/north-mini-code-free \
+            --model opencode/deepseek-v4-flash-free \
             --title "Issue $ISSUE_NUMBER implementation" \
             "Load and follow the skill named implement-ready-issue. Implement issue #$ISSUE_NUMBER in $REPO and carry it through to a review-ready pull request. Use the provided IMPLEMENTATION_BRANCH, DEFAULT_BRANCH, and RUN_URL environment values exactly; do not infer or replace them."
 
