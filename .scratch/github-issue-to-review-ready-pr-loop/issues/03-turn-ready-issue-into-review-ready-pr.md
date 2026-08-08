@@ -1,13 +1,13 @@
 # 03 — Turn a ready issue into a review-ready pull request
 
-**What to build:** Take an open issue currently labeled `ready-to-implement` through one
-bounded OpenCode implementation attempt. Finish with either a complete, validated,
-review-ready pull request or a concise issue update explaining why no pull request was created.
+**What to build:** Take an open issue currently labeled `ready-to-implement` through one bounded
+OpenCode implementation attempt. Finish with either a complete, validated, review-ready pull
+request or a concise issue update explaining why no pull request was created.
 
 **Blocked by:** 01 — Establish the repository Verify gate; 02 — Route new issues with
 evidence-based triage.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 ## Entry points
 
@@ -24,8 +24,8 @@ evidence-based triage.
 ## Tracer-bullet proof
 
 - [x] The first rollout uses the final workflow filename, triggers, issue-number interface, and
-  issue-scoped concurrency so the later implementation deepens the same path instead of replacing
-  it with a second entry point.
+  issue-scoped concurrency so the complete implementation deepens the same path instead of
+  replacing it with a second entry point.
 - [x] Deterministic shell logic refetches the current issue through GitHub and confirms it is open
   and still labeled `ready-to-implement`.
 - [x] The tracer writes only a GitHub Actions step summary identifying the repository, issue,
@@ -37,66 +37,85 @@ evidence-based triage.
 
 ## Implementation and validation
 
-- [ ] Write-capable status and publication work runs in separate jobs from OpenCode. Jobs exchange
-  only explicit metadata and an implementation patch artifact.
-- [ ] The workflow creates or reuses one marker-backed issue comment, links the current Actions
-  run, and updates that comment instead of posting progress messages.
-- [ ] The OpenCode job checks out the triggering commit and has only repository and issue read
-  permissions. It receives no token capable of changing GitHub state.
-- [ ] The implementation skill refetches the complete issue, reads the current repository and
-  product instructions, inspects the likely implementation area, and treats the triage comment as
-  evidence rather than as the complete specification.
-- [ ] Issue content is treated as untrusted data and is never interpolated into executable workflow
-  commands.
-- [ ] OpenCode makes the smallest cohesive working-tree change that completely addresses the issue
-  and discovers the applicable repository checks. It does not create commits, branches, tags,
-  pushes, comments, labels, or pull requests.
-- [ ] OpenCode reports only `complete` or `blocked` with a concise explanation. Small inline checks
-  reject missing or unrecognized results; there is no checked-in schema or automation library.
-- [ ] `complete` requires a non-empty product diff, unchanged Git history, no protected control-plane
-  paths, and successful aggregate plus targeted validation. The workflow—not the model's claim—
-  decides whether publication is allowed.
-- [ ] `blocked` requires no publishable partial implementation. It creates no pull request, leaves
-  the readiness label unchanged, and updates the rolling comment with evidence and one concrete
-  next step.
-- [ ] Changes to workflows, repository agent instructions, agent skills, or OpenCode configuration
-  are rejected. Work requiring those paths must use a human-authored change.
-- [ ] The workflow has explicit phase time limits and no automatic agent retries. An unavailable
-  model, malformed result, runtime failure, timeout, or failed validation stops publication.
+- [x] One understandable implementation job gives OpenCode the Actions, contents, issues, and
+  pull-request permissions needed to own the complete attempt.
+- [x] The workflow checks out the latest default branch, records its commit, creates the unique
+  per-attempt publication branch from that commit, and supplies the exact run URL instead of
+  requiring the model to reconstruct operational identifiers or branch ancestry.
+- [x] The implementation skill fetches the full current issue, confirms its state and readiness
+  label, and treats the earlier triage comment as evidence rather than the full specification.
+- [x] Issue content is treated as untrusted task data and is never interpolated into executable
+  workflow commands.
+- [x] The skill creates or reuses one marker-backed issue comment, links the current Actions run,
+  and updates that comment instead of posting progress messages.
+- [x] The skill reads current repository and product instructions, inspects the implementation
+  area, and makes the smallest cohesive change that completely addresses the issue.
+- [x] The skill finds linked and checked-in product, technical, and architecture specifications
+  before implementation. Material conflicts stop the run with a concrete resolution step.
+- [x] The skill runs relevant targeted checks while iterating and requires `pnpm verify` before
+  publishing.
+- [x] UI and other visible-behavior changes use the repository's `agent-browser` skill when the
+  application is runnable. Change-caused failures block publication; environmental gaps are
+  reported accurately and never described as passing.
+- [x] Optional screenshots, video, and browser evidence stay outside the commit under
+  `.implementation/evidence/` and are retained as a short-lived Actions artifact when present.
+- [x] A semantic blocker creates no pull request, leaves the readiness label unchanged, and updates
+  the rolling comment with concise evidence and one concrete next step.
+- [x] Autonomous changes to workflows, repository agent instructions, skills, and OpenCode
+  configuration remain prohibited by the implementation skill.
+- [x] The workflow has an explicit timeout and no automatic retry. A runtime failure or timeout
+  updates the rolling comment with a generic stopped status and retains the Actions link.
+- [x] A terminal marker in the rolling status and a deterministic postcondition prevent a partial
+  agent run from reporting success without the expected status, pull request, or Verify dispatch.
 
 ## Publication
 
-- [ ] A fresh publication job checks out the same base commit, applies exactly the validated patch,
-  and uses GitHub's built-in token with only the issue, contents, pull-request, and Actions write
-  permissions it needs.
-- [ ] Publication creates a unique automation branch and one commit, pushes it, and opens a normal
-  review-ready pull request whose body accurately summarizes the change and validation and includes
-  `Closes #<issue>`.
-- [ ] Publication explicitly dispatches the repository's Verify workflow for the pull-request head.
-  This avoids depending on the approval-required `pull_request` run created when `GITHUB_TOKEN`
-  opens a pull request, and the controlled pilot proves the dispatched check satisfies branch
-  protection.
-- [ ] The repository allows GitHub Actions to create pull requests. The workflow adds no preflight
+- [x] The workflow prepares a unique automation branch from the recorded latest default-branch
+  commit. After validation, the skill adds one focused commit, pushes it, and opens a normal
+  review-ready pull request.
+- [x] The publication postcondition requires the implementation commit's sole parent to be the
+  recorded default-branch commit, rejecting stacked or stale-base pull requests.
+- [x] The pull request links the issue and specifications used, accurately summarizes validation
+  and visible-behavior evidence or gaps, records limitations, and includes `Closes #<issue>` only
+  when the implementation fully resolves it.
+- [ ] The skill explicitly dispatches the repository's Verify workflow for the pull-request head,
+  and a controlled pilot proves the dispatched check satisfies branch protection.
+- [x] The repository allows GitHub Actions to create pull requests. The workflow adds no preflight
   for this setting and fails naturally if publication is disabled.
-- [ ] The issue remains open until human merge. Successful publication updates the rolling status
+- [x] The issue remains open until human merge. Successful publication updates the rolling status
   comment with the pull-request link; failure leaves a generic stopped status and the Actions link.
 - [ ] The built-in token cannot bypass protected-main review requirements.
 
 ## Validation approach
 
-- [ ] Check workflow syntax and expressions with YAML parsing and `actionlint`.
-- [ ] Smoke-test the two entry points, minimal result parsing, protected-path rejection, patch
-  handoff, and status-comment reuse without introducing a fixture framework.
-- [ ] Use controlled synthetic issues to prove a blocked outcome and one successful pull request,
-  including the explicitly dispatched Verify check and required human-review boundary.
-- [ ] The repository aggregate verification contract passes after implementation.
+- [x] Check workflow syntax and expressions with YAML parsing and `actionlint`.
+- [x] Smoke-test both entry points, OpenCode skill discovery, required permissions, issue-number
+  validation, marker-backed failure reporting, evidence artifact isolation, and the skill's spec
+  conflict and visible-behavior contracts without introducing a fixture framework.
+- [ ] Use controlled synthetic issues to prove the tracer, one blocked implementation, and one
+  successful pull request, including the explicitly dispatched Verify check and human-review
+  boundary.
+- [x] The repository type-check and test contracts pass after implementation. The aggregate lint
+  command remains sensitive to CRLF in the current Windows checkout.
 
-## Tracer-bullet rollout
+## Rollout
 
-1. Land the final two entry points and issue-scoped concurrency with a deterministic trigger probe.
-   Prove the real events and ready-issue validation without checking out code or invoking OpenCode.
-2. Run the tracer against a controlled ready issue on the default branch and record the live result
-   before enabling repository publication.
-3. Add OpenCode and the repository implementation skill in the following pull request so it
-   implements and validates the issue, creates the branch and pull request, retains
-   visible-behavior evidence, and explicitly dispatches Verify.
+1. Merge the tracer-bullet pull request and run it against a controlled ready issue. It proves the
+   real triggers, current issue validation, and Actions summary without checking out code or
+   invoking OpenCode.
+2. Merge the stacked implementation pull request only after the tracer result is understood. It
+   introduces OpenCode and the repository skill, then deepens the same workflow interface into code
+   changes, validation, visible-behavior evidence, branch and pull-request creation, and Verify
+   dispatch.
+3. Complete the remaining live repository proof in Issue 04: Actions pull-request enablement,
+   dispatched Verify/branch-protection behavior, protected-main review enforcement, and controlled
+   blocked and successful issues.
+
+## Comments
+
+- The original patch-handoff design used five jobs and kept all write permissions away from the
+  model. Maintainer review deliberately changed that trust decision in favor of a smaller,
+  skill-driven lifecycle like the Warp reference implementation.
+- The tracer and full implementation deliberately share one workflow filename, input contract, and
+  concurrency key. The second pull request introduces the OpenCode skill and status marker behind
+  that stable workflow interface instead of adding a parallel production path.

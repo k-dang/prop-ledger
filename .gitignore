@@ -51,3 +51,6 @@ opensrc/
 
 # triage workflow artifacts
 /.triage/
+
+# implementation workflow artifacts
+/.implementation/
