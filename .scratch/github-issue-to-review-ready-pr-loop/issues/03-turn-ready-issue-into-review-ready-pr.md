@@ -32,7 +32,7 @@ evidence-based triage.
   trigger event, and explicit fact that implementation did not start.
 - [x] The tracer has only `issues: read`, performs no checkout or dependency setup, makes no
   OpenCode call or GitHub mutation, and has a two-minute overall timeout.
-- [ ] A controlled issue on the default branch proves the manual-label and triage-dispatch paths,
+- [x] A controlled issue on the default branch proves the manual-label and triage-dispatch paths,
   issue validation, and Actions summary without starting implementation.
 
 ## Implementation and validation
@@ -78,13 +78,13 @@ evidence-based triage.
 - [x] The pull request links the issue and specifications used, accurately summarizes validation
   and visible-behavior evidence or gaps, records limitations, and includes `Closes #<issue>` only
   when the implementation fully resolves it.
-- [ ] The skill explicitly dispatches the repository's Verify workflow for the pull-request head,
+- [x] The skill explicitly dispatches the repository's Verify workflow for the pull-request head,
   and a controlled pilot proves the dispatched check satisfies branch protection.
 - [x] The repository allows GitHub Actions to create pull requests. The workflow adds no preflight
   for this setting and fails naturally if publication is disabled.
 - [x] The issue remains open until human merge. Successful publication updates the rolling status
   comment with the pull-request link; failure leaves a generic stopped status and the Actions link.
-- [ ] The built-in token cannot bypass protected-main review requirements.
+- [x] The built-in token cannot bypass protected-main review requirements.
 
 ## Validation approach
 
@@ -92,7 +92,7 @@ evidence-based triage.
 - [x] Smoke-test both entry points, OpenCode skill discovery, required permissions, issue-number
   validation, marker-backed failure reporting, evidence artifact isolation, and the skill's spec
   conflict and visible-behavior contracts without introducing a fixture framework.
-- [ ] Use controlled synthetic issues to prove the tracer, one blocked implementation, and one
+- [x] Use controlled synthetic issues to prove the tracer, one blocked implementation, and one
   successful pull request, including the explicitly dispatched Verify check and human-review
   boundary.
 - [x] The repository type-check and test contracts pass after implementation. The aggregate lint

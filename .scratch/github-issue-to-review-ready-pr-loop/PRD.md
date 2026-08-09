@@ -182,7 +182,7 @@ review, merge, deployment, and production observation remain outside this first 
   personal access token is required.
 - OpenCode and all third-party actions are pinned to reviewed versions. OpenCode automatic update
   and conversation sharing are disabled.
-- The pilot explicitly selects `opencode/north-mini-code-free` for triage and implementation.
+- The pilot explicitly selects `opencode/deepseek-v4-flash-free` for triage and implementation.
   Missing or unavailable model configuration fails closed; there is no automatic model fallback.
 - Paid models and automatic balance reload remain disabled. Moving to another model is an
   explicit operator-owned configuration change.
@@ -259,7 +259,7 @@ review, merge, deployment, and production observation remain outside this first 
 
 - The live mutation step requires the four readiness labels to exist in the repository. Missing
   labels are allowed to fail the workflow rather than adding configuration preflight logic.
-- North Mini Code Free is available only temporarily and may retain submitted content for model
+- DeepSeek V4 Flash Free is available only temporarily and may retain submitted content for model
   improvement. The pilot must use synthetic or public, non-confidential issue content.
 - The implementation model runs with write-capable repository permissions. This is a deliberate
   simplicity tradeoff: the skill owns the complete lifecycle, while protected-main review and the

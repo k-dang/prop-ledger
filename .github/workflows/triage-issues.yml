@@ -55,7 +55,7 @@ jobs:
         run: |
           pnpm dlx opencode-ai@1.17.7 run \
             --agent triage \
-            --model opencode/north-mini-code-free \
+            --model opencode/deepseek-v4-flash-free \
             --format json \
             --title "Issue ${{ github.event.issue.number }} triage" \
             "Use the skill tool to load the skill named triage before doing any analysis. Then read .triage/issue-context.json and return the JSON decision only." \
