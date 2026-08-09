@@ -46,9 +46,8 @@ evidence-based triage; 03 — Turn a ready issue into a review-ready pull reques
   required protected-main status check.
 - [x] The failed Issue 17 implementation exposes its technical detail only in Actions and leaves
   the generic issue status described by the contract.
-- [x] Initial maintainer agreement, review-ready pull-request yield, first-run verification result,
-  reviewer corrections, reversions, elapsed time, and agent cost are recorded in
-  `../pilot-baseline.md`.
+- [x] Controlled issues, pull requests, and Actions runs remain the source of pilot evidence; no
+  separate metrics log is maintained.
 - [ ] Pilot failures are corrected and rerun explicitly. The Issue 17 implementation failure was
   corrected and rerun; the failed triage path still needs its post-merge controlled rerun. No
   automatic retry, auto-merge, or deployment is enabled.
