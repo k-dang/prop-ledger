@@ -1,5 +1,3 @@
-Status: ready-for-human
-
 # 03 — Turn a ready issue into a review-ready pull request
 
 **What to build:** Take an open issue currently labeled `ready-to-implement` through one bounded
@@ -8,6 +6,8 @@ request or a concise issue update explaining why no pull request was created.
 
 **Blocked by:** 01 — Establish the repository Verify gate; 02 — Route new issues with
 evidence-based triage.
+
+**Status:** ready-for-human
 
 ## Entry points
 

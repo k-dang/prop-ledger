@@ -1,10 +1,10 @@
-Status: ready-for-human
-
 # 01 — Establish the repository Verify gate
 
 **What to build:** Make the repository's aggregate validation contract run automatically for every pull request and every push to `main`, giving human and automated changes the same visible CI gate before review or merge.
 
 **Blocked by:** None — can start immediately.
+
+**Status:** ready-for-human
 
 - [x] The aggregate verification command runs formatting and lint checks, application type-checking, Worker type-checking, and the complete unit test suite.
 - [x] Pull requests, pushes to `main`, and an explicit manual dispatch all start the Verify workflow.
