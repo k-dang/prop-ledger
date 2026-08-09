@@ -1,10 +1,10 @@
-Status: ready-for-agent
+Status: implemented-needs-verification
 
 # Evidence deletion removes the blob
 
 ## Parent
 
-.scratch/evidence-blob-uploads/PRD.md
+[Evidence Blob Uploads](../PRD.md)
 
 ## What to build
 
@@ -34,4 +34,10 @@ logs and never blocks the record delete.
 
 ## Blocked by
 
-- .scratch/evidence-blob-uploads/issues/03-presigned-upload-path.md
+- Nothing. The presigned-upload prerequisite is complete.
+
+## Comments
+
+- Implemented in commit `527f813` (`Delete evidence blobs from R2 on document delete`).
+- The code path and unit seam exist, but the dev-bucket deletion and follow-up 404 checks
+  remain unchecked because they require empirical verification.

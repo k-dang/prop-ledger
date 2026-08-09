@@ -1,5 +1,7 @@
 Status: ready-for-agent
 
+# GitHub Issue to Review-Ready PR Loop
+
 ## Problem Statement
 
 Maintainers currently have to inspect every incoming GitHub issue, decide whether it is clear and

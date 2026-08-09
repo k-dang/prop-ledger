@@ -1,5 +1,7 @@
 Status: ready-for-agent
 
+# Property Workspace Mutation Contracts
+
 ## Problem Statement
 
 The Property Workspace wires many server actions through a broad client dispatcher and a long list of local handler wrappers. Errors are tracked by string keys, then passed flat into a large detail component. One delete path also performs an extra client router refresh even though the shared server action helper already refreshes successful mutations.

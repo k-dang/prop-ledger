@@ -1,5 +1,7 @@
 Status: ready-for-agent
 
+# Split Property Workspace Client Islands
+
 ## Problem Statement
 
 The Property Workspace currently hydrates a broad client-side module graph up front. Secondary workflows such as mortgage payments, taxable activity, evidence support, rent activity tools, and transaction evidence are statically pulled into the same client surface even when they start collapsed or are not immediately needed.

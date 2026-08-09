@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: in-progress
 
 # Evidence Blob Uploads (Cloudflare R2)
 

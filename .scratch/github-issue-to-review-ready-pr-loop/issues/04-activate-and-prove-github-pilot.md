@@ -1,10 +1,10 @@
+Status: ready-for-human
+
 # 04 — Activate and prove the GitHub pilot
 
 **What to build:** Configure the repository-side prerequisites and run controlled, non-confidential GitHub issues through the complete loop so that maintainers can verify real workflow chaining, publication, branch protection, and initial operating evidence before relying on it.
 
 **Blocked by:** 01 — Establish the repository Verify gate; 02 — Route new issues with evidence-based triage; 03 — Turn a ready issue into a review-ready pull request.
-
-**Status:** ready-for-human
 
 - [ ] The repository has exactly the four agreed readiness labels with consistent names and descriptions.
 - [ ] The private automation GitHub App is installed only on this repository with the minimum issue, contents, and pull-request permissions needed by the loop.

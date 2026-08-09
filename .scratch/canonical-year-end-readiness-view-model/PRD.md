@@ -1,5 +1,7 @@
 Status: ready-for-agent
 
+# Canonical Year-End Readiness View Model
+
 ## Problem Statement
 
 Year-End Readiness items are mapped into labels, details, links, action labels, counts, and status badges in multiple places. The Property Workspace, Year-End workspace, and Portfolio Dashboard each rebuild similar rows from the same readiness model. This duplicates policy and copy, and it already creates small differences in naming and destinations.

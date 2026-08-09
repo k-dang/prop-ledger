@@ -1,5 +1,7 @@
 Status: ready-for-agent
 
+# Shared Tax Year Financial Summary
+
 ## Problem Statement
 
 Tax Year financial summary logic is duplicated across property-level, portfolio-level, and Year-End Package surfaces. The same concepts are calculated in multiple places: Gross Rental Income, Payments Received, Deductible Expenses, Net Recorded Rental Income, prepaid allocation, mortgage interest inclusion, and incomplete transaction counts.

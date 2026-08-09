@@ -1,10 +1,10 @@
+Status: ready-for-human
+
 # 02 — Route new issues with evidence-based triage
 
 **What to build:** Make every newly opened GitHub issue pass through a read-only, repository-aware triage worker and then through a deterministic state transition that applies one readiness label and posts the evidence supporting that decision.
 
 **Blocked by:** None — can start immediately.
-
-**Status:** ready-for-human
 
 - [x] Opening an issue starts triage; issue edits and comments do not start or restart it.
 - [x] Triage concurrency is scoped to the repository and issue, and a newer run cancels an older run for the same issue.

@@ -1,5 +1,7 @@
 Status: ready-for-agent
 
+# Decompose Property Workspace Detail
+
 ## Problem Statement
 
 The Property Workspace is built through a single oversized client-side detail component that mixes page composition, setup records, Year-End Readiness presentation, Tax Year financial summaries, workflow disclosure state, forms, tables, and small formatting helpers. From a user's perspective, this makes future improvements to the property workspace slower and riskier: a small copy or layout change can accidentally touch business-facing readiness or financial behavior.
