@@ -1,5 +1,7 @@
 Status: ready-for-agent
 
+# Typed Property Page Year Parameter
+
 ## Problem Statement
 
 The dynamic Property Workspace page accepts a Tax Year through URL search parameters, but its local type only models the year parameter as a single string. The framework page contract allows repeated search parameters, which means the actual value can be absent, a single string, or an array of strings.
