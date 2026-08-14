@@ -4,7 +4,6 @@ import {
   date,
   doublePrecision,
   integer,
-  jsonb,
   pgSchema,
   text,
   timestamp,
@@ -14,7 +13,6 @@ import type {
   RentalIncomeCategory,
   T776Category,
 } from "../domain/ledger-categories";
-import type { YearEndPackageSnapshot } from "../domain/year-end-package";
 
 const rental = pgSchema("rental");
 const pgTable = rental.table.bind(rental);
@@ -186,25 +184,6 @@ export const accountantNotes = pgTable("accountant_notes", {
     .defaultNow(),
 });
 
-export const YEAR_END_PACKAGE_SCOPES = ["property", "owner"] as const;
-export type YearEndPackageScope = (typeof YEAR_END_PACKAGE_SCOPES)[number];
-
-export const yearEndPackages = pgTable("year_end_packages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  propertyId: uuid("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  taxYear: integer("tax_year").notNull(),
-  scope: text("scope").$type<YearEndPackageScope>().notNull(),
-  ownerId: uuid("owner_id").references(() => owners.id, {
-    onDelete: "restrict",
-  }),
-  snapshot: jsonb("snapshot").$type<YearEndPackageSnapshot>().notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
 /**
  * Reusable evidence records. A document is uploaded once and linked to the
  * records it supports through `documentLinks`, so the same lease agreement or
@@ -237,7 +216,6 @@ export const DOCUMENT_LINK_TARGETS = [
   "transaction",
   "rent_event",
   "mortgage_payment",
-  "year_end_package",
 ] as const;
 export type DocumentLinkTarget = (typeof DOCUMENT_LINK_TARGETS)[number];
 
@@ -260,7 +238,6 @@ export const propertiesRelations = relations(properties, ({ many }) => ({
   mortgagePayments: many(mortgagePayments),
   documents: many(documents),
   accountantNotes: many(accountantNotes),
-  yearEndPackages: many(yearEndPackages),
 }));
 
 export const unitsRelations = relations(units, ({ one, many }) => ({
@@ -377,20 +354,6 @@ export const accountantNotesRelations = relations(
   }),
 );
 
-export const yearEndPackagesRelations = relations(
-  yearEndPackages,
-  ({ one }) => ({
-    property: one(properties, {
-      fields: [yearEndPackages.propertyId],
-      references: [properties.id],
-    }),
-    owner: one(owners, {
-      fields: [yearEndPackages.ownerId],
-      references: [owners.id],
-    }),
-  }),
-);
-
 /**
  * Inferred row and insert types — the single source of truth for the domain
  * shapes. `src/lib/property-workspace.ts` re-exports these under domain-facing
@@ -410,7 +373,6 @@ export type TransactionSplit = typeof transactionSplits.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type DocumentLink = typeof documentLinks.$inferSelect;
 export type AccountantNote = typeof accountantNotes.$inferSelect;
-export type YearEndPackage = typeof yearEndPackages.$inferSelect;
 
 export type NewProperty = typeof properties.$inferInsert;
 export type NewUnit = typeof units.$inferInsert;

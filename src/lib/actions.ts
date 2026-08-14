@@ -13,7 +13,6 @@ import {
   properties,
   rentEvents,
   units,
-  yearEndPackages,
 } from "@/db/schema";
 import { type ActionResult, runAction } from "@/lib/action-utils";
 import {
@@ -227,21 +226,6 @@ export async function deleteOwner(
         return { ok: false, error: "That owner no longer exists." };
       }
 
-      const yearEndPackage = await db.query.yearEndPackages.findFirst({
-        where: and(
-          eq(yearEndPackages.propertyId, propertyId),
-          eq(yearEndPackages.ownerId, ownerId),
-        ),
-        columns: { id: true },
-      });
-
-      if (yearEndPackage !== undefined) {
-        return {
-          ok: false,
-          error: "Owners with year-end packages cannot be deleted from setup.",
-        };
-      }
-
       await db
         .delete(owners)
         .where(and(eq(owners.id, ownerId), eq(owners.propertyId, propertyId)));
@@ -440,13 +424,7 @@ export async function resetPortfolio(
         return { ok: false, error: "Type RESET to confirm." };
       }
 
-      // Delete year-end packages before properties. Deleting a property cascades
-      // to both its owners and its packages, but `yearEndPackages.ownerId` has an
-      // onDelete: "restrict" edge to owners, so an owner-scoped package would
-      // abort the whole cascade. Clearing packages first removes that edge.
-      // db.batch runs the statements in order inside one transaction (neon-http
-      // has no interactive transactions, so we cannot use db.transaction here).
-      await db.batch([db.delete(yearEndPackages), db.delete(properties)]);
+      await db.delete(properties);
       return { ok: true };
     },
     { invalidate: allAppDataCacheTags },

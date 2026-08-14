@@ -172,7 +172,6 @@ const LINK_TARGET_LABELS: Record<DocumentLinkTarget, string> = {
   transaction: "Transaction",
   rent_event: "Rent event",
   mortgage_payment: "Mortgage payment",
-  year_end_package: "Year-end package",
 };
 
 function resolveLinkedRecord(

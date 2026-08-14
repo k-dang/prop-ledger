@@ -1,5 +1,4 @@
-import { Download, FileArchive } from "lucide-react";
-import Link from "next/link";
+import { Download } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -10,39 +9,19 @@ import {
 } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type { AccountantNote } from "@/db/schema";
 import type { RentalProperty } from "@/lib/property-workspace";
 import { cn } from "@/lib/utils";
-import {
-  addAccountantNote,
-  generateYearEndPackage,
-} from "@/lib/year-end-actions";
-
-export type PackageHistoryItem = {
-  id: string;
-  scope: "property" | "owner";
-  createdAt: Date;
-  owner: { name: string } | null;
-};
+import { addAccountantNote } from "@/lib/year-end-actions";
 
 export function PackageExportPanel({
   property,
   year,
   notes,
-  packages,
 }: {
   property: RentalProperty;
   year: number;
   notes: AccountantNote[];
-  packages: PackageHistoryItem[];
 }) {
   return (
     <Card className="rounded-md">
@@ -50,9 +29,8 @@ export function PackageExportPanel({
         <div>
           <CardTitle as="h2">Year-end packages</CardTitle>
           <CardDescription>
-            Generate immutable JSON snapshots for the full property or an
-            individual owner. Live record changes never rewrite an existing
-            package.
+            Download a JSON snapshot for the full property or an individual
+            owner. Each download reflects the current records.
           </CardDescription>
         </div>
       </CardHeader>
@@ -65,7 +43,6 @@ export function PackageExportPanel({
           />
           <PackageGenerationForms property={property} year={year} />
         </div>
-        <PackageHistory year={year} packages={packages} />
       </CardContent>
     </Card>
   );
@@ -124,90 +101,39 @@ function PackageGenerationForms({
   year: number;
 }) {
   const targets = [
-    { id: null, label: "Full-property package", variant: "default" as const },
+    { id: null, label: "Full-property package" },
     ...property.owners.map((owner) => ({
       id: owner.id,
       label: `${owner.name} package`,
-      variant: "outline" as const,
     })),
   ];
 
   return (
     <div className="grid content-start gap-2 rounded-md border p-4">
-      <p className="font-medium text-sm">Create snapshot</p>
+      <p className="font-medium text-sm">Download package</p>
       {targets.map((target) => (
-        <form
+        <a
           key={target.id ?? "property"}
-          action={generateYearEndPackage.bind(
-            null,
-            property.id,
-            year,
-            target.id,
+          href={packageDownloadHref(property.id, year, target.id)}
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "w-full justify-start rounded-md",
           )}
         >
-          <Button
-            type="submit"
-            variant={target.variant}
-            className="w-full justify-start rounded-md"
-          >
-            <FileArchive data-icon="inline-start" />
-            {target.label}
-          </Button>
-        </form>
+          <Download data-icon="inline-start" aria-hidden="true" />
+          {target.label}
+        </a>
       ))}
     </div>
   );
 }
 
-function PackageHistory({
-  year,
-  packages,
-}: {
-  year: number;
-  packages: PackageHistoryItem[];
-}) {
-  return (
-    <div>
-      <p className="mb-2 font-medium text-sm">Export history</p>
-      {packages.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No snapshots generated for {year}.
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Package</TableHead>
-              <TableHead>Generated</TableHead>
-              <TableHead>File</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {packages.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  {item.scope === "property"
-                    ? "Full property"
-                    : (item.owner?.name ?? "Owner")}
-                </TableCell>
-                <TableCell>{item.createdAt.toLocaleString("en-CA")}</TableCell>
-                <TableCell>
-                  <Link
-                    href={`/year-end/packages/${item.id}`}
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "sm" }),
-                      "rounded-md",
-                    )}
-                  >
-                    <Download data-icon="inline-start" />
-                    Download JSON
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
-  );
+function packageDownloadHref(
+  propertyId: string,
+  year: number,
+  ownerId: string | null,
+) {
+  const params = new URLSearchParams({ propertyId, year: String(year) });
+  if (ownerId !== null) params.set("ownerId", ownerId);
+  return `/year-end/packages?${params.toString()}`;
 }

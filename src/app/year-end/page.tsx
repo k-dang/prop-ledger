@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { YearEndWorkspace } from "@/components/year-end/year-end-workspace";
-import {
-  getAccountantNotes,
-  getPortfolio,
-  getYearEndPackages,
-} from "@/db/queries";
+import { getAccountantNotes, getPortfolio } from "@/db/queries";
 import {
   getDefaultTaxYear,
   getYearEndReadiness,
@@ -82,10 +78,7 @@ async function YearEndContent({
   }
 
   const parsedYear = parseYear(year);
-  const [notes, packages] = await Promise.all([
-    getAccountantNotes(property.id, parsedYear),
-    getYearEndPackages(property.id, parsedYear),
-  ]);
+  const notes = await getAccountantNotes(property.id, parsedYear);
 
   return (
     <YearEndWorkspace
@@ -97,7 +90,6 @@ async function YearEndContent({
       readiness={getYearEndReadiness(property, parsedYear)}
       year={parsedYear}
       notes={notes}
-      packages={packages}
     />
   );
 }
