@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import {
   appDataCacheTags,
@@ -16,7 +16,7 @@ import type {
 } from "@/lib/property-workspace";
 
 import { db } from "./index";
-import { accountantNotes, properties, yearEndPackages } from "./schema";
+import { accountantNotes, properties } from "./schema";
 
 // The relations to hydrate so a property row comes back as a `RentalProperty`
 // aggregate. Each relation reads back as its inferred row type, so no mapping
@@ -150,21 +150,6 @@ export async function getAccountantNotes(propertyId: string, taxYear: number) {
       eq(accountantNotes.taxYear, taxYear),
     ),
     orderBy: (note, { asc }) => [asc(note.createdAt)],
-  });
-}
-
-export async function getYearEndPackages(propertyId: string, taxYear: number) {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(yearEndCacheTag(propertyId, taxYear), appDataCacheTags.yearEnd);
-
-  return db.query.yearEndPackages.findMany({
-    where: and(
-      eq(yearEndPackages.propertyId, propertyId),
-      eq(yearEndPackages.taxYear, taxYear),
-    ),
-    with: { owner: true },
-    orderBy: [desc(yearEndPackages.createdAt)],
   });
 }
 
