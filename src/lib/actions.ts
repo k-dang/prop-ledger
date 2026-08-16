@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import { RedirectType, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { db } from "@/db/index";
@@ -415,7 +416,7 @@ export async function addLeaseDocument(
 export async function resetPortfolio(
   confirmation: string,
 ): Promise<ActionResult> {
-  return runAction(
+  const result = await runAction(
     "Portfolio reset mutation",
     async () => {
       // Re-check the typed confirmation on the server: the client gate is just a
@@ -429,6 +430,12 @@ export async function resetPortfolio(
     },
     { invalidate: allAppDataCacheTags },
   );
+
+  if (result.ok) {
+    redirect("/dashboard", RedirectType.replace);
+  }
+
+  return result;
 }
 
 function formatOwnershipIssue(issue: OwnershipValidationIssue | undefined) {

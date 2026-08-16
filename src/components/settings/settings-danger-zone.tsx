@@ -1,7 +1,6 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import { resetPortfolio } from "@/lib/actions";
 const CONFIRMATION = "RESET";
 
 export function SettingsDangerZone() {
-  const router = useRouter();
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string>();
   const [isPending, startTransition] = useTransition();
@@ -34,11 +32,7 @@ export function SettingsDangerZone() {
 
       if (!result.ok) {
         setError(result.error ?? "Unable to reset the portfolio.");
-        return;
       }
-
-      router.replace("/dashboard");
-      router.refresh();
     });
   }
 
