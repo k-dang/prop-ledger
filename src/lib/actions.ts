@@ -16,7 +16,12 @@ import {
   units,
   yearEndPackages,
 } from "@/db/schema";
-import { type ActionResult, runAction } from "@/lib/action-utils";
+import {
+  type ActionFailure,
+  type ActionResult,
+  runAction,
+  SAVE_FAILED_MESSAGE,
+} from "@/lib/action-utils";
 import {
   allAppDataCacheTags,
   portfolioMutationCacheTags,
@@ -25,6 +30,17 @@ import {
   rentLedgerMutationCacheTags,
   transactionMutationCacheTags,
 } from "@/lib/cache-tags";
+import {
+  createPresignedEvidenceUploadUrl,
+  evidenceObjectStorageUrl,
+  headEvidenceObject,
+} from "@/lib/evidence-blob-storage";
+import {
+  createEvidenceObjectKey,
+  type EvidenceFileDeclaration,
+  validateEvidenceFileDeclaration,
+  validateUploadedEvidenceObject,
+} from "@/lib/evidence-upload-policy";
 import {
   createOwnershipPeriodTimeline,
   type OwnershipValidationIssue,
@@ -90,6 +106,13 @@ const rentPaymentInputSchema = z
       memo: data.memo ?? null,
     }),
   );
+
+const leaseDocumentLinkSchema = z.object({
+  leaseId: z.string().trim().min(1),
+  fileName: z.string().trim().min(1),
+  documentType: z.literal("lease"),
+  storageUrl: z.url(),
+});
 
 export async function createProperty(
   input: NewPropertyInput,
@@ -410,7 +433,22 @@ export async function addLeaseDocument(
   return runAction(
     "Lease document mutation",
     async () => {
-      const { leaseId, ...documentInput } = input;
+      const parsed = leaseDocumentLinkSchema.safeParse(input);
+
+      if (!parsed.success) {
+        return {
+          ok: false,
+          error: "Enter a document name and a valid web link.",
+        };
+      }
+
+      const lease = await findLeaseForProperty(propertyId, parsed.data.leaseId);
+
+      if (lease === undefined) {
+        return { ok: false, error: "That lease no longer exists." };
+      }
+
+      const { leaseId, ...documentInput } = parsed.data;
       const documentId = crypto.randomUUID();
 
       await db.batch([
@@ -427,6 +465,105 @@ export async function addLeaseDocument(
     },
     { invalidate: transactionMutationCacheTags(propertyId) },
   );
+}
+
+export type PresignedLeaseDocumentUpload =
+  | { ok: true; uploadUrl: string; objectKey: string }
+  | ActionFailure;
+
+export async function presignLeaseDocumentUpload(
+  propertyId: string,
+  leaseId: string,
+  declaration: EvidenceFileDeclaration,
+): Promise<PresignedLeaseDocumentUpload> {
+  try {
+    const declarationError = validateEvidenceFileDeclaration(declaration);
+
+    if (declarationError !== undefined) {
+      return { ok: false, error: declarationError };
+    }
+
+    const lease = await findLeaseForProperty(propertyId, leaseId);
+
+    if (lease === undefined) {
+      return { ok: false, error: "That lease no longer exists." };
+    }
+
+    const objectKey = createEvidenceObjectKey(declaration.fileName);
+    const uploadUrl = await createPresignedEvidenceUploadUrl(
+      objectKey,
+      declaration,
+    );
+
+    return { ok: true, uploadUrl, objectKey };
+  } catch (error) {
+    console.error("Lease document upload presign failed", error);
+    return { ok: false, error: SAVE_FAILED_MESSAGE };
+  }
+}
+
+export async function confirmLeaseDocumentUpload(
+  propertyId: string,
+  leaseId: string,
+  objectKey: string,
+  declaration: EvidenceFileDeclaration,
+): Promise<ActionResult> {
+  return runAction(
+    "Lease document upload confirm mutation",
+    async () => {
+      const declarationError = validateEvidenceFileDeclaration(declaration);
+
+      if (declarationError !== undefined) {
+        return { ok: false, error: declarationError };
+      }
+
+      const lease = await findLeaseForProperty(propertyId, leaseId);
+
+      if (lease === undefined) {
+        return { ok: false, error: "That lease no longer exists." };
+      }
+
+      const storedObject = await headEvidenceObject(objectKey);
+      const integrityError = validateUploadedEvidenceObject(
+        storedObject,
+        declaration,
+      );
+
+      if (integrityError !== undefined) {
+        return { ok: false, error: integrityError };
+      }
+
+      const documentId = crypto.randomUUID();
+
+      await db.batch([
+        db.insert(documents).values({
+          id: documentId,
+          propertyId,
+          fileName: declaration.fileName,
+          documentType: "lease",
+          storageUrl: evidenceObjectStorageUrl(objectKey),
+        }),
+        db.insert(documentLinks).values({
+          documentId,
+          targetType: "lease",
+          targetId: leaseId,
+        }),
+      ]);
+
+      return { ok: true };
+    },
+    { invalidate: transactionMutationCacheTags(propertyId) },
+  );
+}
+
+async function findLeaseForProperty(propertyId: string, leaseId: string) {
+  const lease = await db.query.leases.findFirst({
+    where: eq(leases.id, leaseId),
+    columns: { id: true },
+    with: { unit: { columns: { propertyId: true } } },
+  });
+
+  return lease?.unit.propertyId === propertyId ? lease : undefined;
 }
 
 export async function resetPortfolio(

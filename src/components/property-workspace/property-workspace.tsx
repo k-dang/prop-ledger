@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { useReducer } from "react";
 import { uploadTransactionEvidence } from "@/components/evidence-binder/transaction-evidence-upload";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
+import { uploadLeaseDocument } from "@/components/rent-ledger/lease-document-upload";
 import {
   addLeaseDocument,
   addOwnerWithOwnership,
@@ -135,6 +136,15 @@ export function PropertyWorkspace({
     );
   }
 
+  async function handleUploadLeaseDocument(
+    leaseId: string,
+    formData: FormData,
+  ) {
+    return runWorkspaceMutation("leaseDocument", () =>
+      uploadLeaseDocument(selectedId, leaseId, formData),
+    );
+  }
+
   async function handleCreateManualTransaction(
     input: NewManualTransactionInput,
   ): Promise<ManualTransactionCreationResult> {
@@ -190,6 +200,7 @@ export function PropertyWorkspace({
         onRecordRentEvent={handleRecordRentEvent}
         onDeleteRentEvent={handleDeleteRentEvent}
         onAddLeaseDocument={handleAddLeaseDocument}
+        onUploadLeaseDocument={handleUploadLeaseDocument}
         onCreateManualTransaction={handleCreateManualTransaction}
         onDeleteManualTransaction={handleDeleteManualTransaction}
         onUploadTransactionEvidence={handleUploadTransactionEvidence}

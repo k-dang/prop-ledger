@@ -34,6 +34,7 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
+import type { UploadLeaseDocument } from "@/components/rent-ledger/lease-document-upload";
 import {
   RentActivityCard,
   RentActivityTools,
@@ -168,6 +169,7 @@ export function PropertyWorkspaceDetail({
   onRecordRentEvent,
   onDeleteRentEvent,
   onAddLeaseDocument,
+  onUploadLeaseDocument,
   onCreateManualTransaction,
   onDeleteManualTransaction,
   onUploadTransactionEvidence,
@@ -195,6 +197,7 @@ export function PropertyWorkspaceDetail({
   onAddLeaseDocument: (
     input: NewLeaseDocumentInput,
   ) => boolean | Promise<boolean>;
+  onUploadLeaseDocument: UploadLeaseDocument;
   onCreateManualTransaction: (
     input: NewManualTransactionInput,
   ) =>
@@ -271,6 +274,7 @@ export function PropertyWorkspaceDetail({
           onRecordEvent={onRecordRentEvent}
           onDeleteEvent={onDeleteRentEvent}
           onAddLeaseDocument={onAddLeaseDocument}
+          onUploadLeaseDocument={onUploadLeaseDocument}
           showActivityTools={false}
           showActivityTable={false}
           defaultOpenLeases={!deferActivity && Boolean(leaseError)}
