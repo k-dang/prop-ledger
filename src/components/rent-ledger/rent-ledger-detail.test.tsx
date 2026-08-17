@@ -36,7 +36,27 @@ const ledger: RentLedger = {
     },
   ],
   rentEvents: [],
-  documents: [],
+  documents: [
+    {
+      id: "document-1",
+      propertyId: "property-1",
+      fileName: "lease.pdf",
+      documentType: "lease",
+      storageUrl: "https://example.com/lease.pdf",
+      vendor: null,
+      documentDate: null,
+      amount: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      links: [
+        {
+          id: "document-link-1",
+          documentId: "document-1",
+          targetType: "lease",
+          targetId: "lease-1",
+        },
+      ],
+    },
+  ],
 };
 
 describe("lease document controls", () => {
@@ -50,12 +70,18 @@ describe("lease document controls", () => {
         onDeleteLease={vi.fn()}
         onRecordEvent={vi.fn()}
         onDeleteEvent={vi.fn()}
-        onAddLeaseDocument={vi.fn()}
         onUploadLeaseDocument={vi.fn()}
       />,
     );
 
     expect(markup).toContain('type="file"');
     expect(markup).toContain("Add document");
+    expect(markup).toContain("flex flex-col gap-2 sm:flex-row sm:items-center");
+    expect(markup).toContain("flex flex-col gap-3");
+    expect(markup).toContain("m-0 flex flex-col gap-1 p-0");
+    expect(markup).toContain("flex items-center gap-2 text-sm leading-5");
+    expect(markup).toContain('class="m-0 grid gap-2"');
+    expect(markup).not.toContain("Add link");
+    expect(markup).not.toContain("link a document already online");
   });
 });

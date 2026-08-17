@@ -52,11 +52,7 @@ import {
   type NewPropertyInput,
   type NewUnitInput,
 } from "@/lib/property-workspace";
-import type {
-  NewLeaseDocumentInput,
-  NewLeaseInput,
-  NewRentEventInput,
-} from "@/lib/rent-ledger";
+import type { NewLeaseInput, NewRentEventInput } from "@/lib/rent-ledger";
 
 // Server-side contract for a new property. A server action is a public
 // endpoint, so the client form's schema cannot be trusted: re-validate here and
@@ -106,13 +102,6 @@ const rentPaymentInputSchema = z
       memo: data.memo ?? null,
     }),
   );
-
-const leaseDocumentLinkSchema = z.object({
-  leaseId: z.string().trim().min(1),
-  fileName: z.string().trim().min(1),
-  documentType: z.literal("lease"),
-  storageUrl: z.url(),
-});
 
 export async function createProperty(
   input: NewPropertyInput,
@@ -423,47 +412,6 @@ export async function deleteRentEvent(
       return { ok: true };
     },
     { invalidate: rentLedgerMutationCacheTags(propertyId) },
-  );
-}
-
-export async function addLeaseDocument(
-  propertyId: string,
-  input: NewLeaseDocumentInput,
-): Promise<ActionResult> {
-  return runAction(
-    "Lease document mutation",
-    async () => {
-      const parsed = leaseDocumentLinkSchema.safeParse(input);
-
-      if (!parsed.success) {
-        return {
-          ok: false,
-          error: "Enter a document name and a valid web link.",
-        };
-      }
-
-      const lease = await findLeaseForProperty(propertyId, parsed.data.leaseId);
-
-      if (lease === undefined) {
-        return { ok: false, error: "That lease no longer exists." };
-      }
-
-      const { leaseId, ...documentInput } = parsed.data;
-      const documentId = crypto.randomUUID();
-
-      await db.batch([
-        db
-          .insert(documents)
-          .values({ id: documentId, propertyId, ...documentInput }),
-        db.insert(documentLinks).values({
-          documentId,
-          targetType: "lease",
-          targetId: leaseId,
-        }),
-      ]);
-      return { ok: true };
-    },
-    { invalidate: transactionMutationCacheTags(propertyId) },
   );
 }
 

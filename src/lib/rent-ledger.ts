@@ -8,7 +8,6 @@ import type {
   Document,
   DocumentLink,
   Lease,
-  NewDocument,
   NewLease,
   Property,
   RentEvent,
@@ -34,11 +33,6 @@ export type NewRentEventInput = {
   amount: number;
   memo?: string | null;
 };
-export type NewLeaseDocumentInput = Omit<
-  NewDocument,
-  "id" | "propertyId" | "createdAt"
-> & { leaseId: string };
-
 /** A document loaded with the links that attach it to other records. */
 export type DocumentWithLinks = Document & { links: DocumentLink[] };
 
