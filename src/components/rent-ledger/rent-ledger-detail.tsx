@@ -11,7 +11,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { z } from "zod";
 
@@ -22,6 +22,7 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
+import type { UploadLeaseDocument } from "@/components/rent-ledger/lease-document-upload";
 import {
   Accordion,
   AccordionContent,
@@ -38,7 +39,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DatePickerField } from "@/components/ui/date-picker-field";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -60,7 +61,6 @@ import {
   formatMoney,
   getLeaseDocuments,
   type Lease,
-  type NewLeaseDocumentInput,
   type NewLeaseInput,
   type NewRentEventInput,
   type RentEvent,
@@ -113,12 +113,6 @@ const rentEventFormSchema = z
     }),
   );
 
-const leaseDocumentFormSchema = z.object({
-  fileName: requiredFormString,
-  documentType: requiredFormString,
-  storageUrl: optionalFormString,
-});
-
 export function RentLedgerDetail({
   ledger,
   year,
@@ -129,7 +123,7 @@ export function RentLedgerDetail({
   onDeleteLease,
   onRecordEvent,
   onDeleteEvent,
-  onAddLeaseDocument,
+  onUploadLeaseDocument,
   showActivityTools = true,
   showActivityTable = true,
   defaultOpenLeases,
@@ -143,9 +137,7 @@ export function RentLedgerDetail({
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
   onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
   onDeleteEvent: (rentEventId: string) => boolean | Promise<boolean>;
-  onAddLeaseDocument: (
-    input: NewLeaseDocumentInput,
-  ) => boolean | Promise<boolean>;
+  onUploadLeaseDocument: UploadLeaseDocument;
   showActivityTools?: boolean;
   showActivityTable?: boolean;
   defaultOpenLeases?: boolean;
@@ -168,7 +160,7 @@ export function RentLedgerDetail({
           defaultOpen={defaultOpenLeases}
           onCreateLease={onCreateLease}
           onDeleteLease={onDeleteLease}
-          onAddLeaseDocument={onAddLeaseDocument}
+          onUploadLeaseDocument={onUploadLeaseDocument}
         />
         {showActivityTools ? (
           <RentActivityTools
@@ -299,7 +291,7 @@ function LeasesPanel({
   defaultOpen,
   onCreateLease,
   onDeleteLease,
-  onAddLeaseDocument,
+  onUploadLeaseDocument,
 }: {
   ledger: RentLedger;
   unitLabels: Map<string, string>;
@@ -308,9 +300,7 @@ function LeasesPanel({
   defaultOpen?: boolean;
   onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onAddLeaseDocument: (
-    input: NewLeaseDocumentInput,
-  ) => boolean | Promise<boolean>;
+  onUploadLeaseDocument: UploadLeaseDocument;
 }) {
   const hasUnits = ledger.units.length > 0;
   const hasLeases = ledger.leases.length > 0;
@@ -474,7 +464,7 @@ function LeasesPanel({
                       unitLabel={unitLabels.get(lease.unitId) ?? "Unknown unit"}
                       documents={getLeaseDocuments(ledger.documents, lease.id)}
                       onDeleteLease={onDeleteLease}
-                      onAddLeaseDocument={onAddLeaseDocument}
+                      onUploadLeaseDocument={onUploadLeaseDocument}
                     />
                   ))}
                 </div>
@@ -492,28 +482,30 @@ function LeaseCard({
   unitLabel,
   documents,
   onDeleteLease,
-  onAddLeaseDocument,
+  onUploadLeaseDocument,
 }: {
   lease: Lease;
   unitLabel: string;
   documents: RentLedger["documents"];
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onAddLeaseDocument: (
-    input: NewLeaseDocumentInput,
-  ) => boolean | Promise<boolean>;
+  onUploadLeaseDocument: UploadLeaseDocument;
 }) {
   const [isDeleting, startDelete] = useTransition();
+  const [isUploading, startUpload] = useTransition();
+  const fileInputId = `lease-document-${lease.id}`;
 
-  const handleDocumentSubmit = createFormSubmit(
-    leaseDocumentFormSchema,
-    (data) =>
-      onAddLeaseDocument({
-        leaseId: lease.id,
-        fileName: data.fileName,
-        documentType: data.documentType,
-        storageUrl: data.storageUrl ?? null,
-      }),
-  );
+  function handleUploadSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+
+    startUpload(async () => {
+      const saved = await onUploadLeaseDocument(lease.id, new FormData(form));
+
+      if (saved) {
+        form.reset();
+      }
+    });
+  }
 
   return (
     <div className="grid gap-3 rounded-md border bg-background p-3">
@@ -549,18 +541,21 @@ function LeaseCard({
         </div>
       </div>
       <Separator />
-      <div className="grid gap-2">
-        <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+      <div className="flex flex-col gap-3">
+        <p className="m-0! font-medium text-muted-foreground text-xs uppercase">
           Lease documents
         </p>
         {documents.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
+          <p className="m-0 text-muted-foreground text-xs">
             No documents linked yet.
           </p>
         ) : (
-          <ul className="grid gap-1">
+          <ul className="m-0 flex flex-col gap-1 p-0">
             {documents.map((document) => (
-              <li key={document.id} className="flex items-center gap-2 text-sm">
+              <li
+                key={document.id}
+                className="flex items-center gap-2 text-sm leading-5"
+              >
                 <FileText
                   className="size-3.5 shrink-0 text-muted-foreground"
                   aria-hidden="true"
@@ -584,36 +579,31 @@ function LeaseCard({
             ))}
           </ul>
         )}
-        <form
-          className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
-          onSubmit={handleDocumentSubmit}
-        >
-          <Input
-            name="fileName"
-            placeholder="Document name"
-            aria-label="Document name"
-            required
-          />
-          <Input
-            name="documentType"
-            defaultValue="lease"
-            aria-label="Document type"
-            required
-          />
-          <Input
-            name="storageUrl"
-            placeholder="Link (optional)"
-            aria-label="Document link"
-          />
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="sm:col-span-3 sm:w-auto sm:justify-self-end"
-          >
-            <Plus data-icon="inline-start" />
-            Link document
-          </Button>
+        <form className="m-0 grid gap-2" onSubmit={handleUploadSubmit}>
+          <Field className="gap-1">
+            <FieldLabel htmlFor={fileInputId}>Lease document</FieldLabel>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                id={fileInputId}
+                name="file"
+                type="file"
+                accept="application/pdf,image/*"
+                className="flex-1"
+                required
+                disabled={isUploading}
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={isUploading}
+              >
+                <Plus data-icon="inline-start" />
+                {isUploading ? "Adding..." : "Add document"}
+              </Button>
+            </div>
+            <FieldDescription>PDF or image, up to 20 MB.</FieldDescription>
+          </Field>
         </form>
       </div>
     </div>

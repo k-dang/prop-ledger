@@ -34,6 +34,7 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
+import type { UploadLeaseDocument } from "@/components/rent-ledger/lease-document-upload";
 import {
   RentActivityCard,
   RentActivityTools,
@@ -85,7 +86,6 @@ import {
 } from "@/lib/property-workspace";
 import {
   formatMoney,
-  type NewLeaseDocumentInput,
   type NewLeaseInput,
   type NewRentEventInput,
   type RentLedger,
@@ -167,7 +167,7 @@ export function PropertyWorkspaceDetail({
   onDeleteLease,
   onRecordRentEvent,
   onDeleteRentEvent,
-  onAddLeaseDocument,
+  onUploadLeaseDocument,
   onCreateManualTransaction,
   onDeleteManualTransaction,
   onUploadTransactionEvidence,
@@ -192,9 +192,7 @@ export function PropertyWorkspaceDetail({
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
   onRecordRentEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
   onDeleteRentEvent: (rentEventId: string) => boolean | Promise<boolean>;
-  onAddLeaseDocument: (
-    input: NewLeaseDocumentInput,
-  ) => boolean | Promise<boolean>;
+  onUploadLeaseDocument: UploadLeaseDocument;
   onCreateManualTransaction: (
     input: NewManualTransactionInput,
   ) =>
@@ -270,7 +268,7 @@ export function PropertyWorkspaceDetail({
           onDeleteLease={onDeleteLease}
           onRecordEvent={onRecordRentEvent}
           onDeleteEvent={onDeleteRentEvent}
-          onAddLeaseDocument={onAddLeaseDocument}
+          onUploadLeaseDocument={onUploadLeaseDocument}
           showActivityTools={false}
           showActivityTable={false}
           defaultOpenLeases={!deferActivity && Boolean(leaseError)}
