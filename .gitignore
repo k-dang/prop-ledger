@@ -54,3 +54,6 @@ opensrc/
 
 # implementation workflow artifacts
 /.implementation/
+
+# specification workflow artifacts
+/.spec/

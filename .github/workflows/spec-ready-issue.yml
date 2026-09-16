@@ -1,0 +1,212 @@
+name: Draft specification for ready-to-spec issue
+
+# Manual entry point only. Automatic routes (triage dispatch, label events) are
+# added by later specification-workflow tickets. The job is inert until the
+# repository variable SPEC_WORKFLOW_ENABLED is set to "true" (trial repository
+# now, this repository after ticket 03).
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Open issue currently labeled ready-to-spec
+        required: true
+        type: string
+
+concurrency:
+  group: spec-${{ github.repository }}-${{ inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  spec:
+    name: Draft specifications and open a draft pull request
+    if: vars.SPEC_WORKFLOW_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ISSUE_NUMBER: ${{ inputs.issue_number }}
+      REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      SPEC_BRANCH: spec/issue-${{ inputs.issue_number }}
+      SPEC_DIR: specs/issue-${{ inputs.issue_number }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Fetch issue context and check for existing specification work
+        id: start
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Issue number must be a positive integer" >&2
+            exit 1
+          fi
+          mkdir -p .spec
+          gh issue view "$ISSUE_NUMBER" --repo "$REPO" \
+            --json number,title,body,state,labels,author,comments,url,createdAt,updatedAt \
+            > .spec/issue-context.json
+
+          if gh api "repos/$REPO/git/ref/heads/$SPEC_BRANCH" > /dev/null 2>&1; then
+            echo "Branch $SPEC_BRANCH exists; skipping the drafting agent"
+            echo 'decision=publish' >> "$GITHUB_OUTPUT"
+          else
+            echo 'decision=draft' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install pnpm
+        if: steps.start.outputs.decision == 'draft'
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.10.0
+
+      # The drafting agent gets no GitHub token and no Git credentials. It can
+      # only write the issue's specification documents and .spec/outcome.json.
+      - name: Draft specifications with OpenCode
+        if: steps.start.outputs.decision == 'draft'
+        timeout-minutes: 30
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: |
+          set -euo pipefail
+          pnpm dlx opencode-ai@1.17.7 run \
+            --agent spec \
+            --model opencode/deepseek-v4-flash-free \
+            --title "Issue $ISSUE_NUMBER specification" \
+            "Use the skill tool to load the skill named spec before doing any analysis. Then draft the specifications for issue #$ISSUE_NUMBER into $SPEC_DIR/."
+
+      - name: Retain drafting output
+        if: ${{ !cancelled() && steps.start.outputs.decision == 'draft' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: specification-draft-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            specs/issue-${{ inputs.issue_number }}
+            .spec/outcome.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Validate and publish the draft
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git --hostname github.com --force
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          summary='See the documents for the recommended approach and open questions.'
+          questions='[]'
+          changed="$(git status --porcelain --untracked-files=all | cut -c4- | sort)"
+          if [ -n "$changed" ]; then
+            expected="$(printf '%s\n%s\n' "$SPEC_DIR/PRODUCT.md" "$SPEC_DIR/TECH.md" | sort)"
+            if [ "$changed" != "$expected" ]; then
+              echo "Rejected: the drafting agent must change exactly $SPEC_DIR/PRODUCT.md and $SPEC_DIR/TECH.md, found:" >&2
+              printf '%s\n' "$changed" >&2
+              exit 1
+            fi
+            if ! jq -e '(.summary | type == "string") and (.questions | type == "array" and all(type == "string"))' \
+              .spec/outcome.json > /dev/null; then
+              echo '.spec/outcome.json must be {"summary": string, "questions": string[]}' >&2
+              exit 1
+            fi
+            summary="$(jq -r '.summary' .spec/outcome.json)"
+            questions="$(jq -c '.questions' .spec/outcome.json)"
+
+            git switch --create "$SPEC_BRANCH"
+            git add -- "$SPEC_DIR/PRODUCT.md" "$SPEC_DIR/TECH.md"
+            git commit --message "Draft specification for issue #$ISSUE_NUMBER"
+            git push origin "$SPEC_BRANCH"
+            echo 'pushed=true' >> "$GITHUB_OUTPUT"
+          fi
+
+          pr_url="$(gh pr list --repo "$REPO" --state open --head "$SPEC_BRANCH" --json url --jq '.[0].url // empty')"
+          if [ -n "$pr_url" ]; then
+            echo "Active specification pull request already exists: $pr_url"
+            echo 'outcome=existing' >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "Draft product and technical specifications for #$ISSUE_NUMBER."
+              echo
+              echo "$summary"
+              if [ "$questions" != '[]' ]; then
+                echo
+                echo '## Questions to answer during refinement'
+                echo
+                jq -r '.[] | "- " + .' <<< "$questions"
+              fi
+              echo
+              echo '## Refine locally'
+              echo
+              echo "Check out \`$SPEC_BRANCH\`, refine the documents with your coding agent, and push to this pull request. Merge when the design is agreed. The issue stays open."
+            } > .spec/pull-request.md
+            title="$(jq -r '"Spec: #\(.number) \(.title)"' .spec/issue-context.json)"
+            pr_url="$(gh pr create --repo "$REPO" --draft --head "$SPEC_BRANCH" \
+              --title "$title" --body-file .spec/pull-request.md)"
+            if [ "$questions" = '[]' ]; then
+              echo 'outcome=published' >> "$GITHUB_OUTPUT"
+            else
+              echo 'outcome=missing-info' >> "$GITHUB_OUTPUT"
+            fi
+          fi
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      - name: Record status on the issue
+        if: ${{ !cancelled() && steps.start.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.publish.outputs.outcome || 'failed' }}
+          PR_URL: ${{ steps.publish.outputs.pr_url }}
+          PUSHED: ${{ steps.publish.outputs.pushed || 'false' }}
+        run: |
+          set -euo pipefail
+          marker='<!-- opencode-spec-status -->'
+          case "$OUTCOME" in
+            published)
+              detail="Draft specification published: $PR_URL"
+              ;;
+            missing-info)
+              detail="$(printf '%s\n\n%s' \
+                "Draft specification published with missing information: $PR_URL" \
+                'Answer the questions listed in the pull request while refining the documents locally.')"
+              ;;
+            existing)
+              detail="$(printf '%s\n\n%s' \
+                "An active specification pull request already exists: $PR_URL" \
+                'This run made no changes to it.')"
+              ;;
+            *)
+              detail="$(printf '%s\n\n- Branch `%s` pushed by this run: %s\n\n%s' \
+                'Specification drafting failed.' \
+                "$SPEC_BRANCH" "$([ "$PUSHED" = true ] && echo yes || echo no)" \
+                'Rerun the workflow. It reuses a pushed branch and links an existing pull request instead of drafting again. Drafting output, when any, is attached to the run as an artifact.')"
+              ;;
+          esac
+          body="$(printf '%s\n<!-- opencode-spec-outcome: %s -->\n\n%s\n\n[Actions run](%s)' \
+            "$marker" "$OUTCOME" "$detail" "$RUN_URL")"
+
+          comment_ids="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and ((.body // \"\") | contains(\"$marker\"))) | .id")"
+          comment_count="$(printf '%s\n' "$comment_ids" | sed '/^$/d' | wc -l | tr -d ' ')"
+          case "$comment_count" in
+            0)
+              gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$body"
+              ;;
+            1)
+              gh api --method PATCH "repos/$REPO/issues/comments/$comment_ids" \
+                -f "body=$body" > /dev/null
+              ;;
+            *)
+              echo "Refusing to update $comment_count trusted specification status comments" >&2
+              exit 1
+              ;;
+          esac
