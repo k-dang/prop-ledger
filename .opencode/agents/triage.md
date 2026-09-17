@@ -1,7 +1,7 @@
 ---
 description: Classify a newly opened issue without mutating the repository or GitHub
 mode: primary
-model: "opencode/north-mini-code-free"
+model: "opencode/muse-spark-1.3-contributor-free"
 permission:
   "*": deny
   read: allow
