@@ -1,9 +1,7 @@
 name: Draft specification for ready-to-spec issue
 
-# Starts from a maintainer applying ready-to-spec, from triage's explicit dispatch
-# (label edits made with GITHUB_TOKEN do not fire label events), or from a manual
-# dispatch. Every route rechecks that the issue is open and still labeled. The job
-# is inert until the repository variable SPEC_WORKFLOW_ENABLED is "true".
+# Started by a ready-to-spec label event, triage's explicit dispatch, or a manual
+# dispatch. Inert until the repository variable SPEC_WORKFLOW_ENABLED is "true".
 on:
   issues:
     types: [labeled]
@@ -57,7 +55,6 @@ jobs:
             --json number,title,body,state,labels,author,comments,url,createdAt,updatedAt \
             > .spec/issue-context.json
 
-          # Stale label events and dispatches for closed or re-routed issues stop here.
           if ! jq -e '.state == "OPEN" and any(.labels[]; .name == "ready-to-spec")' \
             .spec/issue-context.json > /dev/null; then
             echo "Issue #$ISSUE_NUMBER is not open and labeled ready-to-spec; nothing to do" | tee -a "$GITHUB_STEP_SUMMARY"
