@@ -52,6 +52,8 @@ jobs:
 
       - name: Run OpenCode triage
         timeout-minutes: 10
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         run: |
           pnpm dlx opencode-ai@1.17.7 run \
             --agent triage \
