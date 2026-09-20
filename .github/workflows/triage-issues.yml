@@ -63,6 +63,11 @@ jobs:
             "Use the skill tool to load the skill named triage before doing any analysis. Then read .triage/issue-context.json and return the JSON decision only." \
             > .triage/opencode-events.jsonl
 
+      # stdout is captured above, so a failed run's error events never reach the log.
+      - name: Print OpenCode errors
+        if: failure()
+        run: jq -c 'select(.type == "error")' .triage/opencode-events.jsonl
+
       - name: Export and log triage decision
         id: result
         env:
