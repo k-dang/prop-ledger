@@ -112,6 +112,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TRIAGE_RESULT: ${{ needs.triage.outputs.result }}
         run: |
           set -euo pipefail
@@ -135,8 +136,11 @@ jobs:
             ready-to-spec) next_workflow=spec-ready-issue.yml ;;
             *) next_workflow= ;;
           esac
-          if [ -n "$next_workflow" ]; then
-            gh workflow run "$next_workflow" --repo "$REPO" \
+          if [ -n "$next_workflow" ] && ! gh workflow run "$next_workflow" --repo "$REPO" \
               --ref "$GITHUB_REF_NAME" \
-              -f "issue_number=$ISSUE_NUMBER"
+              -f "issue_number=$ISSUE_NUMBER"; then
+            gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$(printf '%s\n\n%s' \
+              "Triage applied \`$label\` but could not start \`$next_workflow\`. No run or pull request exists for this issue yet; dispatch it manually from the Actions tab." \
+              "[Actions run]($RUN_URL)")"
+            exit 1
           fi

@@ -33,9 +33,10 @@ Use `ready-to-implement` when the desired behavior is clear, valuable, cohesive,
 bounded enough for a coding agent to complete in one pass. There must be no material
 product decision or missing information.
 
-Use `ready-to-spec` when the goal is worthwhile and aligned, but meaningful product
-or technical choices, cross-system scope, migration work, or non-trivial risk should
-be resolved first.
+Use `ready-to-spec` when the goal is worthwhile and aligned, but unresolved product
+choices, meaningful architectural changes, migration work, non-trivial risk, or scope
+that needs decomposition should be resolved first. A large diff alone is not a reason;
+a big but fully decided change is `ready-to-implement`.
 
 Use `needs-info` when expected behavior, reproduction, scope, or critical evidence is
 missing. Ask only the smallest set of questions needed to unblock another triage.

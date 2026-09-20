@@ -28,6 +28,9 @@ path from ticket 01. Every route rechecks eligibility before drafting.
 - [x] Existing triage routes remain meaningful: `ready-to-implement` keeps its
   direct implementation path, while `needs-info` and `wait-to-implement` dispatch
   nothing.
+- [x] A failed handoff dispatch comments on the issue that the label was applied
+  but no run or PR exists, links the Actions run, and fails the job. Recovery is a
+  manual dispatch, protected by the draft path's existing-branch and PR rules.
 - [ ] Post-merge trial in this repository (label events run the default branch's
   workflow file, so this cannot run from the PR branch): open an issue that
   triage routes to `ready-to-spec`, apply `ready-to-spec` by hand to another
