@@ -1,10 +1,10 @@
 name: Draft specification for ready-to-spec issue
 
-# Manual entry point only. Automatic routes (triage dispatch, label events) are
-# added by later specification-workflow tickets. The job is inert until the
-# repository variable SPEC_WORKFLOW_ENABLED is set to "true" (trial repository
-# now, this repository after ticket 03).
+# Started by a ready-to-spec label event, triage's explicit dispatch, or a manual
+# dispatch. Inert until the repository variable SPEC_WORKFLOW_ENABLED is "true".
 on:
+  issues:
+    types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -13,21 +13,21 @@ on:
         type: string
 
 concurrency:
-  group: spec-${{ github.repository }}-${{ inputs.issue_number }}
+  group: spec-${{ github.repository }}-${{ inputs.issue_number || github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
   spec:
     name: Draft specifications and open a draft pull request
-    if: vars.SPEC_WORKFLOW_ENABLED == 'true'
+    if: vars.SPEC_WORKFLOW_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event.label.name == 'ready-to-spec' && github.event.issue.state == 'open'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      ISSUE_NUMBER: ${{ inputs.issue_number }}
+      ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
       REPO: ${{ github.repository }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      SPEC_BRANCH: spec/issue-${{ inputs.issue_number }}
-      SPEC_DIR: specs/issue-${{ inputs.issue_number }}
+      SPEC_BRANCH: spec/issue-${{ inputs.issue_number || github.event.issue.number }}
+      SPEC_DIR: specs/issue-${{ inputs.issue_number || github.event.issue.number }}
     permissions:
       contents: write
       issues: write
@@ -40,7 +40,7 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.repository.default_branch }}
 
-      - name: Fetch issue context and check for existing specification work
+      - name: Check eligibility and look for existing specification work
         id: start
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,6 +54,12 @@ jobs:
           gh issue view "$ISSUE_NUMBER" --repo "$REPO" \
             --json number,title,body,state,labels,author,comments,url,createdAt,updatedAt \
             > .spec/issue-context.json
+
+          if ! jq -e '.state == "OPEN" and any(.labels[]; .name == "ready-to-spec")' \
+            .spec/issue-context.json > /dev/null; then
+            echo "Issue #$ISSUE_NUMBER is not open and labeled ready-to-spec" >&2
+            exit 1
+          fi
 
           if gh api "repos/$REPO/git/ref/heads/$SPEC_BRANCH" > /dev/null 2>&1; then
             echo "Branch $SPEC_BRANCH exists; skipping the drafting agent"
@@ -89,7 +95,7 @@ jobs:
         with:
           name: specification-draft-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            specs/issue-${{ inputs.issue_number }}
+            ${{ env.SPEC_DIR }}
             .spec/outcome.json
           if-no-files-found: ignore
           retention-days: 14

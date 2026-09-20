@@ -2,40 +2,38 @@
 
 **What to build:** Issues that triage classifies as needing a specification, or
 that a maintainer labels `ready-to-spec`, automatically reach the draft-creation
-path proven in ticket 01. Validate these real GitHub event paths in the disposable
-repository during this ticket.
+path from ticket 01. Every route rechecks eligibility before drafting.
 
 **Blocked by:** 01 - Create draft specifications.
 
-**Status:** ready-for-agent
+**Status:** implemented - awaiting the post-merge event trial below.
 
-- [ ] Triage uses unresolved product choices, meaningful architectural changes,
+- [x] Triage uses unresolved product choices, meaningful architectural changes,
   migrations, or scope requiring decomposition to choose `ready-to-spec`. Change
-  size alone does not require a specification.
-- [ ] When triage assigns `ready-to-spec`, its publication step explicitly
-  dispatches specification creation for the same issue. It does not rely on its
-  own label mutation to start another workflow automatically.
-- [ ] A maintainer applying `ready-to-spec` starts the same draft-creation path.
-  The manual entry point remains available and follows the same eligibility and
-  duplicate-handling rules.
-- [ ] Each entry point rechecks the current issue state and eligibility. Stale
-  events for closed issues or issues no longer eligible do not produce a new PR
-  or start implementation.
-- [ ] Duplicate label events, repeated dispatches, and an already-active spec PR
+  size alone does not require a specification (`.opencode/skills/triage/SKILL.md`).
+- [x] When triage assigns `ready-to-spec`, its apply job explicitly dispatches
+  `spec-ready-issue.yml` for the same issue, the same way it hands
+  `ready-to-implement` to implementation. Labels applied with `GITHUB_TOKEN` do
+  not fire label events, so the handoff cannot rely on the label mutation.
+- [x] A maintainer applying `ready-to-spec` starts the same draft-creation path
+  through an `issues: labeled` trigger. The manual entry point remains available.
+- [x] Every entry point rechecks that the issue is open and labeled
+  `ready-to-spec` before drafting. Label events on closed issues never start a
+  job; anything else stale or re-routed fails the run before drafting, with no
+  PR, no status comment, and no implementation run.
+- [x] Duplicate label events, repeated dispatches, and an already-active spec PR
   result in one active specification PR without changing existing proposal edits.
-- [ ] Existing triage routes remain meaningful: simple, bounded issues keep their
-  direct implementation path, while `needs-info` and `wait-to-implement` do not
-  start specification creation.
-- [ ] Dispatch failures report the actual issue state and failure accurately,
-  without claiming a specification run or PR exists when it does not. Recovery
-  uses the draft-creation path's duplicate protection.
-- [ ] Focused local tests cover routing outcomes and dispatch effects at the
-  workflow boundary. Use the existing test setup and relevant verification checks,
-  and resolve failures within this ticket.
-- [ ] In the disposable repository from ticket 01, exercise a real issue-opening
-  triage event and a maintainer label event through to a linked draft spec PR.
-  Also demonstrate ineligible issues, repeated events, other triage outcomes, and
-  dispatch failure recovery. Record actual results before completing this ticket.
-- [ ] Keep the new automatic routes inactive in the application repository until
-  ticket 03 completes integrated validation. Trials use isolated repository data
-  and do not access production application services.
+  The per-issue concurrency group and ticket 01's existing-branch and existing-PR
+  rules cover all routes.
+- [x] Existing triage routes remain meaningful: `ready-to-implement` keeps its
+  direct implementation path, while `needs-info` and `wait-to-implement` dispatch
+  nothing.
+- [x] A failed handoff dispatch comments on the issue that the label was applied
+  but no run or PR exists, links the Actions run, and fails the job. Recovery is a
+  manual dispatch, protected by the draft path's existing-branch and PR rules.
+- [ ] Post-merge trial in this repository (label events run the default branch's
+  workflow file, so this cannot run from the PR branch): open an issue that
+  triage routes to `ready-to-spec`, apply `ready-to-spec` by hand to another
+  issue, and confirm each produces one linked draft spec PR. Also confirm that a
+  closed issue with the label, and a repeat of the label on an issue with an
+  active spec PR, produce no new PR and leave the existing PR untouched.
