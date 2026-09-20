@@ -18,9 +18,9 @@ path from ticket 01. Every route rechecks eligibility before drafting.
 - [x] A maintainer applying `ready-to-spec` starts the same draft-creation path
   through an `issues: labeled` trigger. The manual entry point remains available.
 - [x] Every entry point rechecks that the issue is open and labeled
-  `ready-to-spec` before drafting. Stale events and dispatches for closed or
-  re-routed issues stop with a step-summary note, no PR, no status comment, and
-  no implementation run.
+  `ready-to-spec` before drafting. Label events on closed issues never start a
+  job; anything else stale or re-routed fails the run before drafting, with no
+  PR, no status comment, and no implementation run.
 - [x] Duplicate label events, repeated dispatches, and an already-active spec PR
   result in one active specification PR without changing existing proposal edits.
   The per-issue concurrency group and ticket 01's existing-branch and existing-PR

@@ -19,7 +19,7 @@ concurrency:
 jobs:
   spec:
     name: Draft specifications and open a draft pull request
-    if: vars.SPEC_WORKFLOW_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-spec')
+    if: vars.SPEC_WORKFLOW_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event.label.name == 'ready-to-spec' && github.event.issue.state == 'open'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -57,9 +57,8 @@ jobs:
 
           if ! jq -e '.state == "OPEN" and any(.labels[]; .name == "ready-to-spec")' \
             .spec/issue-context.json > /dev/null; then
-            echo "Issue #$ISSUE_NUMBER is not open and labeled ready-to-spec; nothing to do" | tee -a "$GITHUB_STEP_SUMMARY"
-            echo 'decision=skip' >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "Issue #$ISSUE_NUMBER is not open and labeled ready-to-spec" >&2
+            exit 1
           fi
 
           if gh api "repos/$REPO/git/ref/heads/$SPEC_BRANCH" > /dev/null 2>&1; then
@@ -103,7 +102,6 @@ jobs:
 
       - name: Validate and publish the draft
         id: publish
-        if: steps.start.outputs.decision != 'skip'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -169,7 +167,7 @@ jobs:
           echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
 
       - name: Record status on the issue
-        if: ${{ !cancelled() && steps.start.outcome == 'success' && steps.start.outputs.decision != 'skip' }}
+        if: ${{ !cancelled() && steps.start.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
           OUTCOME: ${{ steps.publish.outputs.outcome || 'failed' }}
