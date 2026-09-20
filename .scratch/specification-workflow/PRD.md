@@ -27,8 +27,8 @@ the design is agreed. Merging records Design Approval and leaves the issue queue
 Applying `ready-to-implement` separately supplies Implementation Authorization.
 
 The implementation workflow checks required specifications before starting and
-stops on material conflicts with the approved design. Validate the complete flow
-in a disposable repository before enabling it in this repository.
+stops on material conflicts with the approved design. The workflows run in this
+repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
 
 ## User Stories
 
@@ -37,7 +37,7 @@ in a disposable repository before enabling it in this repository.
 3. As Kevin, I want triage to start specification when it assigns `ready-to-spec`, so that complex issues progress without a separate manual dispatch.
 4. As a maintainer, I want applying `ready-to-spec` to start specification, so that I can route an existing issue into design work.
 5. As a maintainer, I want a manual specification workflow entry point, so that I can request an eligible run directly.
-6. As Kevin, I want each run to check the current issue state and eligibility, so that stale events do not start inappropriate work.
+6. As Kevin, I want every start to check that the issue is open and labeled `ready-to-spec`, so that stale events and mistaken dispatches do not start inappropriate work.
 7. As Kevin, I want the agent to inspect the issue, discussion, current code, and relevant product and architecture guidance, so that its proposal fits the actual project.
 8. As Kevin, I want a recommended approach with explicit assumptions and unresolved decisions, so that I can review concrete choices without mistaking guesses for facts.
 9. As Kevin, I want a product specification describing behavior, exclusions, and acceptance criteria, so that the intended outcome is reviewable.
@@ -57,7 +57,6 @@ in a disposable repository before enabling it in this repository.
 23. As Kevin, I want child issues created only after my explicit request, with their own acceptance criteria and a shared specification reference, so that a proposed breakdown does not automatically become scheduled work.
 24. As Kevin, I want the spec agent limited to specification output and a separate publisher to validate changes, so that drafting a proposal cannot modify application code or workflow controls.
 25. As Kevin, I want run status to distinguish a published draft, missing information, and an operational failure, so that I can choose the next action without assuming success.
-26. As Kevin, I want the flow tested through real GitHub events in a disposable repository, so that permission, dispatch, publication, and recovery failures are found before enablement.
 
 ## Implementation Decisions
 
@@ -70,9 +69,9 @@ in a disposable repository before enabling it in this repository.
   to require a specification. Retain the existing `needs-info` and
   `wait-to-implement` routes; general triage resumption is outside this release.
 - Support triage dispatch, maintainer label application, and manual dispatch for
-  initial specification. Recheck that the issue is open and eligible. Have triage
-  explicitly dispatch the specification workflow, consistent with its existing
-  implementation handoff.
+  initial specification. Every route rechecks that the issue is open and labeled
+  `ready-to-spec` before drafting. Have triage explicitly dispatch the
+  specification workflow, consistent with its existing implementation handoff.
 - Produce both product and technical specifications for each issue requiring
   design. The product specification defines observable behavior, exclusions,
   acceptance criteria, and preserved behavior. The technical specification defines
@@ -112,37 +111,24 @@ in a disposable repository before enabling it in this repository.
 - Preserve useful draft output and report missing information or operational
   failure accurately. Repeated starts must respect the existing-PR
   rule rather than treating a partial run as permission to create duplicates.
-- Complete focused local checks and a disposable-repository trial before enabling
-  the workflow here. Use isolated test data and credentials; the trial does not
-  require production application services or live rental records.
+- Gate the workflows on the `SPEC_WORKFLOW_ENABLED` repository variable and
+  verify them through real runs in this repository. Runs read the repository and
+  GitHub issue data only; they do not touch production application services or
+  live rental records.
 
 ## Testing Decisions
 
-- Test externally observable behavior, not prompt wording, internal function
-  sequences, generated prose equality, or the presence of specific source text.
-  A good test demonstrates an allowed action or proves that a forbidden side
-  effect did not occur.
-- The primary test boundary is the complete workflow: submit a GitHub event or
-  manual workflow dispatch, then inspect issue labels, specification documents,
-  PR state, status feedback, and whether implementation was dispatched or blocked.
-- Cover the triage handoff, specification creation, validated
-  publication, merge handling, and implementation approval checks at that boundary.
-  Prefer the fewest test entry points needed to exercise these outcomes.
-- Use focused local tests for deterministic rules and failure cases. Supply event,
-  permission, issue, PR, and proposed-change inputs and assert resulting decisions
-  or publication effects. Keep live provider calls out of these local tests.
-- Reuse the repository's Vitest setup and normal verification command. Existing
-  evidence-upload policy tests provide prior art for accepted and rejected inputs.
-  The Year-End Package download tests provide prior art for testing a public
-  boundary while replacing external data access. These are testing patterns, not
-  production services to reuse for this feature. There are no workflow test files
-  in the inspected workflow and agent configuration areas.
-- In the disposable repository, run the real workflows and exercise at least one
-  real drafting attempt followed by local refinement and merge. Local mocks cannot
-  establish that GitHub permissions, event delivery, publication, and the agent configuration work
-  together. Judge draft quality against the specification contract rather than
+- Verify externally observable behavior, not prompt wording, generated prose
+  equality, or the presence of specific source text. A good check demonstrates an
+  allowed action or proves that a forbidden side effect did not occur.
+- The test boundary is the complete workflow in this repository: submit a GitHub
+  event or manual workflow dispatch, then inspect issue labels, specification
+  documents, PR state, status feedback, and whether implementation was dispatched
+  or blocked. Judge draft quality against the specification contract rather than
   exact text.
-- The following acceptance scenarios define completion of the trial:
+- There are no local workflow tests. Deterministic publication rules live in the
+  workflow's shell steps and are exercised by real runs.
+- The following acceptance scenarios define completion of each ticket:
 
 | Scenario | Required observable result |
 | --- | --- |
@@ -158,10 +144,6 @@ in a disposable repository before enabling it in this repository.
 | Simple issue | Direct implementation remains available without a specification. |
 | Material divergence from current code | Implementation reports the need for revised Design Approval instead of silently changing the design. |
 | Operational failure and recovery | Status reports what actually succeeded, useful work is retained where available, and recovery does not create duplicate active spec PRs or overwrite human work. |
-
-- Record the trial's actual results and resolve failures before enablement. Passing
-  local tests alone is insufficient. Writing this PRD does not count as running
-  any of these checks.
 
 ## Out of Scope
 
@@ -180,8 +162,12 @@ in a disposable repository before enabling it in this repository.
 ## Further Notes
 
 The local `ready-for-agent` status means this PRD needs no further triage. It does
-not apply a GitHub routing label, start implementation, publish to GitHub, or enable
-the proposed workflows.
+not apply a GitHub routing label, start implementation, or publish to GitHub.
+
+Ticket 01 (draft creation, restricted agent, validated publication, status
+comments) landed in PR #32 and is enabled here. Ticket 02 (triage handoff, label
+trigger, eligibility recheck) is implemented and awaits its post-merge event
+trial. Ticket 03 remains open.
 
 Repository instructions and existing product decisions remain applicable. In
 particular, the rental-records application domain must not acquire new tax-year

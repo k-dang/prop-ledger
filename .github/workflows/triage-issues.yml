@@ -129,8 +129,14 @@ jobs:
           jq -r '.comment' triage-result.json > triage-comment.md
           gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body-file triage-comment.md
 
-          if [ "$label" = "ready-to-implement" ]; then
-            gh workflow run implement-ready-issue.yml --repo "$REPO" \
+          # Labels applied with GITHUB_TOKEN do not fire label events, so hand off explicitly.
+          case "$label" in
+            ready-to-implement) next_workflow=implement-ready-issue.yml ;;
+            ready-to-spec) next_workflow=spec-ready-issue.yml ;;
+            *) next_workflow= ;;
+          esac
+          if [ -n "$next_workflow" ]; then
+            gh workflow run "$next_workflow" --repo "$REPO" \
               --ref "$GITHUB_REF_NAME" \
               -f "issue_number=$ISSUE_NUMBER"
           fi

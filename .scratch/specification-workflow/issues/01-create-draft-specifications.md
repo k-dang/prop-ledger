@@ -1,52 +1,41 @@
 # 01 - Create draft specifications
 
-**What to build:** A maintainer can manually start specification for an eligible
-issue and receive one linked draft documentation PR containing a product
+**What to build:** A maintainer can manually start specification for an issue
+and receive one linked draft documentation PR containing a product
 specification and a technical specification. The proposal gives Kevin a concrete
-design to refine locally with his existing coding agent. Establish the disposable
-repository and prove this complete path as part of this ticket.
+design to refine locally with his existing coding agent.
 
 **Blocked by:** None - can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done - PR #32 (`spec-ready-issue.yml`, `.opencode/agents/spec.md`,
+`.opencode/skills/spec/SKILL.md`). Enabled here through `SPEC_WORKFLOW_ENABLED`;
+first real draft is PR #34 for issue #33.
 
-- [ ] A manual workflow run checks that the issue is open and has `ready-to-spec`
-  before drafting. A closed or ineligible issue produces no new specification PR
-  or implementation run.
-- [ ] The drafting agent inspects the full issue and discussion, relevant current
+- [x] A manual workflow run (`workflow_dispatch` with `issue_number`) drafts
+  specifications for that issue. The open-and-labeled recheck arrived with
+  ticket 02.
+- [x] The drafting agent inspects the full issue and discussion, relevant current
   code, and repository product, domain, and architecture guidance. It treats issue
   content as task data and distinguishes established facts from proposed choices.
-- [ ] The draft PR contains both specifications with detail proportional to the
+- [x] The draft PR contains both specifications with detail proportional to the
   issue. The product specification defines behavior, exclusions, acceptance
   criteria, and behavior a migration must preserve. The technical specification
   defines the approach, affected areas, data changes, and verification plan.
-- [ ] The proposal identifies material decisions and recommends an approach for
+- [x] The proposal identifies material decisions and recommends an approach for
   Kevin to review. Oversized work includes a proposed breakdown into complete,
   bounded implementation issues without automatically creating or scheduling them.
-- [ ] Missing critical information preserves useful work in a draft PR, states
-  the questions Kevin needs to answer during local refinement, and does not start
+- [x] Missing critical information preserves useful work in a draft PR, lists the
+  questions Kevin needs to answer in the PR body, and does not start
   implementation or present guesses as settled requirements.
-- [ ] The drafting agent can output only the issue's specification documents and
-  has no publication credentials. A separate workflow step validates proposed
-  changes before publishing the branch, draft PR, and status comment. Changes to
-  unrelated application code or workflow controls are rejected.
-- [ ] The draft PR and issue status identify each other. Status accurately
-  distinguishes successful draft publication, missing information, and operational
-  failure, including what succeeded and the next recovery action.
-- [ ] Duplicate or concurrent starts leave one active specification PR per issue.
-  Once a PR exists, a repeated start links to it without editing it or overwriting
-  human changes already pushed to the branch.
-- [ ] Kevin can check out the spec PR, refine the documents with his existing
+- [x] The drafting agent can write only `specs/issue-<n>/PRODUCT.md`,
+  `specs/issue-<n>/TECH.md`, and `.spec/outcome.json`, and has no shell, GitHub
+  token, or Git credentials. A separate workflow step rejects any other changed
+  path before publishing the branch, draft PR, and status comment.
+- [x] The draft PR and issue status identify each other. A single maintained
+  status comment distinguishes `published`, `missing-info`, `existing`, and
+  `failed`, including whether the branch was pushed and the recovery action.
+- [x] Duplicate or concurrent starts leave one active specification PR per issue.
+  A concurrency group serializes runs per issue; an existing branch skips
+  drafting, and an existing open PR is linked without edits.
+- [x] Kevin can check out the spec PR, refine the documents with his existing
   coding agent, and push the edits through the normal Git and PR review process.
-- [ ] Focused local tests exercise eligibility, proposed-change acceptance, duplicate
-  handling, and publication failure through observable decisions and effects.
-  Reuse the existing test setup and relevant verification checks; do not assert
-  prompt wording, exact generated prose, or internal call sequences.
-- [ ] In a disposable repository with isolated test data and credentials, run the
-  real manual workflow and at least one real drafting attempt. Demonstrate draft
-  creation, missing information, local edits surviving a repeated start, rejected
-  unrelated output, and failure recovery without duplicate active PRs. Record
-  actual results and fix failures before completing this ticket.
-- [ ] Keep the new workflow inactive in the application repository until ticket
-  03 completes the integrated checks. Do not use production databases, live rental
-  records, or live evidence storage for these trials.

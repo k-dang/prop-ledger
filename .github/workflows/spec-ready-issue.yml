@@ -1,10 +1,12 @@
 name: Draft specification for ready-to-spec issue
 
-# Manual entry point only. Automatic routes (triage dispatch, label events) are
-# added by later specification-workflow tickets. The job is inert until the
-# repository variable SPEC_WORKFLOW_ENABLED is set to "true" (trial repository
-# now, this repository after ticket 03).
+# Starts from a maintainer applying ready-to-spec, from triage's explicit dispatch
+# (label edits made with GITHUB_TOKEN do not fire label events), or from a manual
+# dispatch. Every route rechecks that the issue is open and still labeled. The job
+# is inert until the repository variable SPEC_WORKFLOW_ENABLED is "true".
 on:
+  issues:
+    types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -13,21 +15,21 @@ on:
         type: string
 
 concurrency:
-  group: spec-${{ github.repository }}-${{ inputs.issue_number }}
+  group: spec-${{ github.repository }}-${{ inputs.issue_number || github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
   spec:
     name: Draft specifications and open a draft pull request
-    if: vars.SPEC_WORKFLOW_ENABLED == 'true'
+    if: vars.SPEC_WORKFLOW_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-spec')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      ISSUE_NUMBER: ${{ inputs.issue_number }}
+      ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
       REPO: ${{ github.repository }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      SPEC_BRANCH: spec/issue-${{ inputs.issue_number }}
-      SPEC_DIR: specs/issue-${{ inputs.issue_number }}
+      SPEC_BRANCH: spec/issue-${{ inputs.issue_number || github.event.issue.number }}
+      SPEC_DIR: specs/issue-${{ inputs.issue_number || github.event.issue.number }}
     permissions:
       contents: write
       issues: write
@@ -40,7 +42,7 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.repository.default_branch }}
 
-      - name: Fetch issue context and check for existing specification work
+      - name: Check eligibility and look for existing specification work
         id: start
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,6 +56,14 @@ jobs:
           gh issue view "$ISSUE_NUMBER" --repo "$REPO" \
             --json number,title,body,state,labels,author,comments,url,createdAt,updatedAt \
             > .spec/issue-context.json
+
+          # Stale label events and dispatches for closed or re-routed issues stop here.
+          if ! jq -e '.state == "OPEN" and any(.labels[]; .name == "ready-to-spec")' \
+            .spec/issue-context.json > /dev/null; then
+            echo "Issue #$ISSUE_NUMBER is not open and labeled ready-to-spec; nothing to do" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo 'decision=skip' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           if gh api "repos/$REPO/git/ref/heads/$SPEC_BRANCH" > /dev/null 2>&1; then
             echo "Branch $SPEC_BRANCH exists; skipping the drafting agent"
@@ -89,13 +99,14 @@ jobs:
         with:
           name: specification-draft-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            specs/issue-${{ inputs.issue_number }}
+            ${{ env.SPEC_DIR }}
             .spec/outcome.json
           if-no-files-found: ignore
           retention-days: 14
 
       - name: Validate and publish the draft
         id: publish
+        if: steps.start.outputs.decision != 'skip'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -161,7 +172,7 @@ jobs:
           echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
 
       - name: Record status on the issue
-        if: ${{ !cancelled() && steps.start.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.start.outcome == 'success' && steps.start.outputs.decision != 'skip' }}
         env:
           GH_TOKEN: ${{ github.token }}
           OUTCOME: ${{ steps.publish.outputs.outcome || 'failed' }}
