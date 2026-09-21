@@ -17,7 +17,7 @@ concurrency:
 jobs:
   implement:
     name: Implement issue and open pull request
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-implement'
+    if: github.event_name == 'workflow_dispatch' || (github.event.label.name == 'ready-to-implement' && github.event.issue.state == 'open')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -39,7 +39,55 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.repository.default_branch }}
 
+      # ready-to-implement is Implementation Authorization. It cannot bypass
+      # Design Approval: an issue with specification work must have that
+      # specification merged on the default branch with its questions resolved.
+      - name: Check eligibility and Design Approval
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Issue number must be a positive integer" >&2
+            exit 1
+          fi
+          issue="$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json state,labels,body)"
+          if ! jq -e '.state == "OPEN" and any(.labels[]; .name == "ready-to-implement")' <<< "$issue" > /dev/null; then
+            echo "Issue #$ISSUE_NUMBER is not open and labeled ready-to-implement" >&2
+            exit 1
+          fi
+
+          blocked=''
+          spec_pr="$(gh pr list --repo "$REPO" --state open --head "spec/issue-$ISSUE_NUMBER" --json url --jq '.[0].url // empty')"
+          if jq -e 'any(.labels[]; .name == "ready-to-spec")' <<< "$issue" > /dev/null; then
+            blocked="Issue #$ISSUE_NUMBER is still labeled \`ready-to-spec\`, so its design is not approved."
+          elif [ -n "$spec_pr" ]; then
+            blocked="Specification pull request $spec_pr is not merged."
+          else
+            # The issue's own specification plus any shared specification it references.
+            spec_dirs="$( { [ -d "specs/issue-$ISSUE_NUMBER" ] && echo "specs/issue-$ISSUE_NUMBER"; jq -r '.body // ""' <<< "$issue" | grep -oE 'specs/issue-[1-9][0-9]*' || true; } | sort -u)"
+            for spec_dir in $spec_dirs; do
+              if ! [ -f "$spec_dir/PRODUCT.md" ] || ! [ -f "$spec_dir/TECH.md" ]; then
+                blocked="Referenced specification \`$spec_dir/\` is not merged on \`$DEFAULT_BRANCH\`."
+                break
+              fi
+              if grep -qE '\*\*Open question:\*\*|^## Open questions' "$spec_dir/PRODUCT.md" "$spec_dir/TECH.md"; then
+                blocked="Specification \`$spec_dir/\` still contains open questions."
+                break
+              fi
+            done
+          fi
+
+          if [ -n "$blocked" ]; then
+            echo "Blocked: $blocked"
+            printf 'blocked=%s\n' "$blocked" >> "$GITHUB_OUTPUT"
+          else
+            echo "Issue #$ISSUE_NUMBER is authorized for implementation"
+          fi
+
       - name: Create implementation branch from latest default branch
+        if: steps.gate.outputs.blocked == ''
         run: |
           set -euo pipefail
           base_sha="$(git rev-parse HEAD)"
@@ -47,25 +95,30 @@ jobs:
           printf 'IMPLEMENTATION_BASE_SHA=%s\n' "$base_sha" >> "$GITHUB_ENV"
 
       - name: Install pnpm
+        if: steps.gate.outputs.blocked == ''
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           version: 11.10.0
 
       - name: Set up Node.js
+        if: steps.gate.outputs.blocked == ''
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24.18.0
           cache: pnpm
 
       - name: Install dependencies
+        if: steps.gate.outputs.blocked == ''
         run: pnpm install --frozen-lockfile
 
       - name: Install OpenCode
+        if: steps.gate.outputs.blocked == ''
         run: |
           curl -fsSL https://opencode.ai/install | bash
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
       - name: Implement issue with OpenCode
+        if: steps.gate.outputs.blocked == ''
         id: implement
         timeout-minutes: 70
         env:
@@ -158,21 +211,26 @@ jobs:
 
           echo "Verified published implementation and dispatched $verify_url"
 
-      - name: Record an operational failure
-        if: ${{ failure() && steps.implement.outcome == 'failure' }}
+      - name: Record a blocked or failed attempt
+        if: ${{ !cancelled() && (steps.gate.outputs.blocked != '' || steps.implement.outcome == 'failure') }}
         env:
           GH_TOKEN: ${{ github.token }}
+          BLOCKED: ${{ steps.gate.outputs.blocked }}
         run: |
           set -euo pipefail
-          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
-            exit 0
-          fi
-
           marker='<!-- opencode-implementation-status -->'
-          body="$(printf '%s\n\n%s\n\n%s' \
-            "$marker" \
-            'Implementation stopped unexpectedly. Check for a linked branch or pull request before rerunning.' \
-            "See the [Actions run]($RUN_URL) for operational details and recovery context.")"
+          if [ -n "$BLOCKED" ]; then
+            body="$(printf '%s\n<!-- opencode-implementation-outcome: blocked -->\n\n%s\n\n%s\n\n%s' \
+              "$marker" \
+              "Implementation is blocked before Design Approval: $BLOCKED" \
+              'Merge the specification with its questions resolved, then apply `ready-to-implement` again or dispatch the workflow manually. No branch or pull request was created.' \
+              "[Actions run]($RUN_URL)")"
+          else
+            body="$(printf '%s\n\n%s\n\n%s' \
+              "$marker" \
+              'Implementation stopped unexpectedly. Check for a linked branch or pull request before rerunning.' \
+              "See the [Actions run]($RUN_URL) for operational details and recovery context.")"
+          fi
           comment_ids="$(gh api --paginate "repos/$REPO/issues/$ISSUE_NUMBER/comments?per_page=100" \
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and ((.body // \"\") | contains(\"$marker\"))) | .id")"
           comment_count="$(printf '%s\n' "$comment_ids" | sed '/^$/d' | wc -l | tr -d ' ')"
