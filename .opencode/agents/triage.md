@@ -1,7 +1,7 @@
 ---
 description: Classify a newly opened issue without mutating the repository or GitHub
 mode: primary
-model: "opencode/muse-spark-1.3-contributor-free"
+model: "vercel/openai/gpt-5.6-luna"
 permission:
   "*": deny
   read: allow
