@@ -25,7 +25,9 @@ skill). The real-run trials below need this PR merged first.
   is merged and material questions are resolved.
 - [x] Applying the implementation label before required Design Approval does not
   bypass review. The attempt reports why it is blocked and does not publish a
-  partial implementation.
+  partial implementation. A blocked attempt also removes `ready-to-implement`, so
+  the issue returns to no routing label and re-applying the label after approval
+  fires a new run (GitHub ignores re-adding a label that is already present).
 - [x] Implementation follows the merged specification, including Kevin's local
   refinements, rather than treating the original generated draft or triage comment
   as the complete design. A manually created child issue can reference the shared

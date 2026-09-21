@@ -10,7 +10,7 @@ on:
 jobs:
   approve:
     name: Remove ready-to-spec and leave the issue queued
-    if: vars.SPEC_WORKFLOW_ENABLED == 'true' && github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'spec/issue-')
+    if: vars.SPEC_WORKFLOW_ENABLED == 'true' && github.event.pull_request.merged && github.event.pull_request.base.ref == github.event.repository.default_branch && startsWith(github.event.pull_request.head.ref, 'spec/issue-')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -41,7 +41,7 @@ jobs:
           body="$(printf '%s\n<!-- opencode-spec-outcome: approved -->\n\n%s\n\n%s\n\n[Actions run](%s)' \
             "$marker" \
             "Design approved: $PR_URL merged. The issue stays open and queued; apply \`ready-to-implement\` to authorize implementation." \
-            'To change the approved design, open a normal documentation pull request against the specification. Stop any running implementation first.' \
+            "To change the approved design, open a normal documentation pull request against the specification; stop any running implementation first. A child issue that shares this design must name \`specs/issue-$issue_number/\` in its body." \
             "$RUN_URL")"
           comment_ids="$(gh api --paginate "repos/$REPO/issues/$issue_number/comments?per_page=100" \
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and ((.body // \"\") | contains(\"$marker\"))) | .id")"

@@ -80,7 +80,10 @@ jobs:
           fi
 
           if [ -n "$blocked" ]; then
+            # Withdraw the authorization so the issue carries no routing label
+            # and re-applying ready-to-implement after approval fires a new run.
             echo "Blocked: $blocked"
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label 'ready-to-implement'
             printf 'blocked=%s\n' "$blocked" >> "$GITHUB_OUTPUT"
           else
             echo "Issue #$ISSUE_NUMBER is authorized for implementation"
@@ -129,10 +132,6 @@ jobs:
           gh auth setup-git --hostname github.com --force
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if ! [[ "$ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
-            echo "Issue number must be a positive integer" >&2
-            exit 1
-          fi
           opencode run \
             --model vercel/meta/muse-spark-1.3-contributor \
             --title "Issue $ISSUE_NUMBER implementation" \
@@ -223,7 +222,7 @@ jobs:
             body="$(printf '%s\n<!-- opencode-implementation-outcome: blocked -->\n\n%s\n\n%s\n\n%s' \
               "$marker" \
               "Implementation is blocked before Design Approval: $BLOCKED" \
-              'Merge the specification with its questions resolved, then apply `ready-to-implement` again or dispatch the workflow manually. No branch or pull request was created.' \
+              'The `ready-to-implement` label was removed. Merge the specification with its questions resolved, then apply `ready-to-implement` again. No branch or pull request was created.' \
               "[Actions run]($RUN_URL)")"
           else
             body="$(printf '%s\n\n%s\n\n%s' \
