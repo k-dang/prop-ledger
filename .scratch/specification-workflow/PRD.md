@@ -166,8 +166,8 @@ not apply a GitHub routing label, start implementation, or publish to GitHub.
 
 Ticket 01 (draft creation, restricted agent, validated publication, status
 comments) landed in PR #32 and is enabled here. Ticket 02 (triage handoff, label
-trigger, eligibility recheck) is implemented and awaits its post-merge event
-trial. Ticket 03 remains open.
+trigger, eligibility recheck) landed in PR #36 and passed its real-event trial on
+2026-09-21. Ticket 03 remains open.
 
 Repository instructions and existing product decisions remain applicable. In
 particular, the rental-records application domain must not acquire new tax-year
