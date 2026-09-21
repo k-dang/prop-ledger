@@ -61,12 +61,10 @@ jobs:
             --format json \
             --title "Issue ${{ github.event.issue.number }} triage" \
             "Use the skill tool to load the skill named triage before doing any analysis. Then read .triage/issue-context.json and return the JSON decision only." \
-            > .triage/opencode-events.jsonl
-
-      # stdout is captured above, so a failed run's error events never reach the log.
-      - name: Print OpenCode errors
-        if: failure()
-        run: jq -c 'select(.type == "error")' .triage/opencode-events.jsonl
+            > .triage/opencode-events.jsonl || {
+              jq -c 'select(.type == "error")' .triage/opencode-events.jsonl >&2
+              exit 1
+            }
 
       - name: Export and log triage decision
         id: result
