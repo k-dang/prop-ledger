@@ -6,7 +6,9 @@ path from ticket 01. Every route rechecks eligibility before drafting.
 
 **Blocked by:** 01 - Create draft specifications.
 
-**Status:** implemented - awaiting the post-merge event trial below.
+**Status:** done - PR #36, plus #39, #42, #44 to get OpenCode running from
+Actions (free Zen models are refused from GitHub-hosted runners; now on the
+Vercel AI Gateway).
 
 - [x] Triage uses unresolved product choices, meaningful architectural changes,
   migrations, or scope requiring decomposition to choose `ready-to-spec`. Change
@@ -31,9 +33,8 @@ path from ticket 01. Every route rechecks eligibility before drafting.
 - [x] A failed handoff dispatch comments on the issue that the label was applied
   but no run or PR exists, links the Actions run, and fails the job. Recovery is a
   manual dispatch, protected by the draft path's existing-branch and PR rules.
-- [ ] Post-merge trial in this repository (label events run the default branch's
-  workflow file, so this cannot run from the PR branch): open an issue that
-  triage routes to `ready-to-spec`, apply `ready-to-spec` by hand to another
-  issue, and confirm each produces one linked draft spec PR. Also confirm that a
-  closed issue with the label, and a repeat of the label on an issue with an
-  active spec PR, produce no new PR and leave the existing PR untouched.
+- [x] Post-merge trial in this repository (2026-09-21): triage routed #46 to
+  `ready-to-spec` and dispatched drafting, producing draft PR #47; hand-labeling
+  #40 produced draft PR #45; re-labeling #33 (active PR #34) linked it without
+  edits; labeling closed #41 started no job; a failed drafting run on #40 left a
+  `failed` status with no PR.
