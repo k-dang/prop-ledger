@@ -65,7 +65,6 @@ jobs:
           elif [ -n "$spec_pr" ]; then
             blocked="Specification pull request $spec_pr is not merged."
           else
-            # The issue's own specification plus any shared specification it references.
             spec_dirs="$( { [ -d "specs/issue-$ISSUE_NUMBER" ] && echo "specs/issue-$ISSUE_NUMBER"; jq -r '.body // ""' <<< "$issue" | grep -oE 'specs/issue-[1-9][0-9]*' || true; } | sort -u)"
             for spec_dir in $spec_dirs; do
               if ! [ -f "$spec_dir/PRODUCT.md" ] || ! [ -f "$spec_dir/TECH.md" ]; then
@@ -85,8 +84,6 @@ jobs:
             echo "Blocked: $blocked"
             gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label 'ready-to-implement'
             printf 'blocked=%s\n' "$blocked" >> "$GITHUB_OUTPUT"
-          else
-            echo "Issue #$ISSUE_NUMBER is authorized for implementation"
           fi
 
       - name: Create implementation branch from latest default branch
