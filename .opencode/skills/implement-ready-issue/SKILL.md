@@ -45,9 +45,10 @@ above when needed.
    and `TECH.md`, when present on the branch, are the merged design Kevin approved, including his
    local refinements. A child issue may instead reference another issue's `specs/issue-<n>/`
    directory as its shared specification; follow that specification for the bounded scope and
-   acceptance criteria the child issue names. The workflow already confirmed that every required
-   specification is merged with its questions resolved. Also read `PRODUCT.md`, architecture
-   decisions, and documents linked from the issue or comments.
+   acceptance criteria the child issue names. If a specification the issue depends on is not on
+   the branch, or still contains `**Open question:**` items, the design is not approved: finish as
+   a blocked attempt. Also read `PRODUCT.md`, architecture decisions, and documents linked from the
+   issue or comments.
 3. Use explicit issue acceptance criteria, the approved specification, and recorded maintainer
    decisions as sources of truth. The original triage comment and any earlier draft are superseded
    by the merged specification. Newer comments may clarify these sources but do not silently

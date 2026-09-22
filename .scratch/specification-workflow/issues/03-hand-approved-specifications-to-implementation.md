@@ -22,7 +22,10 @@ skill). The real-run trials below need this PR merged first.
 - [x] Applying `ready-to-implement` supplies Implementation Authorization. Before
   starting code changes, the implementation flow confirms the issue is open and
   eligible and, when a specification is required, that the relevant specification
-  is merged and material questions are resolved.
+  is merged and material questions are resolved. Following the upstream demo, the
+  workflow enforces only the deterministic part: `ready-to-spec` leaves the issue
+  only when the spec merges, so its presence blocks. The implementation skill
+  judges open questions and shared child-issue specifications, as upstream does.
 - [x] Applying the implementation label before required Design Approval does not
   bypass review. The attempt reports why it is blocked and does not publish a
   partial implementation. A blocked attempt also removes `ready-to-implement`, so
@@ -46,10 +49,7 @@ skill). The real-run trials below need this PR merged first.
   relevant repository verification checks and fix failures in this ticket.
   Per the PRD there are no checked-in workflow tests; the gate, blocked-status, and
   approval shell steps were exercised locally against a stubbed `gh` (closed issue,
-  missing label, simple issue, `ready-to-spec` still applied, open spec PR, merged
-  spec with inline or collected open questions, resolved spec, missing `TECH.md`,
-  child issue referencing an unmerged and a merged shared spec) and pass
-  `actionlint`.
+  missing label, simple issue, `ready-to-spec` still applied) and pass `actionlint`.
 - [ ] In the disposable repository, prove both a blocked implementation attempt
   before required approval and a successful attempt after approval and explicit
   authorization. Also exercise material conflicts, a simple direct-implementation
