@@ -33,9 +33,7 @@ jobs:
             exit 1
           fi
 
-          if gh issue view "$issue_number" --repo "$REPO" --json labels --jq '.labels[].name' | grep -Fxq 'ready-to-spec'; then
-            gh issue edit "$issue_number" --repo "$REPO" --remove-label 'ready-to-spec'
-          fi
+          gh issue edit "$issue_number" --repo "$REPO" --remove-label 'ready-to-spec'
 
           marker='<!-- opencode-spec-status -->'
           body="$(printf '%s\n<!-- opencode-spec-outcome: approved -->\n\n%s\n\n%s\n\n[Actions run](%s)' \

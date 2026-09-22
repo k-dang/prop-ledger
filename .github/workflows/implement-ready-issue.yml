@@ -178,6 +178,8 @@ jobs:
               echo "Blocked implementation unexpectedly published $IMPLEMENTATION_BRANCH" >&2
               exit 1
             fi
+            # Withdraw the authorization, as the gate does, so re-applying the label fires a new run.
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label 'ready-to-implement'
             exit 0
           fi
 

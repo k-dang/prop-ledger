@@ -155,7 +155,7 @@ jobs:
               echo
               echo "Check out \`$SPEC_BRANCH\`, refine the documents with your coding agent, and push to this pull request. Resolve every \`**Open question:**\` before merging: implementation is blocked while any remain."
               echo
-              echo "Merging records Design Approval and removes \`ready-to-spec\`; it accepts every proposal under Decisions for Kevin that you did not change. The issue stays open and queued. Apply \`ready-to-implement\` when implementation should start. After merge, change the design through a normal documentation pull request, and stop any running implementation first."
+              echo "Merging records Design Approval, accepts every proposal under Decisions for Kevin that you did not change, and removes \`ready-to-spec\`. The issue stays open until you apply \`ready-to-implement\`."
             } > .spec/pull-request.md
             title="$(jq -r '"Spec: #\(.number) \(.title)"' .spec/issue-context.json)"
             pr_url="$(gh pr create --repo "$REPO" --draft --head "$SPEC_BRANCH" \
