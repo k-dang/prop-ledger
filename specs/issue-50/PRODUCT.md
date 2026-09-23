@@ -26,12 +26,12 @@ records, payment records, or the meaning of Gross Rental Income.
    lease, or not linked to a lease, do not change a lease's comparison.
 5. Difference is `Payments Received - Expected rent`, rounded to cents. A negative
    difference is labeled `Shortfall` and shows the absolute amount. A positive
-   difference is labeled `Overpayment` and shows the amount. Zero is labeled `On
-   track`.
+   difference is labeled `Prepaid` and shows the amount. Zero is labeled `Paid in
+   full`.
 6. A negative difference is visibly flagged with both a text label and the existing
    review/status treatment; color is not the only signal. The flag is informational
    and does not alter Year-End Readiness.
-7. A positive difference remains visible as `Overpayment`; it is not silently capped
+7. A positive difference remains visible as `Prepaid`; it is not silently capped
    at zero and does not create a blocker or warning.
 8. The comparison is visible in the existing lease list without requiring the user
    to open a separate workflow. The selected Tax Year is stated near the comparison
@@ -72,7 +72,7 @@ records, payment records, or the meaning of Gross Rental Income.
   weekly and biweekly leases are prorated by their day-rate rules (Behavior 2-3).
 - A lease with no linked payments shows $0.00 received and a visible shortfall when
   expected rent is non-zero (Behavior 4-6, 9).
-- A lease whose payments exceed expected rent shows a visible overpayment amount,
+- A lease whose payments exceed expected rent shows a visible `Prepaid` amount,
   not a negative shortfall and not zero (Behavior 5, 7).
 - Changing the selected Tax Year changes both the expected overlap and payment total
   without changing stored lease or payment records (Behavior 1-4, 11).
@@ -81,25 +81,10 @@ records, payment records, or the meaning of Gross Rental Income.
 - The lease list and comparison remain usable on narrow screens, and status meaning
   remains available without color (Behavior 8, 6).
 
-## Decisions for Kevin
+## Decisions
 
-1. **Proposal: use calendar-day proration for all partial periods, with monthly
-   months retaining their calendar-month denominator.** Alternative: count complete
-   scheduled payment periods only, or prorate every frequency using a fixed annual
-   denominator. Calendar-day proration is predictable for mid-period starts and ends,
-   handles leap years, and avoids inventing payment dates that are not stored.
-2. **Proposal: keep shortfalls informational rather than making them a Year-End
-   Readiness warning.** Alternative: add a warning to readiness. The comparison is
-   based on a lease schedule while the product's readiness model tracks filing
-   evidence and record completeness; keeping it informational avoids implying that a
-   calculated expectation is a tax filing rule.
-3. **Proposal: show positive differences explicitly as overpayments.** Alternative:
-   show only shortfalls or treat positive differences as zero. Showing the surplus
-   preserves useful information about prepaid rent without asserting how it should be
-   recognized for tax purposes.
-
-## Open questions
-
-- How should expected rent be computed for leases that start or end mid-period, and for biweekly and weekly frequencies?
-- Is a shortfall only informational, or should it surface as a year-end readiness exception?
-- Should overpayments (prepaid rent) be shown too?
+1. Expected rent uses calendar-day proration for all partial periods, with monthly
+   months keeping their calendar-month denominator.
+2. Shortfalls are informational and never affect Year-End Readiness.
+3. Positive differences are shown explicitly, labeled `Prepaid`. A zero difference
+   is labeled `Paid in full`.

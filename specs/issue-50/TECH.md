@@ -27,7 +27,7 @@ the issue explicitly requires leases to remain unchanged.
 - `src/components/rent-ledger/rent-ledger-detail.tsx`: pass derived values to lease
   cards and render expected, received, difference, and status.
 - `src/components/rent-ledger/rent-ledger-detail.test.tsx`: verify visible labels,
-  shortfall/overpayment states, selected-year context, and the no-lease state.
+  shortfall, `Prepaid`, and `Paid in full` states, selected-year context, and the no-lease state.
 - `src/components/property-workspace/property-detail.tsx`: only if composition
   changes are needed; the existing `year` and `rentLedger` props should otherwise
   require no change.
@@ -45,7 +45,7 @@ shape change is proposed. Existing leases and rent events remain the source data
 - Unit tests prove only payment events linked to the lease and dated in the selected
   Tax Year contribute to Payments Received, and that sums and differences round to
   cents (Behavior 4-5).
-- Unit tests prove zero, shortfall, and overpayment classifications (Behavior 5-7).
+- Unit tests prove `Paid in full`, `Shortfall`, and `Prepaid` classifications (Behavior 5-7).
 - Component tests prove each lease displays the three money figures and the status
   label, and that shortfall is not communicated through color alone (Behavior 1,
   6, 8).
@@ -73,6 +73,3 @@ shape change is proposed. Existing leases and rent events remain the source data
   receipt date.
 - A shortfall and overpayment are review labels only, not tax conclusions. Gross
   Rental Income remains governed by the existing product definition.
-- The three issue open questions are product decisions for Kevin; the formulas and
-  presentation above are recommendations, not implementation instructions until
-  those proposals are accepted or revised.
