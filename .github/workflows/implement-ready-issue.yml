@@ -27,7 +27,6 @@ jobs:
       REPO: ${{ github.repository }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     permissions:
-      actions: write
       contents: write
       issues: write
       pull-requests: write
@@ -148,15 +147,7 @@ jobs:
             exit 1
           fi
 
-          verify_url="$(gh run list --repo "$REPO" --workflow verify.yml --event workflow_dispatch \
-            --branch "$IMPLEMENTATION_BRANCH" --limit 20 --json headSha,url \
-            | jq -r --arg head "$head_sha" 'map(select(.headSha == $head)) | first | .url // empty')"
-          if [ -z "$verify_url" ]; then
-            echo "Verify was not dispatched for $IMPLEMENTATION_BRANCH at $head_sha" >&2
-            exit 1
-          fi
-
-          echo "Verified published implementation and dispatched $verify_url"
+          echo "Verified published implementation"
 
       - name: Record an operational failure
         if: ${{ failure() && steps.implement.outcome == 'failure' }}

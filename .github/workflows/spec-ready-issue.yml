@@ -30,7 +30,6 @@ jobs:
       SPEC_BRANCH: spec/issue-${{ inputs.issue_number || github.event.issue.number }}
       SPEC_DIR: specs/issue-${{ inputs.issue_number || github.event.issue.number }}
     permissions:
-      actions: write
       contents: write
       issues: write
       pull-requests: write

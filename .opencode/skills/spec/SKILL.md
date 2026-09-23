@@ -109,12 +109,7 @@ tax-year locking states or tax-computation behavior.
      `ready-to-spec` for `ready-to-implement` when implementation should start.
    Do not include a closing keyword such as `Closes #$ISSUE_NUMBER`. The specification
    does not resolve the issue.
-4. Dispatch `verify.yml` for the specification branch with
-   `gh workflow run verify.yml --repo "$REPO" --ref "$SPEC_BRANCH"`.
-   A pull request created with the built-in token does not run Verify automatically, and
-   the pull request cannot merge without it. If dispatch fails, say so in the issue
-   comment.
-5. Do not apply `ready-to-implement`, and do not remove `ready-to-spec`. Routing the
+4. Do not apply `ready-to-implement`, and do not remove `ready-to-spec`. Routing the
    issue onward is Kevin's decision after review.
 
 ## Report the outcome
