@@ -61,6 +61,34 @@ export type RentLedgerSummary = {
   paymentCount: number;
 };
 
+/**
+ * Derived per-lease rent comparison for one tax year. Values are computed from
+ * existing lease fields and payment events; nothing here is persisted.
+ */
+export type LeaseRentComparisonStatus =
+  | "shortfall"
+  | "paid-in-full"
+  | "prepaid";
+
+export type LeaseRentComparison = {
+  leaseId: string;
+  year: number;
+  expectedRent: number;
+  paymentsReceived: number;
+  difference: number;
+  status: LeaseRentComparisonStatus;
+};
+
+/** Display labels for the derived rent-comparison statuses. */
+export const LEASE_RENT_COMPARISON_LABELS: Record<
+  LeaseRentComparisonStatus,
+  string
+> = {
+  shortfall: "Shortfall",
+  "paid-in-full": "Paid in full",
+  prepaid: "Prepaid",
+};
+
 /** Build the year-scoped rent summary for a property's recorded payments. */
 export function summarizeRentLedger(
   events: RentEvent[],
@@ -109,4 +137,114 @@ export function formatMoney(value: number): string {
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Parse a `YYYY-MM-DD` date as a UTC midnight timestamp for day arithmetic. */
+function parseIsoDay(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+/** Count inclusive days between two UTC midnight timestamps. */
+function inclusiveDaysBetween(startUtc: number, endUtc: number): number {
+  return Math.round((endUtc - startUtc) / MS_PER_DAY) + 1;
+}
+
+/**
+ * Expected rent for one lease during one tax year. Monthly rent is prorated by
+ * active calendar days within each month; weekly and biweekly rent use a
+ * day rate (amount / 7 or / 14) multiplied by active days. Lease boundaries
+ * are inclusive; an open end date runs through December 31.
+ */
+export function calculateExpectedRent(
+  lease: Pick<Lease, "rentAmount" | "rentFrequency" | "startDate" | "endDate">,
+  year: number,
+): number {
+  const yearStart = Date.UTC(year, 0, 1);
+  const yearEnd = Date.UTC(year, 11, 31);
+  const leaseStart = parseIsoDay(lease.startDate);
+  const leaseEnd =
+    lease.endDate === null ? yearEnd : parseIsoDay(lease.endDate);
+  const activeStart = Math.max(leaseStart, yearStart);
+  const activeEnd = Math.min(leaseEnd, yearEnd);
+
+  if (activeEnd < activeStart) {
+    return 0;
+  }
+
+  if (lease.rentFrequency === "weekly" || lease.rentFrequency === "biweekly") {
+    const periodDays = lease.rentFrequency === "weekly" ? 7 : 14;
+    return roundMoney(
+      (lease.rentAmount / periodDays) *
+        inclusiveDaysBetween(activeStart, activeEnd),
+    );
+  }
+
+  let expected = 0;
+  const cursor = new Date(activeStart);
+  const endDate = new Date(activeEnd);
+
+  while (cursor <= endDate) {
+    const monthStart = Date.UTC(
+      cursor.getUTCFullYear(),
+      cursor.getUTCMonth(),
+      1,
+    );
+    const daysInMonth = new Date(
+      Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    const monthEnd = monthStart + (daysInMonth - 1) * MS_PER_DAY;
+    const segmentStart = Math.max(activeStart, monthStart);
+    const segmentEnd = Math.min(activeEnd, monthEnd);
+    expected +=
+      (lease.rentAmount / daysInMonth) *
+      inclusiveDaysBetween(segmentStart, segmentEnd);
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1, 1);
+  }
+
+  return roundMoney(expected);
+}
+
+/**
+ * Build one derived rent comparison per lease for the selected tax year.
+ * Payments Received sums payment events linked to the lease with a receipt
+ * date in the year; difference is `received - expected`, rounded to cents.
+ */
+export function compareLeaseRent(
+  leases: Lease[],
+  events: RentEvent[],
+  year: number,
+): LeaseRentComparison[] {
+  const yearPrefix = `${year}-`;
+
+  return leases.map((lease) => {
+    const expectedRent = calculateExpectedRent(lease, year);
+    const paymentsReceived = roundMoney(
+      events
+        .filter(
+          (event) =>
+            event.type === "payment" &&
+            event.leaseId === lease.id &&
+            event.date.startsWith(yearPrefix),
+        )
+        .reduce((total, event) => total + event.amount, 0),
+    );
+    const difference = roundMoney(paymentsReceived - expectedRent);
+
+    return {
+      leaseId: lease.id,
+      year,
+      expectedRent,
+      paymentsReceived,
+      difference,
+      status:
+        difference < 0
+          ? "shortfall"
+          : difference > 0
+            ? "prepaid"
+            : "paid-in-full",
+    };
+  });
 }

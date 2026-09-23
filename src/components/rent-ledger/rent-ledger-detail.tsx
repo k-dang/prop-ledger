@@ -2,9 +2,11 @@
 
 import {
   CheckCircle2,
+  CircleAlert,
   CircleDot,
   CopyPlus,
   FileText,
+  Info,
   type LucideIcon,
   Plus,
   Receipt,
@@ -58,16 +60,20 @@ import {
 } from "@/components/ui/table";
 import { RENT_FREQUENCIES, type RentFrequency } from "@/db/schema";
 import {
+  compareLeaseRent,
   formatMoney,
   getLeaseDocuments,
+  LEASE_RENT_COMPARISON_LABELS,
   type Lease,
+  type LeaseRentComparison,
+  type LeaseRentComparisonStatus,
   type NewLeaseInput,
   type NewRentEventInput,
   type RentEvent,
   type RentLedger,
   summarizeRentLedger,
 } from "@/lib/rent-ledger";
-import { toneIcon } from "@/lib/status-styles";
+import { toneIcon, toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
 const FREQUENCY_LABELS: Record<RentFrequency, string> = {
@@ -154,6 +160,7 @@ export function RentLedgerDetail({
       >
         <LeasesPanel
           ledger={ledger}
+          year={year}
           unitLabels={unitLabels}
           leaseError={leaseError}
           documentError={documentError}
@@ -285,6 +292,7 @@ export function RentIncomeSummaryStrip({
 
 function LeasesPanel({
   ledger,
+  year,
   unitLabels,
   leaseError,
   documentError,
@@ -294,6 +302,7 @@ function LeasesPanel({
   onUploadLeaseDocument,
 }: {
   ledger: RentLedger;
+  year: number;
   unitLabels: Map<string, string>;
   leaseError?: string;
   documentError?: string;
@@ -316,6 +325,11 @@ function LeasesPanel({
     (lease) => lease.endDate === null,
   ).length;
   const summary = `${pluralize(ledger.leases.length, "lease")} · ${openEndedLeaseCount} open-ended · ${pluralize(linkedDocumentCount, "document")}`;
+  const comparisons = new Map(
+    compareLeaseRent(ledger.leases, ledger.rentEvents, year).map(
+      (comparison) => [comparison.leaseId, comparison],
+    ),
+  );
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [rentFrequency, setRentFrequency] = useState<RentFrequency>("monthly");
   const selectedUnitLabel =
@@ -461,6 +475,8 @@ function LeasesPanel({
                     <LeaseCard
                       key={lease.id}
                       lease={lease}
+                      year={year}
+                      comparison={comparisons.get(lease.id)}
                       unitLabel={unitLabels.get(lease.unitId) ?? "Unknown unit"}
                       documents={getLeaseDocuments(ledger.documents, lease.id)}
                       onDeleteLease={onDeleteLease}
@@ -479,12 +495,16 @@ function LeasesPanel({
 
 function LeaseCard({
   lease,
+  year,
+  comparison,
   unitLabel,
   documents,
   onDeleteLease,
   onUploadLeaseDocument,
 }: {
   lease: Lease;
+  year: number;
+  comparison?: LeaseRentComparison;
   unitLabel: string;
   documents: RentLedger["documents"];
   onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
@@ -540,6 +560,10 @@ function LeaseCard({
           </Button>
         </div>
       </div>
+      <Separator />
+      {comparison ? (
+        <LeaseRentComparisonSection year={year} comparison={comparison} />
+      ) : null}
       <Separator />
       <div className="flex flex-col gap-3">
         <p className="m-0! font-medium text-muted-foreground text-xs uppercase">
@@ -607,6 +631,69 @@ function LeaseCard({
         </form>
       </div>
     </div>
+  );
+}
+
+function LeaseRentComparisonSection({
+  year,
+  comparison,
+}: {
+  year: number;
+  comparison: LeaseRentComparison;
+}) {
+  const statusMeta: Record<
+    LeaseRentComparisonStatus,
+    { icon: LucideIcon; tone: string }
+  > = {
+    shortfall: { icon: CircleAlert, tone: toneSurface.blocked },
+    "paid-in-full": { icon: CheckCircle2, tone: toneSurface.ready },
+    prepaid: { icon: Info, tone: toneSurface.info },
+  };
+  const { icon: StatusIcon, tone } = statusMeta[comparison.status];
+  const statusAmount =
+    comparison.status === "shortfall"
+      ? formatMoney(Math.abs(comparison.difference))
+      : formatMoney(comparison.difference);
+  const statusDetail =
+    comparison.status === "paid-in-full"
+      ? LEASE_RENT_COMPARISON_LABELS["paid-in-full"]
+      : `${LEASE_RENT_COMPARISON_LABELS[comparison.status]} ${statusAmount}`;
+
+  return (
+    <section aria-label={`Rent comparison for ${year}`}>
+      <p className="m-0! font-medium text-muted-foreground text-xs uppercase">
+        Rent comparison · {year} tax year
+      </p>
+      <dl className="mt-2 grid gap-2 sm:grid-cols-3">
+        <div className="min-w-0 rounded-md border bg-muted/40 p-2">
+          <dt className="text-muted-foreground text-xs">Expected rent</dt>
+          <dd className="mt-0.5 truncate font-semibold text-sm tabular-nums">
+            {formatMoney(comparison.expectedRent)}
+          </dd>
+        </div>
+        <div className="min-w-0 rounded-md border bg-muted/40 p-2">
+          <dt className="text-muted-foreground text-xs">Payments received</dt>
+          <dd className="mt-0.5 truncate font-semibold text-sm tabular-nums">
+            {formatMoney(comparison.paymentsReceived)}
+          </dd>
+        </div>
+        <div className="min-w-0 rounded-md border bg-muted/40 p-2">
+          <dt className="text-muted-foreground text-xs">Difference</dt>
+          <dd className="mt-0.5 truncate font-semibold text-sm tabular-nums">
+            {formatMoney(comparison.difference)}
+          </dd>
+        </div>
+      </dl>
+      <p
+        className={cn(
+          "mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium",
+          tone,
+        )}
+      >
+        <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
+        <span>{statusDetail}</span>
+      </p>
+    </section>
   );
 }
 

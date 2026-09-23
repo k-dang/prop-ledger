@@ -59,6 +59,138 @@ const ledger: RentLedger = {
   ],
 };
 
+describe("lease rent comparison", () => {
+  function renderDetail(customLedger: RentLedger, year = 2026) {
+    return renderToStaticMarkup(
+      <RentLedgerDetail
+        ledger={customLedger}
+        year={year}
+        defaultOpenLeases
+        onCreateLease={vi.fn()}
+        onDeleteLease={vi.fn()}
+        onRecordEvent={vi.fn()}
+        onDeleteEvent={vi.fn()}
+        onUploadLeaseDocument={vi.fn()}
+      />,
+    );
+  }
+
+  it("shows expected, received, and shortfall figures with the tax year", () => {
+    const markup = renderDetail({
+      ...ledger,
+      rentEvents: [
+        {
+          id: "payment-1",
+          propertyId: "property-1",
+          leaseId: "lease-1",
+          type: "payment",
+          date: "2026-03-05",
+          amount: 20000,
+          periodStart: null,
+          periodEnd: null,
+          memo: null,
+        },
+      ],
+    });
+
+    expect(markup).toContain("Rent comparison");
+    expect(markup).toContain("2026 tax year");
+    expect(markup).toContain("Expected rent");
+    expect(markup).toContain("Payments received");
+    expect(markup).toContain("Difference");
+    expect(markup).toContain("$24,000.00");
+    expect(markup).toContain("$20,000.00");
+    expect(markup).toContain("Shortfall $4,000.00");
+  });
+
+  it("flags an unpaid lease as a shortfall and pairs status with text", () => {
+    const markup = renderDetail(ledger);
+
+    expect(markup).toContain("$0.00");
+    expect(markup).toContain("Shortfall $24,000.00");
+  });
+
+  it("labels an overpayment as prepaid", () => {
+    const markup = renderDetail({
+      ...ledger,
+      rentEvents: [
+        {
+          id: "payment-1",
+          propertyId: "property-1",
+          leaseId: "lease-1",
+          type: "payment",
+          date: "2026-03-05",
+          amount: 25000,
+          periodStart: null,
+          periodEnd: null,
+          memo: null,
+        },
+      ],
+    });
+
+    expect(markup).toContain("Prepaid $1,000.00");
+    expect(markup).not.toContain("Shortfall");
+  });
+
+  it("labels an exact match as paid in full", () => {
+    const markup = renderDetail({
+      ...ledger,
+      rentEvents: [
+        {
+          id: "payment-1",
+          propertyId: "property-1",
+          leaseId: "lease-1",
+          type: "payment",
+          date: "2026-03-05",
+          amount: 24000,
+          periodStart: null,
+          periodEnd: null,
+          memo: null,
+        },
+      ],
+    });
+
+    expect(markup).toContain("Paid in full");
+  });
+
+  it("recomputes the comparison when the selected tax year changes", () => {
+    const crossYearLedger: RentLedger = {
+      ...ledger,
+      leases: [
+        {
+          ...ledger.leases[0],
+          startDate: "2025-06-01",
+        },
+      ],
+      rentEvents: [
+        {
+          id: "payment-1",
+          propertyId: "property-1",
+          leaseId: "lease-1",
+          type: "payment",
+          date: "2026-03-05",
+          amount: 24000,
+          periodStart: null,
+          periodEnd: null,
+          memo: null,
+        },
+      ],
+    };
+
+    expect(renderDetail(crossYearLedger, 2026)).toContain("Paid in full");
+    const priorYear = renderDetail(crossYearLedger, 2025);
+    expect(priorYear).toContain("2025 tax year");
+    expect(priorYear).toContain("Shortfall $14,000.00");
+  });
+
+  it("keeps the empty state and hides the comparison with no leases", () => {
+    const markup = renderDetail({ ...ledger, leases: [] });
+
+    expect(markup).toContain("No leases recorded.");
+    expect(markup).not.toContain("Rent comparison");
+  });
+});
+
 describe("lease document controls", () => {
   it("lets a landlord choose and upload a lease document", () => {
     const markup = renderToStaticMarkup(
