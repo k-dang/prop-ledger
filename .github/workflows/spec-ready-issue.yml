@@ -153,9 +153,9 @@ jobs:
               echo
               echo '## Refine locally'
               echo
-              echo "Check out \`$SPEC_BRANCH\`, refine the documents with your coding agent, and push to this pull request. Resolve every \`**Open question:**\` before merging: implementation is blocked while any remain."
+              echo "Check out \`$SPEC_BRANCH\`, refine the documents with your coding agent, and push to this pull request. Resolve every \`**Open question:**\` before merging: the implementation agent stops while any remain."
               echo
-              echo "Merging records Design Approval, accepts every proposal under Decisions for Kevin that you did not change, and removes \`ready-to-spec\`. The issue stays open until you apply \`ready-to-implement\`."
+              echo "Merging accepts every proposal under Decisions for Kevin that you did not change. Then swap \`ready-to-spec\` for \`ready-to-implement\` on the issue when implementation should start."
             } > .spec/pull-request.md
             title="$(jq -r '"Spec: #\(.number) \(.title)"' .spec/issue-context.json)"
             pr_url="$(gh pr create --repo "$REPO" --draft --head "$SPEC_BRANCH" \

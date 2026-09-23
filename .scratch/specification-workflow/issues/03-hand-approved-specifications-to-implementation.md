@@ -9,28 +9,33 @@ pass.
 
 **Blocked by:** 02 - Connect triage and labels.
 
-**Status:** in progress - workflow and skill changes done (`approve-spec.yml`,
-Design Approval gate in `implement-ready-issue.yml`, spec PR body, implementation
-skill). The real-run trials below need this PR merged first.
+**Status:** in progress - implementation skill and spec PR guidance done. Kevin
+decided on 2026-09-22 to follow the upstream cloud-factory flow and keep approval
+human rather than recorded: no merge-handler workflow and no Design Approval gate.
+Merging a specification is an ordinary PR merge; Kevin swaps `ready-to-spec` for
+`ready-to-implement` himself. The unchecked items below record what that decision
+gives up, and the real-run trials need this PR merged first.
 
 - [x] Kevin can check out a generated spec PR, resolve its questions interactively
   with his existing coding agent, push the edits, and merge the agreed documents
   through normal PR review.
-- [x] Merging the specification records Design Approval, removes `ready-to-spec`,
+- [ ] Merging the specification records Design Approval, removes `ready-to-spec`,
   and leaves the original issue open without a routing label. Merge does not
   authorize or dispatch implementation, and no separate approval label is added.
+  Dropped by the 2026-09-22 decision: nothing fires on merge, so no approval is
+  recorded and Kevin removes `ready-to-spec` himself. Merge still dispatches
+  nothing, which is the part that mattered.
 - [x] Applying `ready-to-implement` supplies Implementation Authorization. Before
   starting code changes, the implementation flow confirms the issue is open and
   eligible and, when a specification is required, that the relevant specification
-  is merged and material questions are resolved. Following the upstream demo, the
-  workflow enforces only the deterministic part: `ready-to-spec` leaves the issue
-  only when the spec merges, so its presence blocks. The implementation skill
-  judges open questions and shared child-issue specifications, as upstream does.
-- [x] Applying the implementation label before required Design Approval does not
+  is merged and material questions are resolved. The agent performs these checks,
+  as upstream does. The workflow enforces only that label events on closed issues
+  start no job.
+- [ ] Applying the implementation label before required Design Approval does not
   bypass review. The attempt reports why it is blocked and does not publish a
-  partial implementation. A blocked attempt also removes `ready-to-implement`, so
-  the issue returns to no routing label and re-applying the label after approval
-  fires a new run (GitHub ignores re-adding a label that is already present).
+  partial implementation. Partly dropped by the 2026-09-22 decision: the agent
+  stops and reports when a specification is missing or still has open questions,
+  but nothing outside the agent prevents the run, and the label is not withdrawn.
 - [x] Implementation follows the merged specification, including Kevin's local
   refinements, rather than treating the original generated draft or triage comment
   as the complete design. A manually created child issue can reference the shared
@@ -47,9 +52,10 @@ skill). The real-run trials below need this PR merged first.
 - [x] Focused local tests cover approval, queued work, authorization, merged-spec
   consumption, and blocked outcomes through observable workflow behavior. Run the
   relevant repository verification checks and fix failures in this ticket.
-  Per the PRD there are no checked-in workflow tests; the gate, blocked-status, and
-  approval shell steps were exercised locally against a stubbed `gh` (closed issue,
-  missing label, simple issue, `ready-to-spec` still applied) and pass `actionlint`.
+  Per the PRD there are no checked-in workflow tests, and the 2026-09-22 decision
+  left no new deterministic shell steps to exercise. The workflows pass
+  `actionlint`; the remaining behavior is agent judgment, proven by the real runs
+  below.
 - [ ] In the disposable repository, prove both a blocked implementation attempt
   before required approval and a successful attempt after approval and explicit
   authorization. Also exercise material conflicts, a simple direct-implementation

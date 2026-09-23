@@ -23,8 +23,8 @@ assumptions and missing information, and leaves material decisions for Kevin.
 
 Kevin checks out the specification PR locally and refines it interactively with
 his existing coding agent. He pushes the edits and merges the specification when
-the design is agreed. Merging records Design Approval and leaves the issue queued.
-Applying `ready-to-implement` separately supplies Implementation Authorization.
+the design is agreed. Merging is an ordinary PR merge that starts nothing. Kevin
+then swaps `ready-to-spec` for `ready-to-implement` to authorize implementation.
 
 The implementation workflow checks required specifications before starting and
 stops on material conflicts with the approved design. The workflows run in this
@@ -49,9 +49,9 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
 15. As Kevin, I want specification review in a separate documentation PR, so that design review has a clear endpoint before code review.
 16. As Kevin, I want to check out the specification PR and refine it with my existing coding agent, so that I can resolve questions interactively before merging the agreed design.
 17. As Kevin, I want repeated starts to return the existing active spec PR without editing it, so that retries do not create competing proposals or overwrite local refinement work already pushed to the PR.
-18. As Kevin, I want an approved specification to remain queued without starting implementation, so that Design Approval and scheduling remain separate decisions.
+18. As Kevin, I want merging a specification to start nothing, so that agreeing a design and scheduling its work remain separate decisions.
 19. As Kevin, I want applying `ready-to-implement` to authorize implementation of an approved design, so that I control when queued work starts.
-20. As Kevin, I want required specification approval checked even when the implementation label is present, so that a label cannot bypass unresolved design work.
+20. As Kevin, I want the implementation agent to stop and report when a specification it depends on is missing or unresolved, so that unresolved design work surfaces before code is written.
 21. As Kevin, I want routine implementation adjustments to use judgment while material departures require revised Design Approval, so that work can adapt without silently changing the agreed design.
 22. As Kevin, I want large specifications to propose complete, bounded implementation issues, so that I can approve useful delivery boundaries.
 23. As Kevin, I want child issues created only after my explicit request, with their own acceptance criteria and a shared specification reference, so that a proposed breakdown does not automatically become scheduled work.
@@ -89,14 +89,15 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
 - Kevin checks out the specification PR locally, resolves questions interactively
   with his existing coding agent, and pushes the resulting edits to the same PR.
   This uses the normal local development and PR review process.
-- Review specifications in a separate documentation PR. Merging records Design
-  Approval, removes `ready-to-spec`, and leaves the issue open without a routing
-  label. Do not introduce a separate approval label or dispatch implementation
-  on specification merge.
+- Review specifications in a separate documentation PR. Merging starts nothing:
+  no workflow reacts to it, no approval label exists, and no implementation is
+  dispatched. Kevin swaps the routing labels himself, following the upstream
+  cloud-factory flow.
 - Kevin applies `ready-to-implement` to supply Implementation Authorization.
-  Issues that require a specification must have a merged specification with
-  material questions resolved. The label cannot bypass that requirement. Simple
-  issues remain eligible for direct implementation.
+  The implementation agent checks that a specification the issue depends on is
+  merged with its material questions resolved, and stops when it is not. Keep
+  that check in the agent rather than gating the workflow. Simple issues remain
+  eligible for direct implementation.
 - Recheck approved specifications against current code. Allow routine implementation
   adjustments; changes to behavior, architecture, or migration strategy require
   revised Design Approval. Continue to follow the implementation workflow's
@@ -138,8 +139,8 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
 | Local refinement | Edits made with the existing coding agent can be pushed to the same spec PR and reviewed before merge. |
 | Duplicate and concurrent starts | One active spec PR remains; repeated starts link to it without editing it or overwriting pushed human changes. |
 | Agent changes unrelated files | The publication step rejects the proposed changes. |
-| Specification merge | The issue remains open, `ready-to-spec` is removed, and implementation does not start. |
-| Implementation label before required approval | Implementation is blocked despite the label. |
+| Specification merge | The issue remains open and no implementation run starts. |
+| Implementation label before required approval | The agent stops and reports the unresolved design instead of publishing an implementation. |
 | Implementation authorization after approval | The implementation run consumes the merged specification, including local refinements, and follows existing verification requirements. |
 | Simple issue | Direct implementation remains available without a specification. |
 | Material divergence from current code | Implementation reports the need for revised Design Approval instead of silently changing the design. |
@@ -167,7 +168,14 @@ not apply a GitHub routing label, start implementation, or publish to GitHub.
 Ticket 01 (draft creation, restricted agent, validated publication, status
 comments) landed in PR #32 and is enabled here. Ticket 02 (triage handoff, label
 trigger, eligibility recheck) landed in PR #36 and passed its real-event trial on
-2026-09-21. Ticket 03 remains open.
+2026-09-21. Ticket 03 is in progress.
+
+On 2026-09-22 Kevin chose to follow the upstream cloud-factory flow rather than
+record Design Approval mechanically. A merge-handler workflow and an
+implementation gate were built, reviewed, and then removed. Approval is a human
+act with no artifact: the implementation agent, not a workflow, checks that a
+specification is merged and resolved. This trades enforcement for a smaller
+system that matches the flow this work is based on.
 
 Repository instructions and existing product decisions remain applicable. In
 particular, the rental-records application domain must not acquire new tax-year
