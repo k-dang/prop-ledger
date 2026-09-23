@@ -129,12 +129,7 @@ failure.
    - known limitations or follow-up work;
    - `Closes #$ISSUE_NUMBER` only when the implementation fully resolves the issue.
 5. Capture the pull request URL returned by `gh pr create`. Do not report success without it.
-6. Dispatch `verify.yml` for the implementation branch with
-   `gh workflow run verify.yml --repo "$REPO" --ref "$IMPLEMENTATION_BRANCH"`.
-   A pull request created with the built-in token does not provide this run automatically. Keep
-   the manual branch run distinct from any pull-request-triggered Verify record. If dispatch fails,
-   report the verification gap accurately instead of claiming the check started.
-7. Update the one trusted rolling issue status with `<!-- opencode-implementation-status -->`,
+6. Update the one trusted rolling issue status with `<!-- opencode-implementation-status -->`,
    `<!-- opencode-implementation-outcome: published -->`, the pull request URL, validation and
    visible-behavior summary, any verification gap, and `RUN_URL`. Leave the issue open for human
    review and merge.
