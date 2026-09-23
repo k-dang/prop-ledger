@@ -10,6 +10,13 @@ path from ticket 01. Every route rechecks eligibility before drafting.
 Actions (free Zen models are refused from GitHub-hosted runners; now on the
 Vercel AI Gateway).
 
+Partly reverted on 2026-09-22 to match `docs/research/2-cloud-software-factory.md`.
+The workflow-side eligibility recheck moved into the specification skill, and the
+enable variable is gone. Triage's explicit dispatch stays: labels applied with
+`GITHUB_TOKEN` do not fire label events, so the handoff cannot rely on the label
+mutation. The checkboxes below record what ticket 02 delivered, not the current
+design.
+
 - [x] Triage uses unresolved product choices, meaningful architectural changes,
   migrations, or scope requiring decomposition to choose `ready-to-spec`. Change
   size alone does not require a specification (`.opencode/skills/triage/SKILL.md`).

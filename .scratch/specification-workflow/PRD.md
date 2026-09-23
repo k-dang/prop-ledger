@@ -23,12 +23,12 @@ assumptions and missing information, and leaves material decisions for Kevin.
 
 Kevin checks out the specification PR locally and refines it interactively with
 his existing coding agent. He pushes the edits and merges the specification when
-the design is agreed. Merging records Design Approval and leaves the issue queued.
-Applying `ready-to-implement` separately supplies Implementation Authorization.
+the design is agreed. Merging is an ordinary PR merge that starts nothing. Kevin
+then swaps `ready-to-spec` for `ready-to-implement` to authorize implementation.
 
-The implementation workflow checks required specifications before starting and
-stops on material conflicts with the approved design. The workflows run in this
-repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
+The implementation agent follows the merged specification and stops when the
+design it depends on is missing or unresolved. The workflows run in this
+repository.
 
 ## User Stories
 
@@ -49,29 +49,29 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
 15. As Kevin, I want specification review in a separate documentation PR, so that design review has a clear endpoint before code review.
 16. As Kevin, I want to check out the specification PR and refine it with my existing coding agent, so that I can resolve questions interactively before merging the agreed design.
 17. As Kevin, I want repeated starts to return the existing active spec PR without editing it, so that retries do not create competing proposals or overwrite local refinement work already pushed to the PR.
-18. As Kevin, I want an approved specification to remain queued without starting implementation, so that Design Approval and scheduling remain separate decisions.
+18. As Kevin, I want merging a specification to start nothing, so that agreeing a design and scheduling its work remain separate decisions.
 19. As Kevin, I want applying `ready-to-implement` to authorize implementation of an approved design, so that I control when queued work starts.
-20. As Kevin, I want required specification approval checked even when the implementation label is present, so that a label cannot bypass unresolved design work.
+20. As Kevin, I want the implementation agent to stop and report when a specification it depends on is missing or unresolved, so that unresolved design work surfaces before code is written.
 21. As Kevin, I want routine implementation adjustments to use judgment while material departures require revised Design Approval, so that work can adapt without silently changing the agreed design.
 22. As Kevin, I want large specifications to propose complete, bounded implementation issues, so that I can approve useful delivery boundaries.
 23. As Kevin, I want child issues created only after my explicit request, with their own acceptance criteria and a shared specification reference, so that a proposed breakdown does not automatically become scheduled work.
-24. As Kevin, I want the spec agent limited to specification output and a separate publisher to validate changes, so that drafting a proposal cannot modify application code or workflow controls.
-25. As Kevin, I want run status to distinguish a published draft, missing information, and an operational failure, so that I can choose the next action without assuming success.
+24. As Kevin, I want the spec agent to change only the issue's specification documents, so that drafting a proposal does not modify application code or workflow controls.
+25. As Kevin, I want the run to report the pull request, the open questions, and any failure honestly, so that I can choose the next action without assuming success.
 
 ## Implementation Decisions
 
 - Extend the existing triage, implementation, and verification flows using their
-  current GitHub Actions and OpenCode foundation. Add a specification skill, a
-  restricted drafting agent, and workflow handling for specification creation,
-  publication, and merge handoff. This does not require application
-  schema changes or a new orchestration platform.
+  current GitHub Actions and OpenCode foundation. Add a specification skill that
+  owns intake, the documents, and the pull request handoff. This does not require
+  application schema changes or a new orchestration platform.
 - Route by unresolved choices and risk. A large diff alone is insufficient reason
   to require a specification. Retain the existing `needs-info` and
   `wait-to-implement` routes; general triage resumption is outside this release.
 - Support triage dispatch, maintainer label application, and manual dispatch for
-  initial specification. Every route rechecks that the issue is open and labeled
+  initial specification. The agent rechecks that the issue is open and labeled
   `ready-to-spec` before drafting. Have triage explicitly dispatch the
-  specification workflow, consistent with its existing implementation handoff.
+  specification workflow, because labels applied with `GITHUB_TOKEN` do not fire
+  label events.
 - Produce both product and technical specifications for each issue requiring
   design. The product specification defines observable behavior, exclusions,
   acceptance criteria, and preserved behavior. The technical specification defines
@@ -80,23 +80,24 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
   established facts, and make material questions explicit for human resolution.
   Missing critical information yields a useful draft PR and concrete questions,
   rather than invented requirements or an implementation attempt.
-- Limit the drafting agent's output to the issue's specification documents. A
-  separate workflow step validates the changed paths before publishing the branch,
-  draft PR, and status comment. Keep publication credentials out of the drafting
-  agent's authority. Reject publication of unrelated application or control changes.
-- Use one active specification PR per issue. Repeated starts link to that PR
-  without editing it, preserving local refinement work already pushed to the PR.
+- Instruct the drafting agent to commit only the issue's specification documents
+  and never application code or control-plane paths, following the upstream
+  cloud-factory flow where one agent owns drafting and publication.
+- Use one active specification PR per issue. A per-issue concurrency group
+  serializes runs, and an existing specification branch stops the run instead of
+  overwriting local refinement work already pushed to the PR.
 - Kevin checks out the specification PR locally, resolves questions interactively
   with his existing coding agent, and pushes the resulting edits to the same PR.
   This uses the normal local development and PR review process.
-- Review specifications in a separate documentation PR. Merging records Design
-  Approval, removes `ready-to-spec`, and leaves the issue open without a routing
-  label. Do not introduce a separate approval label or dispatch implementation
-  on specification merge.
+- Review specifications in a separate documentation PR. Merging starts nothing:
+  no workflow reacts to it, no approval label exists, and no implementation is
+  dispatched. Kevin swaps the routing labels himself, following the upstream
+  cloud-factory flow.
 - Kevin applies `ready-to-implement` to supply Implementation Authorization.
-  Issues that require a specification must have a merged specification with
-  material questions resolved. The label cannot bypass that requirement. Simple
-  issues remain eligible for direct implementation.
+  The implementation agent checks that a specification the issue depends on is
+  merged with its material questions resolved, and stops when it is not. Keep
+  that check in the agent rather than gating the workflow. Simple issues remain
+  eligible for direct implementation.
 - Recheck approved specifications against current code. Allow routine implementation
   adjustments; changes to behavior, architecture, or migration strategy require
   revised Design Approval. Continue to follow the implementation workflow's
@@ -111,10 +112,9 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
 - Preserve useful draft output and report missing information or operational
   failure accurately. Repeated starts must respect the existing-PR
   rule rather than treating a partial run as permission to create duplicates.
-- Gate the workflows on the `SPEC_WORKFLOW_ENABLED` repository variable and
-  verify them through real runs in this repository. Runs read the repository and
-  GitHub issue data only; they do not touch production application services or
-  live rental records.
+- Verify the workflows through real runs in this repository. Runs read the
+  repository and GitHub issue data only; they do not touch production application
+  services or live rental records.
 
 ## Testing Decisions
 
@@ -126,8 +126,8 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
   documents, PR state, status feedback, and whether implementation was dispatched
   or blocked. Judge draft quality against the specification contract rather than
   exact text.
-- There are no local workflow tests. Deterministic publication rules live in the
-  workflow's shell steps and are exercised by real runs.
+- There are no local workflow tests. Drafting, publication, and status reporting
+  are agent behavior and are proven by real runs.
 - The following acceptance scenarios define completion of each ticket:
 
 | Scenario | Required observable result |
@@ -137,9 +137,9 @@ repository behind the `SPEC_WORKFLOW_ENABLED` repository variable.
 | Missing critical information | Useful draft work survives, missing information is explicit, and implementation does not start. |
 | Local refinement | Edits made with the existing coding agent can be pushed to the same spec PR and reviewed before merge. |
 | Duplicate and concurrent starts | One active spec PR remains; repeated starts link to it without editing it or overwriting pushed human changes. |
-| Agent changes unrelated files | The publication step rejects the proposed changes. |
-| Specification merge | The issue remains open, `ready-to-spec` is removed, and implementation does not start. |
-| Implementation label before required approval | Implementation is blocked despite the label. |
+| Agent changes unrelated files | The specification pull request contains only the two documents. |
+| Specification merge | The issue remains open and no implementation run starts. |
+| Implementation label before required approval | The agent stops and reports the unresolved design instead of publishing an implementation. |
 | Implementation authorization after approval | The implementation run consumes the merged specification, including local refinements, and follows existing verification requirements. |
 | Simple issue | Direct implementation remains available without a specification. |
 | Material divergence from current code | Implementation reports the need for revised Design Approval instead of silently changing the design. |
@@ -167,7 +167,24 @@ not apply a GitHub routing label, start implementation, or publish to GitHub.
 Ticket 01 (draft creation, restricted agent, validated publication, status
 comments) landed in PR #32 and is enabled here. Ticket 02 (triage handoff, label
 trigger, eligibility recheck) landed in PR #36 and passed its real-event trial on
-2026-09-21. Ticket 03 remains open.
+2026-09-21. Ticket 03 is in progress.
+
+On 2026-09-22 Kevin aligned this work to the second cloud software factory post
+(`docs/research/2-cloud-software-factory.md`) and nothing beyond it. Two rounds of
+cutting followed.
+
+First, approval stopped being recorded mechanically: a merge-handler workflow and
+an implementation gate were built, reviewed, and then removed. Merging a
+specification starts nothing, and Kevin swaps the routing labels himself.
+
+Second, the specification stage lost the hardening from tickets 01 and 02. One
+trusted agent now drafts, commits, pushes, opens the pull request, and comments,
+as upstream does. The restricted drafting agent, the shell publication validator,
+the four-outcome status comment, the workflow-side eligibility recheck, and the
+`SPEC_WORKFLOW_ENABLED` variable are gone; the repository variable itself can be
+deleted. This trades enforcement for a smaller system that matches the flow this
+work is based on. Review and verification agents remain out of scope until the
+third post.
 
 Repository instructions and existing product decisions remain applicable. In
 particular, the rental-records application domain must not acquire new tax-year

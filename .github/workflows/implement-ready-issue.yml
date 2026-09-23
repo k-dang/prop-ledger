@@ -17,7 +17,7 @@ concurrency:
 jobs:
   implement:
     name: Implement issue and open pull request
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'ready-to-implement'
+    if: github.event_name == 'workflow_dispatch' || (github.event.label.name == 'ready-to-implement' && github.event.issue.state == 'open')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
