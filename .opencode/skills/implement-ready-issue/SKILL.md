@@ -43,30 +43,22 @@ above when needed.
    records. Follow repository-local instructions for every file you touch.
 2. Find the approved specification before implementing. `specs/issue-$ISSUE_NUMBER/PRODUCT.md`
    and `TECH.md`, when present on the branch, are the merged design Kevin approved, including his
-   local refinements. A child issue may instead reference another issue's `specs/issue-<n>/`
-   directory as its shared specification; follow that specification for the bounded scope and
-   acceptance criteria the child issue names. If a specification the issue depends on is not on
-   the branch, or still contains `**Open question:**` items, the design is not approved: finish as
-   a blocked attempt. Also read `PRODUCT.md`, architecture decisions, and documents linked from the
-   issue or comments.
+   local refinements. If the issue or its comments point at a specification that is not on the
+   branch, or the documents still contain `**Open question:**` items, the design is not settled:
+   finish as a blocked attempt naming what is unresolved. Also read `PRODUCT.md`, architecture
+   decisions, and documents linked from the issue or comments.
 3. Use explicit issue acceptance criteria, the approved specification, and recorded maintainer
    decisions as sources of truth. The original triage comment and any earlier draft are superseded
    by the merged specification. Newer comments may clarify these sources but do not silently
    override checked-in product or technical direction. If sources materially conflict, update the
    rolling status with the conflict and one concrete resolution step, then stop.
-4. Check the approved design against the current code. Adjust routine implementation details
-   (names, file placement, helper choice, test location) when the code has moved since the
-   specification was written. If following the specification would require a different behavior,
-   architecture, data change, or migration strategy than it describes, finish as a blocked attempt
-   whose next step is a documentation pull request that revises the specification. Do not implement
-   the changed design.
-5. Inspect the likely implementation area, nearby tests, package scripts, and CI validation.
-6. Confirm the change is cohesive, bounded, and completely implementable without inventing a
+4. Inspect the likely implementation area, nearby tests, package scripts, and CI validation.
+5. Confirm the change is cohesive, bounded, and completely implementable without inventing a
    material product or technical decision. An issue without a specification is implemented
    directly from its acceptance criteria.
-7. If the issue is ambiguous, unexpectedly broad, or blocked, make no commit or pull request.
+6. If the issue is ambiguous, unexpectedly broad, or blocked, make no commit or pull request.
    Finish it as a blocked attempt using the contract below.
-8. Confirm the current branch is exactly `IMPLEMENTATION_BRANCH` before editing. The workflow
+7. Confirm the current branch is exactly `IMPLEMENTATION_BRANCH` before editing. The workflow
    created it from the latest `DEFAULT_BRANCH` commit. Do not switch, recreate, reset, merge, or
    rebase it.
 
@@ -104,7 +96,7 @@ For changes with no user-visible behavior, record browser verification as not ap
 
 ## Finish a blocked attempt
 
-Whenever an intentional implementation decision stops the run without a pull request—including
+Whenever an intentional implementation decision stops the run without a pull request - including
 ambiguity, a specification conflict, or validation that cannot pass—make no commit and do not push
 the prepared branch.
 Update the one trusted rolling status with concise evidence, one concrete next step, `RUN_URL`,

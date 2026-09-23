@@ -8,8 +8,14 @@ design to refine locally with his existing coding agent.
 **Blocked by:** None - can start immediately.
 
 **Status:** done - PR #32 (`spec-ready-issue.yml`, `.opencode/agents/spec.md`,
-`.opencode/skills/spec/SKILL.md`). Enabled here through `SPEC_WORKFLOW_ENABLED`;
-first real draft is PR #34 for issue #33.
+`.opencode/skills/spec/SKILL.md`); first real draft is PR #34 for issue #33.
+
+Partly reverted on 2026-09-22 to match `docs/research/2-cloud-software-factory.md`.
+The restricted drafting agent, the shell publication validator, the four-outcome
+status comment, and `SPEC_WORKFLOW_ENABLED` are gone. One trusted agent now drafts,
+commits, pushes, opens the pull request, and comments, and `.opencode/skills/spec/SKILL.md`
+carries the rules the workflow used to enforce. The checkboxes below record what
+ticket 01 delivered, not the current design.
 
 - [x] A manual workflow run (`workflow_dispatch` with `issue_number`) drafts
   specifications for that issue. The open-and-labeled recheck arrived with

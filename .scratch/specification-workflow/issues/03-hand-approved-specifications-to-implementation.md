@@ -9,12 +9,14 @@ pass.
 
 **Blocked by:** 02 - Connect triage and labels.
 
-**Status:** in progress - implementation skill and spec PR guidance done. Kevin
-decided on 2026-09-22 to follow the upstream cloud-factory flow and keep approval
-human rather than recorded: no merge-handler workflow and no Design Approval gate.
-Merging a specification is an ordinary PR merge; Kevin swaps `ready-to-spec` for
-`ready-to-implement` himself. The unchecked items below record what that decision
-gives up, and the real-run trials need this PR merged first.
+**Status:** in progress - implementation skill done. Kevin decided on 2026-09-22
+to align this work to `docs/research/2-cloud-software-factory.md` and nothing
+beyond it. Approval stays human rather than recorded: no merge-handler workflow
+and no Design Approval gate. Merging a specification is an ordinary PR merge;
+Kevin swaps `ready-to-spec` for `ready-to-implement` himself. The same decision
+stripped the specification stage back to one trusted agent, which tickets 01 and
+02 record. The unchecked items below say what this gives up, and the real-run
+trials need this PR merged first.
 
 - [x] Kevin can check out a generated spec PR, resolve its questions interactively
   with his existing coding agent, push the edits, and merge the agreed documents
@@ -38,11 +40,15 @@ gives up, and the real-run trials need this PR merged first.
   but nothing outside the agent prevents the run, and the label is not withdrawn.
 - [x] Implementation follows the merged specification, including Kevin's local
   refinements, rather than treating the original generated draft or triage comment
-  as the complete design. A manually created child issue can reference the shared
-  specification while identifying its own bounded scope and acceptance criteria.
-- [x] The agent checks the approved design against current code. It may adjust
+  as the complete design. Child issues sharing one specification are not covered:
+  article 2 has no such concept, so a child issue carries its own specification or
+  its own acceptance criteria.
+- [ ] The agent checks the approved design against current code. It may adjust
   routine implementation details, but stops and reports material conflicts in
-  behavior, architecture, or migration strategy for Kevin to resolve.
+  behavior, architecture, or migration strategy for Kevin to resolve. Dropped by
+  the 2026-09-22 decision: checking an implementation against its specification is
+  the third post's verification agent, not article 2. The agent still stops when a
+  specification is missing or still has open questions.
 - [x] Simple issues retain direct implementation without a specification. Existing
   branch, validation, visible-behavior evidence, and implementation PR publication
   contracts remain in effect.
