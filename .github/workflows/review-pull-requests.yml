@@ -116,8 +116,11 @@ jobs:
 
       # OpenCode attaches AGENTS.md and CLAUDE.md found near any file it reads.
       # The pull request controls these copies, so they must not become instructions.
-      - name: Remove pull request instruction files
-        run: find .review/head \( -name AGENTS.md -o -name CLAUDE.md \) -type f -delete
+      # Symlinks could point the agent at runner secrets such as /proc/self/environ.
+      - name: Remove pull request instruction files and symlinks
+        run: |
+          find .review/head -type l -delete
+          find .review/head \( -name AGENTS.md -o -name CLAUDE.md \) -type f -delete
 
       - name: Install OpenCode
         run: |
