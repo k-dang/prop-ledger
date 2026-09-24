@@ -26,8 +26,8 @@ const lineKey = (path: string, side: Side, line: number) =>
 
 // Prefixes every hunk line with the line numbers GitHub uses for review
 // comments, and returns the hunk index of every commentable (path, side, line).
-// ponytail: C-quoted paths (spaces, non-ASCII) are not unquoted, so comments on
-// those files fall back to the review body.
+// Git C-quotes paths with spaces or non-ASCII characters; comments on those
+// files fall back to the review body.
 export function annotateDiff(diff: string) {
   const annotated: string[] = [];
   const hunks = new Map<string, number>();

@@ -101,8 +101,7 @@ jobs:
           # Factory branches are automation/issue-N-* and spec/issue-N.
           if [[ "$head_ref" =~ ^(automation|spec)/issue-([1-9][0-9]*) ]]; then
             gh issue view "${BASH_REMATCH[2]}" --repo "$REPO" \
-              --json number,title,body,state,labels,comments,url > .review/issue.json \
-              || rm -f .review/issue.json
+              --json number,title,body,state,labels,comments,url > .review/issue.json
           fi
 
           printf 'head_sha=%s\n' "$head_sha" >> "$GITHUB_OUTPUT"
