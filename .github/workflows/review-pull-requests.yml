@@ -1,0 +1,216 @@
+name: Review pull request
+
+# Reviews every ready pull request head once: when it opens, after each push, and
+# on manual dispatch. The agent runs from the trusted default branch and reads the
+# pull request as untrusted data, with read-only tools and a read-only token. A
+# separate job with write access publishes the validated review, following
+# .opencode/skills/review-pr.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Open pull request to review
+        required: true
+        type: string
+
+env:
+  PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
+  REPO: ${{ github.repository }}
+
+jobs:
+  resolve:
+    name: Check whether the head needs a review
+    # Events review same-repository pull requests only, so a fork cannot spend the
+    # model budget. Dispatch a fork's pull request manually to review it.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (!github.event.pull_request.draft &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      base_sha: ${{ steps.pr.outputs.base_sha }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      review: ${{ steps.pr.outputs.review }}
+
+    steps:
+      - name: Resolve pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Pull request number must be a positive integer" >&2
+            exit 1
+          fi
+          pull="$(gh api "repos/$REPO/pulls/$PR_NUMBER")"
+          if ! jq -e '.state == "open" and (.draft | not)' <<< "$pull" > /dev/null; then
+            echo "Pull request #$PR_NUMBER is not open and ready for review" >&2
+            exit 1
+          fi
+          head_sha="$(jq -r '.head.sha' <<< "$pull")"
+          reviewed="$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and .commit_id == \"$head_sha\") | .id")"
+          if [ -n "$reviewed" ]; then
+            echo "Head $head_sha already has an automated review"
+          fi
+          {
+            printf 'base_sha=%s\n' "$(jq -r '.base.sha' <<< "$pull")"
+            printf 'head_sha=%s\n' "$head_sha"
+            printf 'review=%s\n' "$([ -z "$reviewed" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+  review:
+    name: Run read-only review
+    needs: resolve
+    if: needs.resolve.outputs.review == 'true'
+    # Job-level, so a skipped run never cancels a review in progress.
+    concurrency:
+      group: review-${{ github.repository }}-${{ inputs.pr_number || github.event.pull_request.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+      HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      payload: ${{ steps.payload.outputs.payload }}
+
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.18.0
+
+      - name: Check out pull request head
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+          ref: ${{ env.HEAD_SHA }}
+          path: pr-head
+          fetch-depth: 0
+
+      # OpenCode loads instruction files (AGENTS.md, CLAUDE.md, CONTEXT.md) near
+      # any file it reads inside the project, so the head moves outside it; the
+      # review agent may read /tmp/pr-head. Symlinks could point the agent at
+      # runner secrets such as /proc/self/environ.
+      - name: Move pull request head out of the project
+        run: |
+          mv pr-head /tmp/pr-head
+          find /tmp/pr-head -type l -delete
+
+      - name: Fetch pull request context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .review
+          gh api "repos/$REPO/pulls/$PR_NUMBER" \
+            --jq '{number, title, body, author: .user.login, base: .base.ref, head: .head.ref, url: .html_url}' \
+            > .review/pr.json
+
+          # A local diff has no size limit, unlike the GitHub diff API.
+          head_diff() {
+            git -C /tmp/pr-head -c core.quotePath=false diff --no-color --no-ext-diff --no-textconv "$@"
+          }
+          head_diff "$BASE_SHA...$HEAD_SHA" > .review/raw.diff
+          node scripts/review-diff.mts annotate < .review/raw.diff > .review/pr.diff
+
+          gh api --paginate --slurp "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            | jq '[.[][] | {id, author: .user.login, state, body, commit_id, submitted_at}]' > .review/reviews.json
+          gh api --paginate --slurp "repos/$REPO/pulls/$PR_NUMBER/comments?per_page=100" \
+            | jq '[.[][] | {id, in_reply_to_id, author: .user.login, path, line, side, body, commit_id, created_at}]' \
+            > .review/threads.json
+          gh api --paginate --slurp "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" \
+            | jq '[.[][] | {author: .user.login, body, created_at}]' > .review/conversation.json
+          jq -n \
+            --slurpfile reviews .review/reviews.json \
+            --slurpfile threads .review/threads.json \
+            --slurpfile conversation .review/conversation.json \
+            '{reviews: $reviews[0], threads: $threads[0], conversation: $conversation[0]}' \
+            > .review/history.json
+
+          # A force push can drop the last reviewed commit; then there is no delta.
+          last_reviewed="$(jq -r '[.[] | select(.author == "github-actions[bot]")] | last | .commit_id // empty' \
+            .review/reviews.json)"
+          if [ -n "$last_reviewed" ]; then
+            head_diff "$last_reviewed" "$HEAD_SHA" > .review/delta.diff || rm -f .review/delta.diff
+          fi
+
+          # Factory branches are automation/issue-N-* and spec/issue-N.
+          if [[ "$(jq -r '.head' .review/pr.json)" =~ ^(automation|spec)/issue-([1-9][0-9]*) ]]; then
+            issue="${BASH_REMATCH[2]}"
+            if ! gh issue view "$issue" --repo "$REPO" \
+                --json number,title,body,state,labels,comments,url > .review/issue.json; then
+              echo "::warning::Could not read issue #$issue; reviewing without it"
+              rm -f .review/issue.json
+            fi
+          fi
+
+      - name: Install OpenCode
+        run: |
+          curl -fsSL https://opencode.ai/install | bash -s -- --version 1.18.32
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Run OpenCode review
+        timeout-minutes: 20
+        env:
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+        run: |
+          opencode run \
+            --agent review \
+            --format json \
+            --title "Pull request $PR_NUMBER review" \
+            "Review the pull request prepared in .review/." \
+            > .review/opencode-events.jsonl || {
+              jq -c 'select(.type == "error")' .review/opencode-events.jsonl >&2
+              exit 1
+            }
+
+      - name: Validate review
+        id: payload
+        run: |
+          set -euo pipefail
+          jq -ers '[.[] | select(.type == "text") | .part.text | select(test("[^[:space:]]"))] | last' \
+            .review/opencode-events.jsonl > .review/review.json
+          payload="$(node scripts/review-diff.mts payload .review/review.json .review/raw.diff "$HEAD_SHA")"
+          printf 'payload=%s\n' "$payload" >> "$GITHUB_OUTPUT"
+          jq -r '"Review of #\(env.PR_NUMBER): \(.comments | length) inline comments"' <<< "$payload"
+
+  publish:
+    name: Publish review
+    needs: [resolve, review]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Post review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          PAYLOAD: ${{ needs.review.outputs.payload }}
+        run: |
+          set -euo pipefail
+          current_sha="$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')"
+          if [ "$current_sha" != "$HEAD_SHA" ]; then
+            echo "Pull request moved to $current_sha after review of $HEAD_SHA; the next run reviews it."
+            exit 0
+          fi
+          printf '%s' "$PAYLOAD" | gh api --method POST "repos/$REPO/pulls/$PR_NUMBER/reviews" --input - > /dev/null
