@@ -21,8 +21,23 @@ const diff = [
   "@@ -1 +0,0 @@",
   "-export const gone = true;",
   "\\ No newline at end of file",
+  "diff --git a/docs/My Notes.md b/docs/My Notes.md",
+  "--- a/docs/My Notes.md\t",
+  "+++ b/docs/My Notes.md\t",
+  "@@ -1 +1 @@",
+  "-old",
+  "+new",
+  'diff --git "a/src/q\\"x.ts" "b/src/q\\"x.ts"',
+  '--- "a/src/q\\"x.ts"',
+  '+++ "b/src/q\\"x.ts"',
+  "@@ -3 +3 @@",
+  "-old",
+  "+new",
   "",
 ].join("\n");
+
+const review = (comments: object[]) =>
+  JSON.stringify({ body: "Found: 0 critical", comments });
 
 describe("annotateDiff", () => {
   it("prefixes hunk lines with GitHub review coordinates", () => {
@@ -45,40 +60,38 @@ describe("annotateDiff", () => {
 describe("buildReviewPayload", () => {
   it("keeps commentable ranges inline and moves the rest to the body", () => {
     const payload = buildReviewPayload(
-      {
-        body: "Found: 0 critical",
-        comments: [
-          {
-            path: "src/a.ts",
-            side: "RIGHT",
-            start_line: 10,
-            line: 12,
-            body: "range",
-          },
-          {
-            path: "src/gone.ts",
-            side: "LEFT",
-            line: 1,
-            body: "deleted",
-            extra: 1,
-          },
-          {
-            path: "src/a.ts",
-            side: "RIGHT",
-            start_line: 12,
-            line: 41,
-            body: "spans hunks",
-          },
-          {
-            path: "src/a.ts",
-            side: "LEFT",
-            line: 11,
-            start_line: 11,
-            body: "empty range",
-          },
-          { path: "src/b.ts", side: "RIGHT", line: 1, body: "not in diff" },
-        ],
-      },
+      `\`\`\`json\n${review([
+        {
+          path: "src/a.ts",
+          side: "RIGHT",
+          start_line: 10,
+          line: 12,
+          body: "range",
+        },
+        {
+          path: "src/gone.ts",
+          side: "LEFT",
+          line: 1,
+          body: "deleted",
+          extra: 1,
+        },
+        { path: "docs/My Notes.md", side: "RIGHT", line: 1, body: "spaced" },
+        {
+          path: "src/a.ts",
+          side: "RIGHT",
+          start_line: 12,
+          line: 41,
+          body: "spans hunks",
+        },
+        {
+          path: "src/a.ts",
+          side: "LEFT",
+          line: 11,
+          start_line: 11,
+          body: "empty range",
+        },
+        { path: "", side: "RIGHT", line: 3, body: "quoted path" },
+      ])}\n\`\`\``,
       diff,
       "abc123",
     );
@@ -93,27 +106,30 @@ describe("buildReviewPayload", () => {
         body: "range",
       },
       { path: "src/gone.ts", side: "LEFT", line: 1, body: "deleted" },
+      { path: "docs/My Notes.md", side: "RIGHT", line: 1, body: "spaced" },
     ]);
     expect(payload).toMatchObject({ commit_id: "abc123", event: "COMMENT" });
     expect(payload.body).toBe(
       [
         "Found: 0 critical",
         "### Comments outside the diff",
-        "**`src/a.ts:41`**\n\nspans hunks",
-        "**`src/a.ts:11`**\n\nempty range",
-        "**`src/b.ts:1`**\n\nnot in diff",
+        "**`src/a.ts:12-41`**\n\nspans hunks",
+        "**`src/a.ts:11-11 (old file)`**\n\nempty range",
+        "**`:3`**\n\nquoted path",
       ].join("\n\n"),
     );
   });
 
   it("rejects output that does not match the contract", () => {
-    expect(() => buildReviewPayload({ comments: [] }, diff, "abc")).toThrow();
+    expect(() =>
+      buildReviewPayload("Here is the review.", diff, "abc"),
+    ).toThrow();
+    expect(() =>
+      buildReviewPayload(JSON.stringify({ comments: [] }), diff, "abc"),
+    ).toThrow();
     expect(() =>
       buildReviewPayload(
-        {
-          body: "x",
-          comments: [{ path: "src/a.ts", side: "UP", line: 1, body: "y" }],
-        },
+        review([{ path: "src/a.ts", side: "UP", line: 1, body: "y" }]),
         diff,
         "abc",
       ),

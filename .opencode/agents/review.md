@@ -8,6 +8,8 @@ permission:
   grep: allow
   glob: allow
   skill: allow
+  external_directory:
+    "/tmp/pr-head/*": allow
 ---
 
 Use the skill tool to load the skill named `review-pr` before doing any analysis. Then

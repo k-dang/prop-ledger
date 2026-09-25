@@ -26,8 +26,8 @@ const lineKey = (path: string, side: Side, line: number) =>
 
 // Prefixes every hunk line with the line numbers GitHub uses for review
 // comments, and returns the hunk index of every commentable (path, side, line).
-// Git C-quotes paths with spaces or non-ASCII characters; comments on those
-// files fall back to the review body.
+// Git C-quotes paths with quotes, backslashes, or control characters; those
+// files have no commentable lines, so comments on them fall back to the body.
 export function annotateDiff(diff: string) {
   const annotated: string[] = [];
   const hunks = new Map<string, number>();
@@ -36,15 +36,19 @@ export function annotateDiff(diff: string) {
   let newLine = 0;
   let hunk = 0;
   let inHunk = false;
+  const mark = (side: Side, line: number) => {
+    if (path) hunks.set(lineKey(path, side, line), hunk);
+  };
 
   for (const text of diff.split("\n")) {
+    // Git ends a header path that contains a space with a tab.
     if (text.startsWith("diff --git ")) {
       path = "";
       inHunk = false;
     } else if (!inHunk && text.startsWith("--- a/")) {
-      path = text.slice("--- a/".length);
+      path = text.slice("--- a/".length).replace(/\t$/, "");
     } else if (!inHunk && text.startsWith("+++ b/")) {
-      path = text.slice("+++ b/".length);
+      path = text.slice("+++ b/".length).replace(/\t$/, "");
     }
 
     const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(text);
@@ -55,16 +59,16 @@ export function annotateDiff(diff: string) {
       inHunk = true;
       annotated.push(text);
     } else if (inHunk && text.startsWith("+")) {
-      hunks.set(lineKey(path, "RIGHT", newLine), hunk);
+      mark("RIGHT", newLine);
       annotated.push(`[NEW:${newLine}] ${text}`);
       newLine += 1;
     } else if (inHunk && text.startsWith("-")) {
-      hunks.set(lineKey(path, "LEFT", oldLine), hunk);
+      mark("LEFT", oldLine);
       annotated.push(`[OLD:${oldLine}] ${text}`);
       oldLine += 1;
     } else if (inHunk && text.startsWith(" ")) {
-      hunks.set(lineKey(path, "LEFT", oldLine), hunk);
-      hunks.set(lineKey(path, "RIGHT", newLine), hunk);
+      mark("LEFT", oldLine);
+      mark("RIGHT", newLine);
       annotated.push(`[OLD:${oldLine},NEW:${newLine}] ${text}`);
       oldLine += 1;
       newLine += 1;
@@ -120,14 +124,21 @@ export function parseReview(value: unknown): Review {
   return { body: review.body, comments };
 }
 
-// Builds the body of POST /repos/{owner}/{repo}/pulls/{number}/reviews. A
+const location = ({ path, side, start_line, line }: ReviewComment) => {
+  const lines = start_line === undefined ? line : `${start_line}-${line}`;
+  return `${path}:${lines}${side === "LEFT" ? " (old file)" : ""}`;
+};
+
+// Builds the body of POST /repos/{owner}/{repo}/pulls/{number}/reviews from the
+// agent's final text, which may wrap the JSON in a Markdown code fence. A
 // comment stays inline only when every line it covers is in one diff hunk.
 export function buildReviewPayload(
-  value: unknown,
+  text: string,
   diff: string,
   commitId: string,
 ) {
-  const review = parseReview(value);
+  const json = text.trim().replace(/^```(?:json)?\n([\s\S]*)\n```$/, "$1");
+  const review = parseReview(JSON.parse(json));
   const { hunks } = annotateDiff(diff);
   const inline: ReviewComment[] = [];
   const outside: ReviewComment[] = [];
@@ -151,8 +162,7 @@ export function buildReviewPayload(
         review.body,
         "### Comments outside the diff",
         ...outside.map(
-          (comment) =>
-            `**\`${comment.path}:${comment.line}\`**\n\n${comment.body}`,
+          (comment) => `**\`${location(comment)}\`**\n\n${comment.body}`,
         ),
       ].join("\n\n")
     : review.body;
@@ -176,7 +186,7 @@ if (import.meta.main) {
   } else if (command === "payload" && args.length === 3) {
     const [reviewPath, diffPath, commitId] = args;
     const payload = buildReviewPayload(
-      JSON.parse(readFileSync(reviewPath, "utf8")),
+      readFileSync(reviewPath, "utf8"),
       readFileSync(diffPath, "utf8"),
       commitId,
     );
