@@ -154,8 +154,12 @@ jobs:
 
           # Factory branches are automation/issue-N-* and spec/issue-N.
           if [[ "$(jq -r '.head' .review/pr.json)" =~ ^(automation|spec)/issue-([1-9][0-9]*) ]]; then
-            gh issue view "${BASH_REMATCH[2]}" --repo "$REPO" \
-              --json number,title,body,state,labels,comments,url > .review/issue.json
+            issue="${BASH_REMATCH[2]}"
+            if ! gh issue view "$issue" --repo "$REPO" \
+                --json number,title,body,state,labels,comments,url > .review/issue.json; then
+              echo "::warning::Could not read issue #$issue; reviewing without it"
+              rm -f .review/issue.json
+            fi
           fi
 
       - name: Install OpenCode
