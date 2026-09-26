@@ -57,3 +57,6 @@ opensrc/
 
 # specification workflow artifacts
 /.spec/
+
+# review workflow artifacts
+/.review/
