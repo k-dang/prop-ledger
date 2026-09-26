@@ -114,6 +114,7 @@ jobs:
     steps:
       - name: Apply label and comment
         env:
+          AUTHOR_ASSOCIATION: ${{ github.event.issue.author_association }}
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
@@ -140,6 +141,17 @@ jobs:
             ready-to-implement) next_workflow=implement-ready-issue.yml ;;
             ready-to-spec) next_workflow=spec-ready-issue.yml ;;
             *) next_workflow= ;;
+          esac
+          # The next agents get a write token and read the issue as input, so only a
+          # trusted author's issue starts them. A maintainer re-labels any other issue.
+          case "$AUTHOR_ASSOCIATION" in
+            OWNER | MEMBER | COLLABORATOR) ;;
+            *)
+              if [ -n "$next_workflow" ]; then
+                echo "::notice::Not starting $next_workflow for a $AUTHOR_ASSOCIATION author; remove and re-add $label to start it."
+              fi
+              next_workflow=
+              ;;
           esac
           if [ -n "$next_workflow" ] && ! gh workflow run "$next_workflow" --repo "$REPO" \
               --ref "$GITHUB_REF_NAME" \
