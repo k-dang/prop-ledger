@@ -3,7 +3,6 @@
 import { Banknote, CopyPlus, Plus, Split, Trash2 } from "lucide-react";
 import { useReducer, useState } from "react";
 import { z } from "zod";
-
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
   finiteFormNumber,
@@ -66,6 +65,7 @@ import {
   mortgagePaymentComponentsBalance,
   type NewMortgagePaymentInput,
 } from "@/lib/mortgage-payments";
+import { nextMonthlyPaymentDate } from "@/lib/payment-date";
 import { formatMoney } from "@/lib/rent-ledger";
 import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
@@ -762,27 +762,4 @@ function formatFormAmount(value: number) {
 
 function formatOptionalFormAmount(value: number | null) {
   return value === null ? "" : formatFormAmount(value);
-}
-
-function nextMonthlyPaymentDate(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day)
-  ) {
-    return "";
-  }
-
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-  const lastDayOfNextMonth = new Date(nextYear, nextMonth, 0).getDate();
-  const nextDay = Math.min(day, lastDayOfNextMonth);
-
-  return [
-    String(nextYear).padStart(4, "0"),
-    String(nextMonth).padStart(2, "0"),
-    String(nextDay).padStart(2, "0"),
-  ].join("-");
 }

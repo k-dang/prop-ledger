@@ -1,9 +1,17 @@
-import type { PropertyReadiness } from "./property-workspace";
-import type {
-  OwnershipReadinessWarning,
-  ReadinessStatus,
-  YearEndReadiness,
-  YearEndReadinessItem,
+import {
+  formatDisplayDate,
+  formatPercent,
+  getPropertyReadiness,
+  type PropertyReadiness,
+  type RentalProperty,
+} from "./property-workspace";
+import {
+  getYearEndReadiness,
+  type OwnershipReadinessWarning,
+  type ReadinessStatus,
+  summarizeReadiness,
+  type YearEndReadiness,
+  type YearEndReadinessItem,
 } from "./year-end-readiness";
 
 export type ReadinessSurface = "property" | "year-end" | "portfolio";
@@ -18,7 +26,51 @@ export type YearEndReadinessRow = {
   actionLabel: string;
 };
 
-export function getYearEndReadinessRows({
+/** The same setup and year-end checklist drives every filing-readiness surface. */
+export function getFilingReadiness(
+  property: RentalProperty,
+  taxYear: number,
+  surface: ReadinessSurface,
+) {
+  const setup = getPropertyReadiness(property);
+  const yearEnd = getYearEndReadiness(property, taxYear);
+  const gaps = setup.tasks.filter((task) => task.status !== "complete");
+  const firstGap = gaps[0];
+  const anchor =
+    firstGap?.id === "units"
+      ? "#units"
+      : firstGap?.id === "owners" || firstGap?.id === "ownership"
+        ? "#ownership-history"
+        : "#property-setup";
+  const rows: YearEndReadinessRow[] = [
+    {
+      id: "property_setup",
+      label:
+        surface === "portfolio" ? "Complete property setup" : "Property setup",
+      status: gaps.length > 0 ? "blocking" : "clear",
+      count: gaps.length,
+      detail:
+        gaps.length > 0
+          ? gaps.map((task) => task.label).join(", ")
+          : "Property details, units, owners, and ownership shares are complete.",
+      href:
+        surface === "property"
+          ? anchor
+          : `/properties/${property.id}?year=${taxYear}${anchor}`,
+      actionLabel: gaps.length > 0 ? "Fix setup" : "View",
+    },
+    ...getYearEndReadinessRows({
+      propertyId: property.id,
+      taxYear,
+      readiness: yearEnd,
+      setupReadiness: setup,
+      surface,
+    }),
+  ];
+  return { setup, yearEnd, rows, ...summarizeReadiness(rows) };
+}
+
+function getYearEndReadinessRows({
   propertyId,
   taxYear,
   readiness,
@@ -28,14 +80,13 @@ export function getYearEndReadinessRows({
   propertyId: string;
   taxYear: number;
   readiness: YearEndReadiness;
-  setupReadiness?: PropertyReadiness;
+  setupReadiness: PropertyReadiness;
   surface: ReadinessSurface;
 }): YearEndReadinessRow[] {
   const rows: YearEndReadinessRow[] = [];
-  const hasOwnershipSetupGap =
-    setupReadiness?.tasks.some(
-      (task) => task.id === "ownership" && task.status !== "complete",
-    ) ?? false;
+  const hasOwnershipSetupGap = setupReadiness.tasks.some(
+    (task) => task.id === "ownership" && task.status !== "complete",
+  );
 
   for (const item of readiness.items) {
     if (item.id === "ownership_allocations" && hasOwnershipSetupGap) {
@@ -48,13 +99,9 @@ export function getYearEndReadinessRows({
   return rows;
 }
 
-export function formatOwnershipReadinessWarning(
-  warning: OwnershipReadinessWarning,
-  formatDate: (value: string) => string,
-  formatPercent: (value: number) => string,
-) {
+function formatOwnershipReadinessWarning(warning: OwnershipReadinessWarning) {
   if (warning.code === "incomplete_ownership_total") {
-    return `Ownership shares total ${formatPercent(warning.totalPercentage)}% on ${formatDate(warning.date)}.`;
+    return `Ownership shares total ${formatPercent(warning.totalPercentage)}% on ${formatDisplayDate(warning.date)}.`;
   }
 
   if (warning.validationCode === "OVER_ALLOCATED") {
@@ -63,7 +110,9 @@ export function formatOwnershipReadinessWarning(
         ? ""
         : ` ${formatPercent(warning.totalPercentage)}%`;
     const date =
-      warning.date === undefined ? "" : ` on ${formatDate(warning.date)}`;
+      warning.date === undefined
+        ? ""
+        : ` on ${formatDisplayDate(warning.date)}`;
 
     return `Active ownership shares cannot exceed 100 percent.${total}${date}.`;
   }
@@ -85,8 +134,8 @@ function toReadinessRow(
     `/transactions?propertyId=${propertyId}&year=${taxYear}&exception=${exception}`;
   const yearEndHref = `/year-end?propertyId=${propertyId}&year=${taxYear}`;
   const propertyHref =
-    surface === "portfolio"
-      ? `/properties/${propertyId}`
+    surface !== "property"
+      ? `/properties/${propertyId}?year=${taxYear}#ownership-history`
       : "#ownership-history";
 
   switch (item.id) {
@@ -147,7 +196,7 @@ function toReadinessRow(
         detail:
           item.ownershipWarning === null
             ? "Ownership shares total 100% through the active part of this tax year."
-            : "Review ownership allocations before export.",
+            : formatOwnershipReadinessWarning(item.ownershipWarning),
         href: propertyHref,
         actionLabel: item.count > 0 ? "Review" : "View",
       };

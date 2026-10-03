@@ -2,6 +2,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { RentLedger } from "@/lib/rent-ledger";
+
+vi.mock("@/lib/actions", () => ({
+  createLease: vi.fn(),
+  deleteLease: vi.fn(),
+  recordRentEvent: vi.fn(),
+  deleteRentEvent: vi.fn(),
+}));
+vi.mock("./lease-document-upload", () => ({ uploadLeaseDocument: vi.fn() }));
+
 import { RentLedgerDetail } from "./rent-ledger-detail";
 
 const ledger: RentLedger = {
@@ -62,16 +71,7 @@ const ledger: RentLedger = {
 describe("lease document controls", () => {
   it("lets a landlord choose and upload a lease document", () => {
     const markup = renderToStaticMarkup(
-      <RentLedgerDetail
-        ledger={ledger}
-        year={2026}
-        defaultOpenLeases
-        onCreateLease={vi.fn()}
-        onDeleteLease={vi.fn()}
-        onRecordEvent={vi.fn()}
-        onDeleteEvent={vi.fn()}
-        onUploadLeaseDocument={vi.fn()}
-      />,
+      <RentLedgerDetail ledger={ledger} year={2026} defaultOpenLeases />,
     );
 
     expect(markup).toContain('type="file"');

@@ -1,4 +1,5 @@
 import type { LedgerEntry } from "@/db/schema";
+import { roundMoney } from "@/lib/money";
 
 type ManualIncomeEntry = Pick<LedgerEntry, "amount" | "type">;
 
@@ -22,8 +23,4 @@ export function summarizeManualIncomeForTax(
   return {
     taxableManualIncome: roundMoney(taxableManualIncome),
   };
-}
-
-function roundMoney(value: number) {
-  return Math.round(value * 100) / 100;
 }

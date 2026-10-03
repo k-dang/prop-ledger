@@ -6,6 +6,7 @@ import type {
   T776Category,
   TransactionSplit,
 } from "@/db/schema";
+import { roundMoney } from "@/lib/money";
 import { RENTAL_INCOME_CATEGORIES, T776_CATEGORIES } from "../db/schema";
 
 export type { TransactionSplit } from "@/db/schema";
@@ -177,8 +178,4 @@ function inclusiveDayCount(start: string, end: string): number {
     Date.parse(`${end}T00:00:00.000Z`) - Date.parse(`${start}T00:00:00.000Z`);
 
   return Math.round(ms / 86_400_000) + 1;
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
 }

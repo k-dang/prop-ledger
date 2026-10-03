@@ -36,30 +36,23 @@ import {
 import { PackageExportPanel } from "@/components/year-end/package-export-panel";
 import type { AccountantNote } from "@/db/schema";
 import type { RentalProperty } from "@/lib/property-workspace";
-import { formatDisplayDate, formatPercent } from "@/lib/property-workspace";
 import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
-import type {
-  OwnershipReadinessWarning,
-  ReadinessStatus,
-  YearEndReadiness,
-  YearEndReadinessItem,
-  YearEndReadinessItemId,
-} from "@/lib/year-end-readiness";
+import type { ReadinessStatus } from "@/lib/year-end-readiness";
+import { getFilingReadiness } from "@/lib/year-end-readiness-view-model";
 
 export function YearEndWorkspace({
   properties,
   property,
-  readiness,
   year,
   notes,
 }: {
   properties: { id: string; name: string }[];
   property: RentalProperty;
-  readiness: YearEndReadiness;
   year: number;
   notes: AccountantNote[];
 }) {
+  const readiness = getFilingReadiness(property, year, "year-end");
   return (
     <section className="grid gap-4">
       <YearEndSelector
@@ -142,38 +135,40 @@ function YearEndSelector({
   );
 }
 
-function ReadinessPanel({ readiness }: { readiness: YearEndReadiness }) {
-  const rows = readiness.items.map((item) =>
-    toReadinessRow(item, readiness.propertyId, readiness.taxYear),
-  );
+function ReadinessPanel({
+  readiness,
+}: {
+  readiness: ReturnType<typeof getFilingReadiness>;
+}) {
+  const { rows, counts, yearEnd } = readiness;
 
   return (
     <Card className="rounded-md">
-      <CardHeader className="gap-3 lg:grid-cols-[1fr_auto]">
+      <CardHeader className="flex flex-col gap-3 lg:flex-row lg:justify-between">
         <div>
-          <CardTitle as="h2">{readiness.propertyName}</CardTitle>
+          <CardTitle as="h2">{yearEnd.propertyName}</CardTitle>
           <CardDescription>
             Blocking items should be resolved before export; warnings stay
             visible for review.
           </CardDescription>
         </div>
-        <CardAction className="flex flex-wrap justify-end gap-2">
-          <ReadinessBadge status="blocking" count={readiness.blockingCount} />
-          <ReadinessBadge status="warning" count={readiness.warningCount} />
-          <ReadinessBadge status="clear" count={readiness.clearCount} />
+        <CardAction className="flex flex-wrap gap-2 lg:shrink-0 lg:justify-end">
+          <ReadinessBadge status="blocking" count={counts.blocking} />
+          <ReadinessBadge status="warning" count={counts.warning} />
+          <ReadinessBadge status="clear" count={counts.clear} />
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4">
         <dl className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <Metric
             label="Uncategorized"
-            value={readiness.uncategorizedTransactions}
+            value={yearEnd.uncategorizedTransactions}
             position="first"
           />
-          <Metric label="Missing receipts" value={readiness.missingReceipts} />
+          <Metric label="Missing receipts" value={yearEnd.missingReceipts} />
           <Metric
             label="Capital marked"
-            value={readiness.capitalAssetTransactions}
+            value={yearEnd.capitalAssetTransactions}
             position="last"
           />
         </dl>
@@ -224,99 +219,6 @@ function ReadinessPanel({ readiness }: { readiness: YearEndReadiness }) {
       </CardContent>
     </Card>
   );
-}
-
-type ReadinessRow = {
-  id: YearEndReadinessItemId;
-  label: string;
-  status: ReadinessStatus;
-  count: number;
-  detail: string;
-  href: string;
-};
-
-function toReadinessRow(
-  item: YearEndReadinessItem,
-  propertyId: string,
-  taxYear: number,
-): ReadinessRow {
-  switch (item.id) {
-    case "uncategorized_transactions":
-      return {
-        ...item,
-        label: "Uncategorized transactions",
-        detail:
-          item.count > 0
-            ? `${item.count} transaction${plural(item.count)} need${item.count === 1 ? "s" : ""} a category before export.`
-            : "All transactions for this year have a category or split.",
-        href: "/transactions",
-      };
-    case "missing_documents":
-      return {
-        ...item,
-        label: "Missing documents",
-        detail:
-          item.count > 0
-            ? `${item.count} expense${plural(item.count)} need${item.count === 1 ? "s" : ""} receipt or invoice support.`
-            : "Expense records for this year have supporting documents.",
-        href: "/transactions",
-      };
-    case "capital_assets":
-      return {
-        ...item,
-        label: "Marked capital assets",
-        detail:
-          item.count > 0
-            ? `${item.count} marked capital transaction${plural(item.count)} need accountant review; ${item.supportedCapitalTransactions} have support attached.`
-            : "No capital asset transactions are marked for this year.",
-        href: `/year-end?propertyId=${propertyId}&year=${taxYear}`,
-      };
-    case "ownership_allocations":
-      return {
-        ...item,
-        label: "Ownership allocations",
-        detail:
-          item.ownershipWarning === null
-            ? "Ownership shares total 100% through the active part of this tax year."
-            : formatOwnershipWarning(item.ownershipWarning),
-        href: `/properties/${propertyId}`,
-      };
-    default:
-      return assertNever(item);
-  }
-}
-
-function formatOwnershipWarning(warning: OwnershipReadinessWarning) {
-  if (warning.code === "incomplete_ownership_total") {
-    return `Ownership shares total ${formatPercent(warning.totalPercentage)}% on ${formatDisplayDate(warning.date)}.`;
-  }
-
-  if (warning.validationCode === "OVER_ALLOCATED") {
-    const total =
-      warning.totalPercentage === undefined
-        ? ""
-        : ` ${formatPercent(warning.totalPercentage)}%`;
-    const date =
-      warning.date === undefined
-        ? ""
-        : ` on ${formatDisplayDate(warning.date)}`;
-
-    return `Active ownership shares cannot exceed 100 percent.${total}${date}.`;
-  }
-
-  if (warning.validationCode === "INVALID_DATE_RANGE") {
-    return "Review ownership effective dates before export.";
-  }
-
-  return "Review ownership percentages before export.";
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled readiness item: ${JSON.stringify(value)}`);
-}
-
-function plural(count: number) {
-  return count === 1 ? "" : "s";
 }
 
 function ReadinessBadge({

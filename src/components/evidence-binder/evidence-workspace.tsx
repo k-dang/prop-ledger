@@ -54,7 +54,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useMutation } from "@/hooks/use-mutation";
 import type { ManualTransactionCreationResult } from "@/lib/evidence-actions";
+import {
+  createManualTransaction,
+  deleteEvidenceDocument,
+  deleteManualTransaction,
+} from "@/lib/evidence-actions";
 import {
   createEmptyManualTransactionDraft,
   formatLedgerCategory,
@@ -68,6 +74,7 @@ import {
 import type { RentalProperty } from "@/lib/property-workspace";
 import { toneIcon, toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
+import { uploadTransactionEvidence } from "./transaction-evidence-upload";
 
 const manualTransactionFormSchema = z
   .object({
@@ -192,30 +199,34 @@ function ExceptionMetric({ label, value }: { label: string; value: number }) {
 
 export function DeductionsAndIncomePanel({
   property,
-  error,
-  evidenceError,
   className,
-  onSubmit,
-  onDeleteTransaction,
-  onUploadEvidence,
-  onDeleteDocument,
 }: {
   property: RentalProperty;
-  error?: string;
-  evidenceError?: string;
   className?: string;
-  onSubmit: (
-    input: NewManualTransactionInput,
-  ) =>
-    | ManualTransactionCreationResult
-    | Promise<ManualTransactionCreationResult>;
-  onDeleteTransaction: (transactionId: string) => boolean | Promise<boolean>;
-  onUploadEvidence: (
-    transactionId: string,
-    formData: FormData,
-  ) => boolean | Promise<boolean>;
-  onDeleteDocument: (documentId: string) => boolean | Promise<boolean>;
 }) {
+  const { error, runMutation } = useMutation();
+  const { error: evidenceError, runMutation: runEvidenceMutation } =
+    useMutation();
+  const onSubmit = (input: NewManualTransactionInput) =>
+    runMutation(() => createManualTransaction(property.id, input));
+  const onDeleteTransaction = async (transactionId: string) =>
+    (
+      await runMutation(() =>
+        deleteManualTransaction(property.id, transactionId),
+      )
+    ).ok;
+  const onUploadEvidence = async (transactionId: string, formData: FormData) =>
+    (
+      await runEvidenceMutation(() =>
+        uploadTransactionEvidence(property.id, transactionId, formData),
+      )
+    ).ok;
+  const onDeleteDocument = async (documentId: string) =>
+    (
+      await runEvidenceMutation(() =>
+        deleteEvidenceDocument(property.id, documentId),
+      )
+    ).ok;
   const entries = property.ledgerEntries.toSorted((a, b) =>
     b.date.localeCompare(a.date),
   );

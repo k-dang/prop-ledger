@@ -14,7 +14,6 @@ import {
 import type { FormEvent, ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { z } from "zod";
-
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
   finiteFormNumber,
@@ -22,7 +21,6 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
-import type { UploadLeaseDocument } from "@/components/rent-ledger/lease-document-upload";
 import {
   Accordion,
   AccordionContent,
@@ -57,6 +55,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RENT_FREQUENCIES, type RentFrequency } from "@/db/schema";
+import { useMutation } from "@/hooks/use-mutation";
+import {
+  createLease,
+  deleteLease,
+  deleteRentEvent,
+  recordRentEvent,
+} from "@/lib/actions";
+import { nextMonthlyPaymentDate } from "@/lib/payment-date";
 import {
   formatMoney,
   getLeaseDocuments,
@@ -69,6 +75,7 @@ import {
 } from "@/lib/rent-ledger";
 import { toneIcon } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
+import { uploadLeaseDocument } from "./lease-document-upload";
 
 const FREQUENCY_LABELS: Record<RentFrequency, string> = {
   monthly: "Monthly",
@@ -116,28 +123,12 @@ const rentEventFormSchema = z
 export function RentLedgerDetail({
   ledger,
   year,
-  leaseError,
-  eventError,
-  documentError,
-  onCreateLease,
-  onDeleteLease,
-  onRecordEvent,
-  onDeleteEvent,
-  onUploadLeaseDocument,
   showActivityTools = true,
   showActivityTable = true,
   defaultOpenLeases,
 }: {
   ledger: RentLedger;
   year: number;
-  leaseError?: string;
-  eventError?: string;
-  documentError?: string;
-  onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
-  onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
-  onDeleteEvent: (rentEventId: string) => boolean | Promise<boolean>;
-  onUploadLeaseDocument: UploadLeaseDocument;
   showActivityTools?: boolean;
   showActivityTable?: boolean;
   defaultOpenLeases?: boolean;
@@ -155,30 +146,14 @@ export function RentLedgerDetail({
         <LeasesPanel
           ledger={ledger}
           unitLabels={unitLabels}
-          leaseError={leaseError}
-          documentError={documentError}
           defaultOpen={defaultOpenLeases}
-          onCreateLease={onCreateLease}
-          onDeleteLease={onDeleteLease}
-          onUploadLeaseDocument={onUploadLeaseDocument}
         />
         {showActivityTools ? (
-          <RentActivityTools
-            ledger={ledger}
-            year={year}
-            error={eventError}
-            onRecordEvent={onRecordEvent}
-            onDeleteEvent={onDeleteEvent}
-          />
+          <RentActivityTools ledger={ledger} year={year} />
         ) : null}
       </div>
       {showActivityTable ? (
-        <RentActivityCard
-          ledger={ledger}
-          year={year}
-          variant="table"
-          onDeleteEvent={onDeleteEvent}
-        />
+        <RentActivityCard ledger={ledger} year={year} variant="table" />
       ) : null}
     </div>
   );
@@ -187,17 +162,11 @@ export function RentLedgerDetail({
 export function RentActivityTools({
   ledger,
   year,
-  error,
-  onRecordEvent,
-  onDeleteEvent,
   className,
   showActivity = true,
 }: {
   ledger: RentLedger;
   year: number;
-  error?: string;
-  onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
-  onDeleteEvent: (rentEventId: string) => boolean | Promise<boolean>;
   className?: string;
   showActivity?: boolean;
 }) {
@@ -207,16 +176,10 @@ export function RentActivityTools({
         className={!showActivity ? "h-full" : undefined}
         leases={ledger.leases}
         latestPayment={getLatestRentPayment(ledger.rentEvents)}
-        error={error}
-        onRecordEvent={onRecordEvent}
+        propertyId={ledger.property.id}
       />
       {showActivity ? (
-        <RentActivityCard
-          ledger={ledger}
-          year={year}
-          variant="compact"
-          onDeleteEvent={onDeleteEvent}
-        />
+        <RentActivityCard ledger={ledger} year={year} variant="compact" />
       ) : null}
     </div>
   );
@@ -286,25 +249,18 @@ export function RentIncomeSummaryStrip({
 function LeasesPanel({
   ledger,
   unitLabels,
-  leaseError,
-  documentError,
   defaultOpen,
-  onCreateLease,
-  onDeleteLease,
-  onUploadLeaseDocument,
 }: {
   ledger: RentLedger;
   unitLabels: Map<string, string>;
-  leaseError?: string;
-  documentError?: string;
   defaultOpen?: boolean;
-  onCreateLease: (input: NewLeaseInput) => boolean | Promise<boolean>;
-  onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onUploadLeaseDocument: UploadLeaseDocument;
 }) {
+  const { error: leaseError, runMutation } = useMutation();
+  const onCreateLease = async (input: NewLeaseInput) =>
+    (await runMutation(() => createLease(input))).ok;
   const hasUnits = ledger.units.length > 0;
   const hasLeases = ledger.leases.length > 0;
-  const hasErrors = Boolean(leaseError || documentError);
+  const hasErrors = Boolean(leaseError);
   const shouldOpen = defaultOpen ?? (!hasUnits || !hasLeases || hasErrors);
   // Freeze the uncontrolled Accordion's initial state; `shouldOpen` is derived
   // from live ledger data and changes across re-renders.
@@ -446,9 +402,6 @@ function LeasesPanel({
                 </div>
               </form>
               <FormErrorAlert message={leaseError} />
-              {documentError ? (
-                <FormErrorAlert message={documentError} />
-              ) : null}
               {!hasUnits ? (
                 <EmptyState icon={Users}>
                   Add a unit to this property before creating a lease.
@@ -461,10 +414,9 @@ function LeasesPanel({
                     <LeaseCard
                       key={lease.id}
                       lease={lease}
+                      propertyId={ledger.property.id}
                       unitLabel={unitLabels.get(lease.unitId) ?? "Unknown unit"}
                       documents={getLeaseDocuments(ledger.documents, lease.id)}
-                      onDeleteLease={onDeleteLease}
-                      onUploadLeaseDocument={onUploadLeaseDocument}
                     />
                   ))}
                 </div>
@@ -479,17 +431,24 @@ function LeasesPanel({
 
 function LeaseCard({
   lease,
+  propertyId,
   unitLabel,
   documents,
-  onDeleteLease,
-  onUploadLeaseDocument,
 }: {
   lease: Lease;
+  propertyId: string;
   unitLabel: string;
   documents: RentLedger["documents"];
-  onDeleteLease: (leaseId: string) => boolean | Promise<boolean>;
-  onUploadLeaseDocument: UploadLeaseDocument;
 }) {
+  const { error, runMutation } = useMutation();
+  const onDeleteLease = async (leaseId: string) =>
+    (await runMutation(() => deleteLease(leaseId))).ok;
+  const onUploadLeaseDocument = async (leaseId: string, formData: FormData) =>
+    (
+      await runMutation(() =>
+        uploadLeaseDocument(propertyId, leaseId, formData),
+      )
+    ).ok;
   const [isDeleting, startDelete] = useTransition();
   const [isUploading, startUpload] = useTransition();
   const fileInputId = `lease-document-${lease.id}`;
@@ -509,6 +468,7 @@ function LeaseCard({
 
   return (
     <div className="grid gap-3 rounded-md border bg-background p-3">
+      <FormErrorAlert message={error} />
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-medium text-sm">{lease.tenantName}</p>
@@ -532,7 +492,9 @@ function LeaseCard({
                   `Delete the lease for ${lease.tenantName}? Recorded rent payments must be deleted first.`,
                 )
               ) {
-                startDelete(() => void onDeleteLease(lease.id));
+                startDelete(async () => {
+                  await onDeleteLease(lease.id);
+                });
               }
             }}
           >
@@ -612,17 +574,18 @@ function LeaseCard({
 
 function RentEventPanel({
   leases,
+  propertyId,
   latestPayment,
-  error,
   className,
-  onRecordEvent,
 }: {
   leases: Lease[];
+  propertyId: string;
   latestPayment?: RentEvent;
-  error?: string;
   className?: string;
-  onRecordEvent: (input: NewRentEventInput) => boolean | Promise<boolean>;
 }) {
+  const { error, runMutation } = useMutation();
+  const onRecordEvent = async (input: NewRentEventInput) =>
+    (await runMutation(() => recordRentEvent(propertyId, input))).ok;
   const [selectedLeaseId, setSelectedLeaseId] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [amount, setAmount] = useState("");
@@ -767,14 +730,15 @@ export function RentActivityCard({
   year,
   variant,
   className,
-  onDeleteEvent,
 }: {
   ledger: RentLedger;
   year: number;
   variant: "compact" | "table";
   className?: string;
-  onDeleteEvent: (rentEventId: string) => boolean | Promise<boolean>;
 }) {
+  const { error, runMutation } = useMutation();
+  const onDeleteEvent = async (eventId: string) =>
+    (await runMutation(() => deleteRentEvent(ledger.property.id, eventId))).ok;
   const [isDeleting, startDelete] = useTransition();
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
   const tenantByLease = new Map(
@@ -797,7 +761,9 @@ export function RentActivityCard({
     if (
       window.confirm("Delete this rent payment? This will update rent totals.")
     ) {
-      startDelete(() => void onDeleteEvent(rentEventId));
+      startDelete(async () => {
+        await onDeleteEvent(rentEventId);
+      });
     }
   };
 
@@ -808,6 +774,7 @@ export function RentActivityCard({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
+        <FormErrorAlert message={error} />
         {events.length === 0 ? (
           <EmptyState icon={Receipt}>
             No rent payments recorded for {year}.
@@ -913,29 +880,6 @@ function getLatestRentPayment(events: RentEvent[]): RentEvent | undefined {
 
 function formatFormAmount(value: number) {
   return value.toFixed(2);
-}
-
-function nextMonthlyPaymentDate(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day)
-  ) {
-    return "";
-  }
-
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-  const lastDayOfNextMonth = new Date(nextYear, nextMonth, 0).getDate();
-  const nextDay = Math.min(day, lastDayOfNextMonth);
-
-  return [
-    String(nextYear).padStart(4, "0"),
-    String(nextMonth).padStart(2, "0"),
-    String(nextDay).padStart(2, "0"),
-  ].join("-");
 }
 
 function pluralize(count: number, noun: string) {

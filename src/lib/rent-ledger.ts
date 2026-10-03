@@ -13,6 +13,7 @@ import type {
   RentEvent,
   Unit,
 } from "@/db/schema";
+import { roundMoney } from "@/lib/money";
 
 export type {
   Lease,
@@ -105,8 +106,4 @@ export function formatMoney(value: number): string {
   // Guard against non-finite inputs so a bad upstream amount renders as $0.00
   // rather than the literal "$NaN".
   return moneyFormatter.format(Number.isFinite(value) ? value : 0);
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
 }

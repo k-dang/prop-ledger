@@ -1,0 +1,1 @@
+DROP TABLE "rental"."property_tax_years" CASCADE;

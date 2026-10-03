@@ -1,29 +1,26 @@
 # No tax-year close state machine
 
-The PRD modeled year-end as a close workflow (open → needs-review → ready-to-close →
-closed → reopened-with-reason) and made "Year-End Close" a primary surface. We dropped
-the state machine.
+Property records stay editable. Filing readiness is derived from setup and
+record exceptions; it is not persisted as a workflow state. The app organizes
+records rather than calculating tax outcomes, so a period lock would introduce
+additional lifecycle rules without protecting a calculation performed here.
 
-Rationale: the app performs no computation that a period-lock would protect (CCA/UCC
-values are accountant-entered records, never calculated here); "needs-review" and
-"ready-to-close" are *derived* live from open exceptions rather than stored states; and
-"reopen-with-reason" is subsumed by the existing audit log of material edits. A
-**Property Tax Year** therefore stays permanently editable. Point-in-time defensibility
-— "what did I hand my accountant?" — comes from **immutable Year-End Package snapshots**
-taken at export, while the underlying live records keep evolving.
+A Year-End Package is generated from current records at download time. The JSON
+file is the point-in-time artifact; later edits cannot change a downloaded file.
+A subsequent download captures the current records. The app does not persist
+packages or keep an edit audit log.
 
 ## Considered Options
 
-- **Full close state machine (PRD as written).** Rejected: high complexity (boundary-
-  spanning records, late arrivals, downstream re-flagging) for a need that snapshots meet
-  more cheaply.
-- **Single "filed" lock bit per Property Tax Year.** Deferred, not rejected: it is
-  additive and can be introduced later if accidental edits to filed years prove painful.
+- **Full close workflow.** Rejected: introduces rules for records spanning years,
+  late arrivals and reopening when an exported snapshot meets the current need.
+- **Persisted packages.** Removed: the downloaded artifact is sufficient for the
+  current workflow; there is no package archive or history interface to support.
 
 ## Consequences
 
-- Readiness is a query over open exceptions, not persisted workflow state.
-- The Year-End Package must be persisted immutably at export; later record edits must not
-  alter previously exported snapshots.
-- CCA carryforward keys off the prior year's *confirmed closing value* (inherited /
-  entered / unknown provenance), not off a "year is closed" flag.
+- Readiness is calculated from current records, never a saved workflow state.
+- Users retain downloaded packages themselves; the app cannot retrieve an earlier
+  download after records change.
+- Supporting files are linked in the JSON package rather than embedded or frozen
+  with it. A package preserves recorded figures and metadata, not the file bytes.

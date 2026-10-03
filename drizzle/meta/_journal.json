@@ -85,6 +85,13 @@
       "when": 1786666199381,
       "tag": "0011_remove_year_end_package_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791059568307,
+      "tag": "0012_remove_unused_property_tax_years",
+      "breakpoints": true
     }
   ]
 }

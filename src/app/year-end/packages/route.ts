@@ -1,4 +1,5 @@
 import { getYearEndPackageSource } from "@/db/queries";
+import { isValidTaxYear } from "@/lib/tax-year";
 import {
   buildYearEndPackageSnapshot,
   type PackageScope,
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
   const taxYear = Number(searchParams.get("year"));
   const ownerId = searchParams.get("ownerId");
 
-  if (propertyId === null || !isTaxYear(taxYear)) {
+  if (propertyId === null || !isValidTaxYear(taxYear)) {
     return new Response("A property and valid tax year are required.", {
       status: 400,
     });
@@ -45,10 +46,6 @@ export async function GET(request: Request) {
       "Cache-Control": "private, no-store",
     },
   });
-}
-
-function isTaxYear(value: number) {
-  return Number.isInteger(value) && value >= 2000 && value <= 2100;
 }
 
 function slug(value: string) {

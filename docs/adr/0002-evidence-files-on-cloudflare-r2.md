@@ -55,8 +55,8 @@ Two deliberate choices a future reader will question:
   app is pre-launch (one bucket to provision, one worker config). Dev junk therefore
   lands next to real evidence; split into per-environment buckets when that starts to
   matter, which touches only bucket names in config and env vars.
-- Local dev requires R2 credentials in `.env.local`; the app no longer runs
-  storage-free.
+- Upload and deletion operations require R2 credentials in `.env.local`. Other
+  app screens can run without storage credentials.
 - The bucket needs CORS rules allowing presigned PUTs from every app origin
   (localhost and the production domain); reads need no CORS since the worker serves
   plain GETs.

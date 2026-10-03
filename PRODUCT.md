@@ -17,6 +17,10 @@ hard at year-end when a return is due. Across the year they manage a small portf
 (a handful of properties), each with its own rent ledger, transactions, supporting
 documents, capital assets, and an evidence binder that substantiates what was claimed.
 
+Professional help remains optional: a landlord can share the recorded figures,
+source documents and review notes with an accountant when needed. The app organizes
+filing support; it does not calculate tax payable or depreciation.
+
 The job to be done: **walk into tax season already ready** — every property's records
 complete, every claimed number backed by evidence, and a clear, trustworthy answer to
 "what do I still need to fix before I file?"

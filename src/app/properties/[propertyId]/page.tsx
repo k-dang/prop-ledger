@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
-
-import { PropertyWorkspace } from "@/components/property-workspace/property-workspace";
+import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPropertyWorkspace } from "@/db/queries";
 import { parseTaxYearSearchParam } from "@/lib/tax-year";
@@ -37,12 +37,15 @@ async function PropertyContent({
   const [{ propertyId }, { year }] = await Promise.all([params, searchParams]);
   const workspace = await getPropertyWorkspace(propertyId);
 
+  if (workspace === undefined) notFound();
   return (
-    <PropertyWorkspace
-      propertyId={propertyId}
-      workspace={workspace}
-      year={parseTaxYearSearchParam(year)}
-    />
+    <section className="flex min-w-0 flex-col gap-4">
+      <PropertyWorkspaceDetail
+        property={workspace.property}
+        rentLedger={workspace.rentLedger}
+        year={parseTaxYearSearchParam(year)}
+      />
+    </section>
   );
 }
 
