@@ -1,107 +1,74 @@
 # Tax-Ready Rental Records
 
-The domain language for an Ontario co-owner rental record-keeping platform whose
-purpose is to produce defensible year-end tax-support packages — not to calculate
-tax outcomes.
+The domain language for an Ontario co-owner rental record-keeping workspace.
+The app organizes recorded income, expenses, ownership and evidence into
+filing-support packages. It does not calculate tax payable or depreciation.
 
 ## Language
 
 **Tax Year**:
-A calendar filing period (e.g. 2026) used to scope records and as a cross-property
-view; it is not a tax-computation context.
+A calendar filing period used to select independently dated records and scope
+portfolio and property views. The selected year lives in the URL (`?year=`).
 _Avoid_: reporting period, fiscal year, accounting period
 
-**Property Tax Year**:
-The per-`(Property, Tax Year)` home for the accountant-entered CCA values for one
-property; always editable, carrying no close or lock state, with readiness derived
-live from open exceptions rather than stored.
-_Avoid_: closed year, locked year, annual record
-
 **Ownership Period**:
-An effective-dated record of one owner's share of a property over a date range; the
-authoritative source of owner allocation, selected by date — never restated per year.
-Its start and end dates are inclusive; gaps are neutral record facts until a
-required active range needs 100% ownership coverage.
+An effective-dated record of one owner's share of a property. Dates are inclusive;
+owner allocations use the share effective on each record's date. Setup checks
+coverage on acquisition; year-end checks the active portion of the selected year.
 _Avoid_: share, allocation, split (as standalone nouns)
 
 **Year-End Package**:
-An immutable snapshot of a property's records for a Tax Year, captured at export; the
-point-in-time artifact that makes filed records defensible.
-_Avoid_: report, export (as names for the defensible artifact)
+A JSON snapshot generated from current records when downloaded, for a property or
+one owner and a Tax Year. The downloaded artifact stays unchanged when records are
+edited; a later download reflects the current records. Packages are not stored in
+the app. Supporting documents remain separate files referenced by the package.
+_Avoid_: closed year, locked year
 
 **Portfolio Dashboard**:
-The portfolio-wide overview that summarizes financial activity and record-readiness
-across all properties, with property-specific detail delegated to each property workspace.
+The overview of recorded financial activity and filing readiness across properties
+for one selected Tax Year. Properties acquired after that year remain visible as
+not active and contribute no totals or readiness counts.
 _Avoid_: property dashboard, setup dashboard
 
 **Gross Rental Income**:
-Rental income earned during a Tax Year, including accrued rent and other recorded
-rental income whether or not the cash has been received.
-_Avoid_: rent collected, cash income
+Recorded rent payments plus recorded non-rent rental income selected for a Tax Year.
+The current rent ledger records payments received, not accrued rent obligations.
+_Avoid_: taxable income, tax payable
 
 **Payments Received**:
-Rent cash received during a Tax Year, reported separately from income earned so
-unpaid rent remains visible.
-_Avoid_: gross rent, gross rental income
+Rent cash recorded as received during a Tax Year, shown separately from non-rent
+income. Leases supply tenant, unit and rent context; they do not create payment rows.
 
 **Deductible Expenses**:
-Recorded current expenses allocated to a Tax Year and classified to T776 expense
-categories, including recorded mortgage interest but excluding mortgage principal.
+Recorded current expenses selected and allocated to a Tax Year and classified to
+T776 expense categories, including recorded mortgage interest and excluding principal.
 _Avoid_: total spending, cash outflow
 
 **Net Recorded Rental Income**:
-Gross Rental Income less Deductible Expenses for a Tax Year; a record summary that
-is neither taxable income nor tax payable.
-_Avoid_: net operating income, net profit, tax outcome
+Gross Rental Income less Deductible Expenses. This is a record summary.
+_Avoid_: net operating income, tax outcome
 
-**Year-End Readiness**:
-The live review status of a Property Tax Year: *Ready* has no open blockers or
-warnings, *Needs review* has warnings only, and *Blocked* has one or more blockers,
-including missing required property setup.
-_Avoid_: setup percentage, completion percentage, closed year
+**Filing Readiness**:
+The shared setup and year-end checklist: *Ready* has no open blockers or warnings,
+*Needs review* has warnings only, and *Blocked* has one or more blockers. Status is
+derived from current records, never stored. Checklist counts count groups; exception
+counts count the individual records or setup tasks requiring attention.
 
 **Evidence Exception**:
-A live record-readiness flag that marks a tax record as needing classification,
-source-document support, or allocation cleanup before it can support year-end filing.
-_Avoid_: error, issue, validation failure
+A record-readiness finding for classification, supporting documents or allocation
+cleanup. Ownership setup gaps appear once in the filing checklist rather than also
+appearing as a year-end ownership warning.
+_Avoid_: error, validation failure
 
 ## Relationships
 
-- A **Tax Year** scopes records to a filing period and does not compute balances;
-  cross-year continuity is preservation of confirmed values and flagging of gaps,
-  never a calculated chain.
-- The **Portfolio Dashboard** is scoped to one selected **Tax Year**, with the
-  selection carried in the URL so its financial activity and readiness summaries
-  always share the same explicit period.
-- A property acquired after the selected **Tax Year** is outside that dashboard's
-  active scope: it contributes no totals or readiness counts but remains visible
-  as not active for that year.
-- A **Tax Year** is a thin overlay over independently-dated records: it *selects*
-  rent, ledger, and ownership records by date rather than *owning* them.
-- A **Property Tax Year** is always editable; there is no close or lock state.
-  Readiness is derived live from open exceptions. The portfolio-wide **Tax Year** view
-  aggregates across **Property Tax Years**.
-- Defensibility comes from the **Year-End Package** snapshot, not from freezing live
-  records: the package is frozen at export while the underlying records keep evolving.
-- An **Ownership Period** belongs to a property and is selected by a **Tax Year**
-  through date overlap; a mid-year change is two periods, both visible within the year.
-- A **Property Tax Year**'s opening CCA/UCC value has one of three provenances:
-  *inherited* (copied from the prior year's confirmed closing), *entered* (manual
-  onboarding value), or *unknown* (an accountant-needed flag). It is never computed,
-  and tracks the prior year's current confirmed closing live; if that changes, the
-  downstream opening is re-flagged.
-
-## Flagged ambiguities
-
-- An earlier design treated the **Tax Year** as a computation context that derives
-  CCA/UCC balances. Resolved: the app stores accountant-confirmed values and flags
-  missing history; it never computes the chain.
-- A close/freeze state machine (open → ready → closed → reopened) was considered and
-  dropped. Resolved: years stay editable; readiness is derived, reopen-with-reason
-  folds into the audit log, and point-in-time defensibility is provided by the
-  **Year-End Package** snapshot.
-- The tax year was removed from the current code entirely (YAGNI), not just the
-  selector: setup readiness and ownership history no longer take a year. Ownership
-  readiness uses the property's acquisition date as its coverage reference. Reintroduce
-  a year — sourced from the URL (e.g. `?year=`), not a synced global store — when a
-  year-scoped surface (rent ledger, year-end package, CCA) actually needs one.
+- Property setup owns units, owners and effective-dated ownership periods.
+- A Tax Year selects rent payments, transactions, mortgage payments and ownership
+  periods by date. Prepaid amounts are allocated over their recorded service dates.
+- Documents are uploaded once and linked to the records they support. Files live
+  in R2; document metadata and links live in the database.
+- Dashboard, property and year-end screens share the filing checklist. The package
+  records year-end transaction and ownership exceptions alongside its source data.
+- Live records remain editable. Downloading a package creates no close or lock state.
+- DIY landlords are the primary users. Professional review is optional; review notes
+  can accompany records and packages without turning the app into a tax calculator.

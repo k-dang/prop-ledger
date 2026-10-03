@@ -3,10 +3,7 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { YearEndWorkspace } from "@/components/year-end/year-end-workspace";
 import { getAccountantNotes, getPortfolio } from "@/db/queries";
-import {
-  getDefaultTaxYear,
-  getYearEndReadiness,
-} from "@/lib/year-end-readiness";
+import { parseTaxYearSearchParam } from "@/lib/tax-year";
 
 export const metadata: Metadata = {
   title: "Year-End | Rental Property Workspace",
@@ -77,7 +74,7 @@ async function YearEndContent({
     );
   }
 
-  const parsedYear = parseYear(year);
+  const parsedYear = parseTaxYearSearchParam(year);
   const notes = await getAccountantNotes(property.id, parsedYear);
 
   return (
@@ -87,17 +84,8 @@ async function YearEndContent({
         name: candidate.name,
       }))}
       property={property}
-      readiness={getYearEndReadiness(property, parsedYear)}
       year={parsedYear}
       notes={notes}
     />
   );
-}
-
-function parseYear(raw: string | undefined): number {
-  const parsed = Number(raw);
-
-  return Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100
-    ? parsed
-    : getDefaultTaxYear();
 }

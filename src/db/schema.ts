@@ -164,14 +164,6 @@ export const transactionSplits = pgTable("transaction_splits", {
   memo: text("memo"),
 });
 
-export const propertyTaxYears = pgTable("property_tax_years", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  propertyId: uuid("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  year: integer("year").notNull(),
-});
-
 export const accountantNotes = pgTable("accountant_notes", {
   id: uuid("id").primaryKey().defaultRandom(),
   propertyId: uuid("property_id")
@@ -232,7 +224,6 @@ export const propertiesRelations = relations(properties, ({ many }) => ({
   units: many(units),
   owners: many(owners),
   ownershipPeriods: many(ownershipPeriods),
-  taxYears: many(propertyTaxYears),
   rentEvents: many(rentEvents),
   ledgerEntries: many(ledgerEntries),
   mortgagePayments: many(mortgagePayments),
@@ -334,16 +325,6 @@ export const ownershipPeriodsRelations = relations(
   }),
 );
 
-export const propertyTaxYearsRelations = relations(
-  propertyTaxYears,
-  ({ one }) => ({
-    property: one(properties, {
-      fields: [propertyTaxYears.propertyId],
-      references: [properties.id],
-    }),
-  }),
-);
-
 export const accountantNotesRelations = relations(
   accountantNotes,
   ({ one }) => ({
@@ -364,7 +345,6 @@ export type Property = typeof properties.$inferSelect;
 export type Unit = typeof units.$inferSelect;
 export type Owner = typeof owners.$inferSelect;
 export type OwnershipPeriod = typeof ownershipPeriods.$inferSelect;
-export type PropertyTaxYearRow = typeof propertyTaxYears.$inferSelect;
 export type Lease = typeof leases.$inferSelect;
 export type RentEvent = typeof rentEvents.$inferSelect;
 export type LedgerEntry = typeof ledgerEntries.$inferSelect;
@@ -378,7 +358,6 @@ export type NewProperty = typeof properties.$inferInsert;
 export type NewUnit = typeof units.$inferInsert;
 export type NewOwner = typeof owners.$inferInsert;
 export type NewOwnershipPeriod = typeof ownershipPeriods.$inferInsert;
-export type NewPropertyTaxYear = typeof propertyTaxYears.$inferInsert;
 export type NewLease = typeof leases.$inferInsert;
 export type NewRentEvent = typeof rentEvents.$inferInsert;
 export type NewLedgerEntry = typeof ledgerEntries.$inferInsert;

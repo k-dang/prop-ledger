@@ -1,14 +1,12 @@
+import { roundMoney } from "@/lib/money";
 import type { RentEvent, T776Category } from "../db/schema";
 import { T776_CATEGORIES } from "../db/schema";
 import { entryYear, formatExpenseCategory } from "./evidence-binder";
-import {
-  getPropertyReadiness,
-  type RentalProperty,
-} from "./property-workspace";
+import type { RentalProperty } from "./property-workspace";
 import { isValidTaxYear } from "./tax-year";
 import { summarizeTaxYearFinancials } from "./tax-year-financial-summary";
-import { getYearEndReadiness } from "./year-end-readiness";
-import { getYearEndReadinessRows } from "./year-end-readiness-view-model";
+import type { FilingStatus } from "./year-end-readiness";
+import { getFilingReadiness } from "./year-end-readiness-view-model";
 
 export { isValidTaxYear } from "./tax-year";
 
@@ -16,11 +14,7 @@ export type DashboardPropertySource = RentalProperty & {
   rentEvents: RentEvent[];
 };
 
-export type PropertyDashboardStatus =
-  | "ready"
-  | "needs_review"
-  | "blocked"
-  | "not_active";
+export type PropertyDashboardStatus = FilingStatus | "not_active";
 
 export type FinancialSummary = {
   grossRentalIncome: number;
@@ -144,42 +138,37 @@ function buildPropertyResult(
     };
   }
 
-  const setup = getPropertyReadiness(property);
-  const readiness = getYearEndReadiness(property, taxYear);
+  const readiness = getFilingReadiness(property, taxYear, "portfolio");
   const financials = summarizeTaxYearFinancials(
     property,
     taxYear,
-    readiness.uncategorizedTransactions,
+    readiness.yearEnd.uncategorizedTransactions,
   );
   const categories = financials.expenseCategoryTotals;
-  const blockingCount = setup.setupGapCount + readiness.blockingCount;
-  const warningCount = readiness.warningCount;
-  const attentionItems = buildAttentionItems(
-    property,
-    taxYear,
-    setup,
-    readiness,
-  );
-  // Derive the exception count from the same deduped attention items the UI
-  // renders, so the comparison table's "Exceptions" column always reconciles
-  // with the "Needs attention" list (e.g. the ownership_allocations item that
-  // buildAttentionItems suppresses when a setup ownership gap already covers it).
-  const openExceptionCount = attentionItems.reduce(
-    (total, item) => total + item.count,
-    0,
+  const attentionItems: DashboardAttentionItem[] = readiness.rows.flatMap(
+    (row) =>
+      row.status === "clear"
+        ? []
+        : [
+            {
+              id: `${property.id}:${row.id === "property_setup" ? "setup" : row.id}`,
+              propertyId: property.id,
+              propertyName: property.name,
+              severity: row.status,
+              label: row.label,
+              detail: row.detail,
+              count: row.count,
+              href: row.href,
+            },
+          ],
   );
 
   return {
     summary: {
       propertyId: property.id,
       propertyName: property.name,
-      status:
-        blockingCount > 0
-          ? "blocked"
-          : warningCount > 0
-            ? "needs_review"
-            : "ready",
-      openExceptionCount,
+      status: readiness.status,
+      openExceptionCount: readiness.openExceptionCount,
       grossRentalIncome: financials.grossRentalIncome,
       paymentsReceived: financials.paymentsReceived,
       deductibleExpenses: financials.deductibleExpenses,
@@ -203,54 +192,6 @@ function mergeCategoryTotals(
   }
 
   return totals;
-}
-
-function buildAttentionItems(
-  property: DashboardPropertySource,
-  taxYear: number,
-  setup: ReturnType<typeof getPropertyReadiness>,
-  readiness: ReturnType<typeof getYearEndReadiness>,
-): DashboardAttentionItem[] {
-  const items: DashboardAttentionItem[] = [];
-  const setupGaps = setup.tasks.filter((task) => task.status !== "complete");
-
-  if (setupGaps.length > 0) {
-    items.push({
-      id: `${property.id}:setup`,
-      propertyId: property.id,
-      propertyName: property.name,
-      severity: "blocking",
-      label: "Complete property setup",
-      detail: setupGaps.map((task) => task.label).join(", "),
-      count: setupGaps.length,
-      href: `/properties/${property.id}`,
-    });
-  }
-
-  for (const row of getYearEndReadinessRows({
-    propertyId: property.id,
-    taxYear,
-    readiness,
-    setupReadiness: setup,
-    surface: "portfolio",
-  })) {
-    if (row.status === "clear") {
-      continue;
-    }
-
-    items.push({
-      id: `${property.id}:${row.id}`,
-      propertyId: property.id,
-      propertyName: property.name,
-      severity: row.status,
-      label: row.label,
-      detail: row.detail,
-      count: row.count,
-      href: row.href,
-    });
-  }
-
-  return items;
 }
 
 function buildExpenseCategorySummaries(
@@ -358,8 +299,4 @@ function compareAttentionItems(
   }
 
   return left.propertyName.localeCompare(right.propertyName);
-}
-
-function roundMoney(value: number) {
-  return Math.round(value * 100) / 100;
 }

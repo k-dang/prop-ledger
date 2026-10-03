@@ -6,6 +6,7 @@ import type {
   RentalIncomeCategory,
   T776Category,
 } from "@/db/schema";
+import { roundMoney } from "@/lib/money";
 import { type LedgerEntryWithSplits, splitsBalance } from "./allocations";
 
 export type {
@@ -305,8 +306,4 @@ function hasDocumentLink(
       (link) => link.targetType === targetType && link.targetId === targetId,
     ),
   );
-}
-
-function roundMoney(value: number) {
-  return Math.round(value * 100) / 100;
 }

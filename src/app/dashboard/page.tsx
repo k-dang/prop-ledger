@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-
 import { Dashboard } from "@/components/property-workspace/dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPortfolioDashboardSource } from "@/db/queries";
-import {
-  buildPortfolioDashboard,
-  isValidTaxYear,
-} from "@/lib/portfolio-dashboard";
-import { getDefaultTaxYear } from "@/lib/year-end-readiness";
+import { buildPortfolioDashboard } from "@/lib/portfolio-dashboard";
+import { parseTaxYearSearchParam } from "@/lib/tax-year";
 
 export const metadata: Metadata = {
   title: "Dashboard | Rental Property Workspace",
@@ -36,7 +32,7 @@ async function DashboardContent({
     searchParams,
     getPortfolioDashboardSource(),
   ]);
-  const taxYear = parseYear(year);
+  const taxYear = parseTaxYearSearchParam(year);
 
   return <Dashboard summary={buildPortfolioDashboard(properties, taxYear)} />;
 }
@@ -63,10 +59,4 @@ function DashboardSkeleton() {
       <Skeleton className="h-80 border" />
     </section>
   );
-}
-
-function parseYear(raw: string | undefined) {
-  const parsed = Number(raw);
-
-  return isValidTaxYear(parsed) ? parsed : getDefaultTaxYear();
 }

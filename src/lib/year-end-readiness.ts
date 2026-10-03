@@ -13,6 +13,27 @@ import type { RentalProperty } from "./property-workspace";
 
 export type ReadinessStatus = "clear" | "blocking" | "warning";
 
+export type FilingStatus = "ready" | "needs_review" | "blocked";
+
+/** Counts checklist groups separately from the individual records needing attention. */
+export function summarizeReadiness(
+  items: { status: ReadinessStatus; count: number }[],
+) {
+  const counts = { blocking: 0, warning: 0, clear: 0 };
+  let openExceptionCount = 0;
+  for (const item of items) {
+    counts[item.status] += 1;
+    if (item.status !== "clear") openExceptionCount += item.count;
+  }
+  const status: FilingStatus =
+    counts.blocking > 0
+      ? "blocked"
+      : counts.warning > 0
+        ? "needs_review"
+        : "ready";
+  return { counts, status, openExceptionCount };
+}
+
 export type YearEndReadinessItemId =
   | "uncategorized_transactions"
   | "missing_documents"
@@ -133,13 +154,14 @@ export function getYearEndReadiness(
     },
   ];
 
+  const { counts } = summarizeReadiness(items);
   return {
     propertyId: property.id,
     propertyName: property.name,
     ...dashboardCounts,
-    blockingCount: items.filter((item) => item.status === "blocking").length,
-    warningCount: items.filter((item) => item.status === "warning").length,
-    clearCount: items.filter((item) => item.status === "clear").length,
+    blockingCount: counts.blocking,
+    warningCount: counts.warning,
+    clearCount: counts.clear,
     items,
   };
 }

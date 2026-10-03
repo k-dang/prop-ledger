@@ -1,4 +1,5 @@
 import type { MortgagePayment, NewMortgagePayment } from "@/db/schema";
+import { roundMoney } from "@/lib/money";
 
 export type { MortgagePayment } from "@/db/schema";
 
@@ -42,8 +43,4 @@ export function mortgagePaymentComponentsBalance(
   );
 
   return componentTotal === roundMoney(payment.totalAmount);
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
 }

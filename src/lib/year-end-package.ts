@@ -1,3 +1,4 @@
+import { roundMoney } from "@/lib/money";
 import type { AccountantNote, RentEvent, T776Category } from "../db/schema";
 import { T776_CATEGORIES } from "../db/schema";
 import type { YearEndPackageSnapshot } from "../domain/year-end-package";
@@ -60,11 +61,11 @@ export function buildYearEndPackageSnapshot({
       interest:
         payment.interest === null
           ? null
-          : round(payment.interest * allocation.factorFor(payment.date)),
+          : roundMoney(payment.interest * allocation.factorFor(payment.date)),
     }));
   const allocatedRentEvents = source.rentEvents.map((event) => ({
     ...event,
-    amount: round(event.amount * allocation.factorFor(event.date)),
+    amount: roundMoney(event.amount * allocation.factorFor(event.date)),
   }));
   const expenseSummary = summarizeDeductibleExpenses(
     allocatedEntries,
@@ -153,10 +154,10 @@ function allocateEntry(
 
   return {
     ...entry,
-    amount: round(yearAmount * factor),
+    amount: roundMoney(yearAmount * factor),
     splits: entry.splits.map((split) => ({
       ...split,
-      amount: round(split.amount * splitRatio * factor),
+      amount: roundMoney(split.amount * splitRatio * factor),
     })),
   };
 }
@@ -176,9 +177,11 @@ function buildT776Summary(
   return {
     grossRent: rent.grossRent,
     otherRentalIncome: nonRentIncome,
-    totalIncome: round(rent.grossRentalIncome + nonRentIncome),
+    totalIncome: roundMoney(rent.grossRentalIncome + nonRentIncome),
     expenses,
-    totalExpenses: round(expenses.reduce((sum, row) => sum + row.amount, 0)),
+    totalExpenses: roundMoney(
+      expenses.reduce((sum, row) => sum + row.amount, 0),
+    ),
   };
 }
 
@@ -234,7 +237,7 @@ function buildCapitalTransactions(
       vendor: entry.vendor,
       memo: entry.reviewNotes ?? entry.memo,
       sourceAmount: entry.amount,
-      allocatedAmount: round(entry.amount * factorFor(entry.date)),
+      allocatedAmount: roundMoney(entry.amount * factorFor(entry.date)),
       documentIds: getDocumentsForTarget(
         source.documents,
         "transaction",
@@ -297,8 +300,4 @@ function propertyIdentity(source: YearEndPackageSource) {
       .filter(Boolean)
       .join(", "),
   };
-}
-
-function round(value: number) {
-  return Math.round(value * 100) / 100;
 }

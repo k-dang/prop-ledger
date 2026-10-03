@@ -1,4 +1,5 @@
 import type { RentEvent, T776Category } from "@/db/schema";
+import { roundMoney } from "@/lib/money";
 import {
   allocatePrepaidToYear,
   isPrepaid,
@@ -79,8 +80,4 @@ function allocateEntryToYear(
       amount: roundMoney(split.amount * splitRatio),
     })),
   };
-}
-
-function roundMoney(value: number) {
-  return Math.round(value * 100) / 100;
 }
