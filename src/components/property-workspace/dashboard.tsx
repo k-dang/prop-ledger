@@ -1,35 +1,23 @@
 import {
   AlertTriangle,
   ArrowRight,
-  BanknoteArrowDown,
-  BanknoteArrowUp,
   Building2,
   CheckCircle2,
-  CircleDollarSign,
+  ChevronRight,
   ClipboardCheck,
-  Landmark,
-  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { AddPropertySheet } from "@/components/property-workspace/add-property-sheet";
+import { TaxYearSelect } from "@/components/property-workspace/tax-year-select";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Field, FieldLabel } from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -40,7 +28,6 @@ import {
 } from "@/components/ui/table";
 import type {
   DashboardAttentionItem,
-  FinancialSummary,
   PortfolioDashboardSummary,
   PropertyDashboardStatus,
 } from "@/lib/portfolio-dashboard";
@@ -48,6 +35,11 @@ import { formatMoney } from "@/lib/rent-ledger";
 import { toneChip, toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 
+/**
+ * Portfolio dashboard, readiness first: answers "am I ready to file?" with a
+ * single next step, then keeps financials and expense categories in
+ * collapsible sections so the page stays calm on load.
+ */
 export function Dashboard({ summary }: { summary: PortfolioDashboardSummary }) {
   return (
     <section className="grid gap-6">
@@ -56,12 +48,9 @@ export function Dashboard({ summary }: { summary: PortfolioDashboardSummary }) {
         <EmptyPortfolio />
       ) : (
         <>
-          <FinancialKpis totals={summary.totals} taxYear={summary.taxYear} />
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-            <AttentionPanel summary={summary} />
-            <ExpenseBreakdown summary={summary} />
-          </div>
-          <PropertyComparison summary={summary} />
+          <ReadinessOverview summary={summary} />
+          <FinancialsSection summary={summary} />
+          <ExpensesSection summary={summary} />
         </>
       )}
     </section>
@@ -70,47 +59,19 @@ export function Dashboard({ summary }: { summary: PortfolioDashboardSummary }) {
 
 function DashboardHeader({ summary }: { summary: PortfolioDashboardSummary }) {
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-lg bg-brand-surface text-brand">
-            <Landmark className="size-4" aria-hidden="true" />
-          </span>
-          <div>
-            <h1 className="font-semibold text-2xl tracking-tight">
-              Portfolio dashboard
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Financial activity and record-readiness across every property.
-            </p>
-          </div>
-        </div>
+        <h1 className="font-semibold text-2xl tracking-tight">Portfolio</h1>
+        <p className="text-muted-foreground text-sm">
+          <span className="tabular-nums">{summary.taxYear}</span> tax year
+        </p>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <div className="flex items-center gap-2">
         {summary.properties.length > 0 ? (
-          <form className="flex items-end gap-2">
-            <Field className="gap-1">
-              <FieldLabel htmlFor="dashboard-year">Tax year</FieldLabel>
-              <Select name="year" defaultValue={String(summary.taxYear)}>
-                <SelectTrigger
-                  id="dashboard-year"
-                  className="w-28 bg-background"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  {summary.availableTaxYears.map((year) => (
-                    <SelectItem key={year} value={String(year)}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Button type="submit" variant="outline">
-              Apply
-            </Button>
-          </form>
+          <TaxYearSelect
+            taxYear={summary.taxYear}
+            years={summary.availableTaxYears}
+          />
         ) : null}
         <AddPropertySheet />
       </div>
@@ -128,7 +89,7 @@ function EmptyPortfolio() {
         <div>
           <h2 className="font-semibold text-lg">Add your first property</h2>
           <p className="mt-1 text-muted-foreground text-sm">
-            Portfolio totals and readiness checks will appear here once a
+            Filing readiness and portfolio totals will appear here once a
             property workspace exists.
           </p>
         </div>
@@ -137,283 +98,252 @@ function EmptyPortfolio() {
   );
 }
 
-function FinancialKpis({
-  totals,
-  taxYear,
+function ReadinessOverview({
+  summary,
 }: {
-  totals: FinancialSummary;
-  taxYear: number;
+  summary: PortfolioDashboardSummary;
 }) {
-  const incomplete = totals.incompleteTransactionCount;
-  const cards = [
-    {
-      label: "Gross rental income",
-      value: totals.grossRentalIncome,
-      hint: "Rent payments plus non-rent income",
-      icon: BanknoteArrowUp,
-      accent: toneChip.ready,
-      // Uncategorized entries can be recorded income, so gross income is as
-      // provisional as the expense and net figures when any remain.
-      incomplete: incomplete > 0,
-    },
-    {
-      label: "Payments received",
-      value: totals.paymentsReceived,
-      hint: "Tenant rent payments recorded",
-      icon: WalletCards,
-      accent: toneChip.info,
-      incomplete: false,
-    },
-    {
-      label: "Deductible expenses",
-      value: totals.deductibleExpenses,
-      hint: "Categorized T776 current expenses",
-      icon: BanknoteArrowDown,
-      accent: toneChip.review,
-      incomplete: incomplete > 0,
-    },
-    {
-      label: "Net recorded rental income",
-      value: totals.netRecordedRentalIncome,
-      hint: "Recorded income less deductible expenses",
-      icon: CircleDollarSign,
-      accent: "bg-brand-surface text-brand",
-      incomplete: incomplete > 0,
-    },
-  ];
-
-  return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
-      {cards.map((card) => {
-        const Icon = card.icon;
-
-        return (
-          <Card className="gap-4 bg-background py-5" key={card.label}>
-            <CardHeader className="grid grid-cols-[1fr_auto] items-start px-5">
-              <div className="min-w-0">
-                <CardDescription className="font-medium text-xs uppercase tracking-wide">
-                  {card.label}
-                </CardDescription>
-                <CardTitle className="mt-2 font-semibold text-2xl tabular-nums tracking-tight">
-                  {formatMoney(card.value)}
-                </CardTitle>
-              </div>
-              <span
-                className={cn(
-                  "grid size-9 place-items-center rounded-lg",
-                  card.accent,
-                )}
-              >
-                <Icon className="size-4" aria-hidden="true" />
-              </span>
-            </CardHeader>
-            <CardContent className="border-t px-5 pt-4 text-muted-foreground text-xs">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <span className="min-w-0 flex-1 basis-36">{card.hint}</span>
-                {card.incomplete ? (
-                  <Badge
-                    variant="outline"
-                    className={cn("max-w-full rounded-md", toneSurface.review)}
-                  >
-                    Incomplete
-                  </Badge>
-                ) : (
-                  <span className="shrink-0 tabular-nums">{taxYear}</span>
-                )}
-              </div>
-              {card.incomplete ? (
-                <p className="mt-2 text-review-text">
-                  Review {incomplete} uncategorized transaction
-                  {incomplete === 1 ? "" : "s"}; totals may change.
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+  const active = summary.properties.filter(
+    (property) => property.status !== "not_active",
   );
-}
-
-function AttentionPanel({ summary }: { summary: PortfolioDashboardSummary }) {
+  const [nextStep, ...remaining] = summary.attentionItems;
   const blocking = summary.attentionItems.filter(
     (item) => item.severity === "blocking",
   ).length;
-  const warnings = summary.attentionItems.length - blocking;
+
+  if (active.length === 0) {
+    return (
+      <Card className="bg-background px-6 py-5">
+        <p className="text-muted-foreground text-sm">
+          No properties were active in {summary.taxYear}.
+        </p>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="bg-background">
-      <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
-        <div>
-          <CardTitle as="h2">Needs attention</CardTitle>
-          <CardDescription>
-            Portfolio-wide work ordered by filing impact.
-          </CardDescription>
-        </div>
-        <CardAction className="flex gap-2">
-          <Badge variant="outline" className={statusClassName("blocked")}>
-            {blocking} blocking
-          </Badge>
-          <Badge variant="outline" className={statusClassName("needs_review")}>
-            {warnings} review
-          </Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        {summary.attentionItems.length === 0 ? (
-          <div
+    <Card className="gap-5 bg-background px-6 py-6">
+      <div>
+        <h2 className="font-semibold text-xl tracking-tight">
+          <span className="tabular-nums">
+            {summary.readinessCounts.ready} of {active.length}
+          </span>{" "}
+          {active.length === 1 ? "property" : "properties"} ready to file
+        </h2>
+        <p className="mt-0.5 text-muted-foreground text-sm tabular-nums">
+          {nextStep
+            ? `${plural(summary.attentionItems.length, "open item")} · ${blocking} blocking`
+            : "No open items"}
+        </p>
+      </div>
+      <ul
+        className="flex gap-1"
+        aria-label={`Readiness by property: ${summary.readinessCounts.ready} ready, ${summary.readinessCounts.needs_review} need review, ${summary.readinessCounts.blocked} blocked`}
+      >
+        {active.map((property) => (
+          <li
             className={cn(
-              "flex items-center gap-3 rounded-lg border p-4",
-              toneSurface.ready,
+              "h-1.5 flex-1 rounded-full",
+              progressClassName(property.status),
             )}
-          >
+            key={property.propertyId}
+            title={`${property.propertyName}: ${statusLabel(property.status, summary.taxYear)}`}
+          />
+        ))}
+      </ul>
+      {nextStep ? (
+        <>
+          <NextStep item={nextStep} />
+          {remaining.length > 0 ? (
+            <Collapsible>
+              <CollapsibleTrigger className="group flex items-center gap-1 rounded-md text-muted-foreground text-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
+                <ChevronRight
+                  className="size-4 transition-transform group-data-panel-open:rotate-90"
+                  aria-hidden="true"
+                />
+                {plural(remaining.length, "more item")}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-3 divide-y border-t">
+                  {remaining.map((item) => (
+                    <AttentionRow item={item} key={item.id} />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : null}
+        </>
+      ) : (
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4",
+            toneSurface.ready,
+          )}
+        >
+          <div className="flex items-center gap-3">
             <CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="font-medium text-sm">No open portfolio issues</p>
-              <p className="text-ready-text text-xs">
-                All active properties are ready for {summary.taxYear}.
-              </p>
-            </div>
+            <p className="font-medium text-sm">
+              Every active property is ready for {summary.taxYear}.
+            </p>
           </div>
-        ) : (
-          <div className="max-h-96 divide-y overflow-y-auto pr-1">
-            {summary.attentionItems.map((item) => (
-              <AttentionRow item={item} key={item.id} />
-            ))}
-          </div>
-        )}
-      </CardContent>
+          <Link
+            href={`/year-end?year=${summary.taxYear}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Go to year-end
+            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          </Link>
+        </div>
+      )}
     </Card>
   );
 }
 
-function AttentionRow({ item }: { item: DashboardAttentionItem }) {
-  const blocking = item.severity === "blocking";
-
+/** The single highest-impact attention item, promoted to a call to action. */
+function NextStep({ item }: { item: DashboardAttentionItem }) {
   return (
-    <div className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-      <span
-        className={cn(
-          "grid size-8 place-items-center rounded-full",
-          blocking ? toneChip.blocked : toneChip.review,
-        )}
-      >
-        {blocking ? (
-          <AlertTriangle className="size-4" aria-hidden="true" />
-        ) : (
-          <ClipboardCheck className="size-4" aria-hidden="true" />
-        )}
-      </span>
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-brand-surface px-5 py-4">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="font-medium text-sm">{item.label}</p>
-          <Badge variant="outline" className="rounded-md">
-            {item.count}
-          </Badge>
-        </div>
-        <p className="truncate text-muted-foreground text-xs">
-          {item.propertyName} · {item.detail}
+        <p className="font-medium text-brand-text text-xs uppercase tracking-wide">
+          Next step
         </p>
+        <p className="mt-1 font-medium">
+          {item.label} · {item.propertyName}
+        </p>
+        <p className="text-muted-foreground text-sm">{item.detail}</p>
       </div>
       <Link
         href={item.href}
         className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "w-fit",
+          buttonVariants(),
+          "bg-brand text-brand-foreground hover:bg-brand-hover",
         )}
       >
-        Review
+        Start
         <ArrowRight data-icon="inline-end" aria-hidden="true" />
       </Link>
     </div>
   );
 }
 
-function ExpenseBreakdown({ summary }: { summary: PortfolioDashboardSummary }) {
+function AttentionRow({ item }: { item: DashboardAttentionItem }) {
+  const blocking = item.severity === "blocking";
+  const Icon = blocking ? AlertTriangle : ClipboardCheck;
+
   return (
-    <Card className="bg-background">
-      <CardHeader>
-        <CardTitle as="h2">Expenses by T776 category</CardTitle>
-        <CardDescription>
-          Deductible expenses recorded for {summary.taxYear}.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {summary.expenseCategories.length === 0 ? (
-          <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-muted-foreground text-sm">
-            No categorized expenses recorded for this Tax Year.
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {summary.expenseCategories.map((category) => (
-              <Link
-                href={`/transactions?year=${summary.taxYear}&category=${category.category}`}
-                className="group grid gap-1.5"
-                key={category.category}
-              >
-                <span className="flex items-center justify-between gap-3 text-sm">
-                  <span className="truncate group-hover:underline">
-                    {category.label}
-                  </span>
-                  <span className="shrink-0 font-medium tabular-nums">
-                    {formatMoney(category.amount)}
-                  </span>
-                </span>
-                <span className="h-2 overflow-hidden rounded-full bg-muted">
-                  <span
-                    className="block h-full rounded-full bg-brand transition-colors group-hover:bg-brand-hover"
-                    style={{ width: `${category.percentage}%` }}
-                  />
-                </span>
-                <span className="text-muted-foreground text-xs tabular-nums">
-                  {category.percentage}% of recorded deductible expenses
-                </span>
-              </Link>
-            ))}
-          </div>
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-3 last:pb-0">
+      <span
+        className={cn(
+          "grid size-7 place-items-center rounded-full",
+          blocking ? toneChip.blocked : toneChip.review,
         )}
-      </CardContent>
+      >
+        <Icon className="size-3.5" aria-hidden="true" />
+        <span className="sr-only">{blocking ? "Blocking" : "Review"}</span>
+      </span>
+      <div className="min-w-0">
+        <p className="font-medium text-sm">
+          {item.label} · {item.propertyName}
+        </p>
+        <p className="truncate text-muted-foreground text-xs">{item.detail}</p>
+      </div>
+      <Link
+        href={item.href}
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        Review
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * Card whose body expands from a one-line header. `aside` is the collapsed
+ * summary shown next to the title so the section is useful while closed.
+ */
+function CollapsibleSection({
+  title,
+  aside,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  aside: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="gap-0 bg-background py-0">
+      <Collapsible defaultOpen={defaultOpen}>
+        <h2>
+          <CollapsibleTrigger className="group flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-3.5 text-left outline-none hover:bg-muted/40 focus-visible:inset-ring-3 focus-visible:inset-ring-ring/50">
+            <span className="flex items-center gap-2 font-medium">
+              <ChevronRight
+                className="size-4 text-muted-foreground transition-transform group-data-panel-open:rotate-90"
+                aria-hidden="true"
+              />
+              {title}
+            </span>
+            <span className="pl-6 font-normal text-muted-foreground text-sm sm:pl-0">
+              {aside}
+            </span>
+          </CollapsibleTrigger>
+        </h2>
+        <CollapsibleContent>
+          <div className="border-t">{children}</div>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
 
-function PropertyComparison({
+function FinancialsSection({
   summary,
 }: {
   summary: PortfolioDashboardSummary;
 }) {
+  const { totals } = summary;
+  const incomplete = totals.incompleteTransactionCount;
+
   return (
-    <Card className="bg-background">
-      <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
-        <div>
-          <CardTitle as="h2">Property comparison</CardTitle>
-          <CardDescription>
-            Recorded financials and Year-End Readiness for {summary.taxYear}.
-          </CardDescription>
-        </div>
-        <CardAction className="flex flex-wrap gap-2">
-          <Badge variant="outline" className={statusClassName("ready")}>
-            {summary.readinessCounts.ready} ready
-          </Badge>
-          <Badge variant="outline" className={statusClassName("needs_review")}>
-            {summary.readinessCounts.needs_review} review
-          </Badge>
-          <Badge variant="outline" className={statusClassName("blocked")}>
-            {summary.readinessCounts.blocked} blocked
-          </Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="overflow-x-auto">
+    <CollapsibleSection
+      title="Financials"
+      defaultOpen
+      aside={
+        <span className="flex flex-wrap gap-x-5 tabular-nums">
+          <SummaryFigure label="Income" value={totals.grossRentalIncome} />
+          <SummaryFigure label="Expenses" value={totals.deductibleExpenses} />
+          <SummaryFigure label="Net" value={totals.netRecordedRentalIncome} />
+        </span>
+      }
+    >
+      {incomplete > 0 ? (
+        // Uncategorized entries may be income or expenses, so every total is
+        // provisional until they are categorized.
+        <p
+          className={cn(
+            "flex items-center gap-2 border-b px-4 py-2.5 text-sm",
+            toneSurface.review,
+          )}
+        >
+          <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+          Totals are provisional until {plural(incomplete, "transaction")}{" "}
+          {incomplete === 1 ? "is" : "are"} categorized.
+        </p>
+      ) : null}
+      <div className="overflow-x-auto px-2 pb-1">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Property</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Gross income</TableHead>
-              <TableHead className="text-right">Rent payments</TableHead>
-              <TableHead className="text-right">Expenses</TableHead>
-              <TableHead className="text-right">Net recorded</TableHead>
-              <TableHead className="text-right">Exceptions</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">
+                Income
+              </TableHead>
+              <TableHead className="hidden text-right sm:table-cell">
+                Expenses
+              </TableHead>
+              <TableHead className="text-right">Net</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -434,83 +364,146 @@ function PropertyComparison({
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge
-                      status={property.status}
-                      taxYear={summary.taxYear}
-                    />
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "rounded-md",
+                        toneSurface[statusTone(property.status)],
+                      )}
+                    >
+                      {statusLabel(property.status, summary.taxYear)}
+                    </Badge>
                   </TableCell>
                   <MoneyCell
                     value={property.grossRentalIncome}
                     inactive={inactive}
-                  />
-                  <MoneyCell
-                    value={property.paymentsReceived}
-                    inactive={inactive}
+                    className="hidden sm:table-cell"
                   />
                   <MoneyCell
                     value={property.deductibleExpenses}
                     inactive={inactive}
+                    className="hidden sm:table-cell"
                   />
                   <MoneyCell
                     value={property.netRecordedRentalIncome}
                     inactive={inactive}
                   />
-                  <TableCell className="text-right tabular-nums">
-                    {inactive ? "—" : property.openExceptionCount}
-                  </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleSection>
   );
 }
 
-function MoneyCell({ value, inactive }: { value: number; inactive: boolean }) {
+function SummaryFigure({ label, value }: { label: string; value: number }) {
   return (
-    <TableCell className="text-right tabular-nums">
-      {inactive ? "—" : formatMoney(value)}
+    <span>
+      {label}{" "}
+      <span className="font-medium text-foreground">{formatMoney(value)}</span>
+    </span>
+  );
+}
+
+function MoneyCell({
+  value,
+  inactive,
+  className,
+}: {
+  value: number;
+  inactive: boolean;
+  className?: string;
+}) {
+  return (
+    <TableCell className={cn("text-right tabular-nums", className)}>
+      {inactive ? (
+        <span className="text-muted-foreground">—</span>
+      ) : (
+        formatMoney(value)
+      )}
     </TableCell>
   );
 }
 
-function StatusBadge({
-  status,
-  taxYear,
-}: {
-  status: PropertyDashboardStatus;
-  taxYear: number;
-}) {
-  const label =
-    status === "ready"
-      ? "Ready"
-      : status === "needs_review"
-        ? "Needs review"
-        : status === "blocked"
-          ? "Blocked"
-          : `Not active in ${taxYear}`;
+function ExpensesSection({ summary }: { summary: PortfolioDashboardSummary }) {
+  const [largest] = summary.expenseCategories;
 
   return (
-    <Badge variant="outline" className={statusClassName(status)}>
-      {label}
-    </Badge>
+    <CollapsibleSection
+      title="Expenses by T776 category"
+      aside={
+        largest ? (
+          <>
+            Largest:{" "}
+            <span className="font-medium text-foreground">{largest.label}</span>{" "}
+            <span className="tabular-nums">{largest.percentage}%</span>
+          </>
+        ) : (
+          "None recorded"
+        )
+      }
+    >
+      {summary.expenseCategories.length === 0 ? (
+        <p className="px-4 py-4 text-muted-foreground text-sm">
+          No categorized expenses recorded for {summary.taxYear}.
+        </p>
+      ) : (
+        <div className="grid gap-1 py-2">
+          {summary.expenseCategories.map((category) => (
+            <Link
+              href={`/transactions?year=${summary.taxYear}&category=${category.category}`}
+              className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-4 py-2 text-sm hover:bg-muted/40 sm:grid-cols-[14rem_minmax(0,1fr)_auto]"
+              key={category.category}
+            >
+              <span className="truncate group-hover:underline">
+                {category.label}
+              </span>
+              <span
+                className="col-span-2 row-start-2 h-1.5 overflow-hidden rounded-full bg-muted sm:col-span-1 sm:row-start-auto"
+                title={`${category.percentage}% of recorded deductible expenses`}
+              >
+                <span
+                  className="block h-full rounded-full bg-brand transition-colors group-hover:bg-brand-hover"
+                  style={{ width: `${category.percentage}%` }}
+                />
+              </span>
+              <span className="text-right font-medium tabular-nums">
+                {formatMoney(category.amount)}
+                <span className="ml-2 inline-block w-12 font-normal text-muted-foreground text-xs">
+                  {category.percentage}%
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </CollapsibleSection>
   );
 }
 
-function statusClassName(status: PropertyDashboardStatus) {
-  if (status === "ready") {
-    return cn("rounded-md", toneSurface.ready);
-  }
+function statusTone(status: PropertyDashboardStatus) {
+  if (status === "ready") return "ready";
+  if (status === "needs_review") return "review";
+  if (status === "blocked") return "blocked";
+  return "inactive";
+}
 
-  if (status === "needs_review") {
-    return cn("rounded-md", toneSurface.review);
-  }
+function progressClassName(status: PropertyDashboardStatus) {
+  if (status === "ready") return "bg-ready";
+  if (status === "needs_review") return "bg-review";
+  if (status === "blocked") return "bg-blocked";
+  return "bg-muted";
+}
 
-  if (status === "blocked") {
-    return cn("rounded-md", toneSurface.blocked);
-  }
+function statusLabel(status: PropertyDashboardStatus, taxYear: number) {
+  if (status === "ready") return "Ready";
+  if (status === "needs_review") return "Needs review";
+  if (status === "blocked") return "Blocked";
+  return `Not active in ${taxYear}`;
+}
 
-  return cn("rounded-md", toneSurface.inactive);
+function plural(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

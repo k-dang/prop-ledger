@@ -7,8 +7,8 @@ import { buildPortfolioDashboard } from "@/lib/portfolio-dashboard";
 import { parseTaxYearSearchParam } from "@/lib/tax-year";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Rental Property Workspace",
-  description: "Manage rental property setup readiness and ownership records.",
+  title: "Portfolio | Rental Property Workspace",
+  description: "Filing readiness and financials across every property.",
 };
 
 export default function DashboardPage({
@@ -42,21 +42,14 @@ function DashboardSkeleton() {
     <section className="grid gap-6">
       <div className="flex items-center justify-between gap-4">
         <div className="grid gap-2">
-          <Skeleton className="h-7 w-52" />
-          <Skeleton className="h-4 w-80 max-w-full" />
+          <Skeleton className="h-7 w-36" />
+          <Skeleton className="h-4 w-24" />
         </div>
-        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-8 w-56" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {["income", "payments", "expenses", "net"].map((metric) => (
-          <Skeleton className="h-36 border" key={metric} />
-        ))}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-        <Skeleton className="h-96 border" />
-        <Skeleton className="h-96 border" />
-      </div>
-      <Skeleton className="h-80 border" />
+      <Skeleton className="h-56 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
+      <Skeleton className="h-13 rounded-xl" />
     </section>
   );
 }

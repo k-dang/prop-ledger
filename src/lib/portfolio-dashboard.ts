@@ -18,7 +18,6 @@ export type PropertyDashboardStatus = FilingStatus | "not_active";
 
 export type FinancialSummary = {
   grossRentalIncome: number;
-  paymentsReceived: number;
   deductibleExpenses: number;
   netRecordedRentalIncome: number;
   incompleteTransactionCount: number;
@@ -28,7 +27,6 @@ export type PropertyDashboardSummary = FinancialSummary & {
   propertyId: string;
   propertyName: string;
   status: PropertyDashboardStatus;
-  openExceptionCount: number;
 };
 
 export type DashboardAttentionItem = {
@@ -81,9 +79,6 @@ export function buildPortfolioDashboard(
     (result, property) => ({
       grossRentalIncome: roundMoney(
         result.grossRentalIncome + property.grossRentalIncome,
-      ),
-      paymentsReceived: roundMoney(
-        result.paymentsReceived + property.paymentsReceived,
       ),
       deductibleExpenses: roundMoney(
         result.deductibleExpenses + property.deductibleExpenses,
@@ -168,9 +163,7 @@ function buildPropertyResult(
       propertyId: property.id,
       propertyName: property.name,
       status: readiness.status,
-      openExceptionCount: readiness.openExceptionCount,
       grossRentalIncome: financials.grossRentalIncome,
-      paymentsReceived: financials.paymentsReceived,
       deductibleExpenses: financials.deductibleExpenses,
       netRecordedRentalIncome: financials.netRecordedRentalIncome,
       incompleteTransactionCount: financials.incompleteTransactionCount,
@@ -264,7 +257,6 @@ function inactivePropertySummary(
     propertyId: property.id,
     propertyName: property.name,
     status: "not_active",
-    openExceptionCount: 0,
     ...emptyFinancialSummary(),
   };
 }
@@ -272,7 +264,6 @@ function inactivePropertySummary(
 function emptyFinancialSummary(): FinancialSummary {
   return {
     grossRentalIncome: 0,
-    paymentsReceived: 0,
     deductibleExpenses: 0,
     netRecordedRentalIncome: 0,
     incompleteTransactionCount: 0,
