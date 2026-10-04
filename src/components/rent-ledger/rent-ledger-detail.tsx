@@ -3,7 +3,6 @@
 import {
   CheckCircle2,
   CircleDot,
-  CopyPlus,
   FileText,
   type LucideIcon,
   Plus,
@@ -11,8 +10,9 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -30,7 +30,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -56,22 +55,20 @@ import {
 } from "@/components/ui/table";
 import { RENT_FREQUENCIES, type RentFrequency } from "@/db/schema";
 import { useMutation } from "@/hooks/use-mutation";
+import { SAVE_FAILED_MESSAGE } from "@/lib/action-utils";
 import {
   createLease,
   deleteLease,
   deleteRentEvent,
   recordRentEvent,
 } from "@/lib/actions";
-import { nextMonthlyPaymentDate } from "@/lib/payment-date";
 import {
   formatMoney,
   getLeaseDocuments,
   type Lease,
   type NewLeaseInput,
   type NewRentEventInput,
-  type RentEvent,
   type RentLedger,
-  summarizeRentLedger,
 } from "@/lib/rent-ledger";
 import { toneIcon } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
@@ -123,12 +120,14 @@ const rentEventFormSchema = z
 export function RentLedgerDetail({
   ledger,
   year,
+  today,
   showActivityTools = true,
   showActivityTable = true,
   defaultOpenLeases,
 }: {
   ledger: RentLedger;
   year: number;
+  today: string;
   showActivityTools?: boolean;
   showActivityTable?: boolean;
   defaultOpenLeases?: boolean;
@@ -149,99 +148,20 @@ export function RentLedgerDetail({
           defaultOpen={defaultOpenLeases}
         />
         {showActivityTools ? (
-          <RentActivityTools ledger={ledger} year={year} />
+          <div className="grid gap-4">
+            <RentPaymentPanel
+              key={`${year}-${ledger.leases.map((lease) => lease.id).join("-")}`}
+              ledger={ledger}
+              year={year}
+              today={today}
+            />
+            <RentActivityCard ledger={ledger} year={year} variant="compact" />
+          </div>
         ) : null}
       </div>
       {showActivityTable ? (
         <RentActivityCard ledger={ledger} year={year} variant="table" />
       ) : null}
-    </div>
-  );
-}
-
-export function RentActivityTools({
-  ledger,
-  year,
-  className,
-  showActivity = true,
-}: {
-  ledger: RentLedger;
-  year: number;
-  className?: string;
-  showActivity?: boolean;
-}) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-4", className)}>
-      <RentEventPanel
-        className={!showActivity ? "h-full" : undefined}
-        leases={ledger.leases}
-        latestPayment={getLatestRentPayment(ledger.rentEvents)}
-        propertyId={ledger.property.id}
-      />
-      {showActivity ? (
-        <RentActivityCard ledger={ledger} year={year} variant="compact" />
-      ) : null}
-    </div>
-  );
-}
-
-export function RentIncomeSummaryStrip({
-  ledger,
-  year,
-  className,
-}: {
-  ledger: RentLedger;
-  year: number;
-  className?: string;
-}) {
-  const summary = summarizeRentLedger(ledger.rentEvents, year);
-  const payments = ledger.rentEvents
-    .filter(
-      (event) => event.type === "payment" && event.date.startsWith(`${year}-`),
-    )
-    .toSorted((a, b) => b.date.localeCompare(a.date));
-  const latestPayment = payments[0];
-  const figures = [
-    {
-      label: "Rent received",
-      value: formatMoney(summary.paymentsReceived),
-      hint: `Gross rent for ${year}`,
-    },
-    {
-      label: "Payments recorded",
-      value: String(summary.paymentCount),
-      hint: "Saved rent payment records",
-    },
-    {
-      label: "Latest payment",
-      value:
-        latestPayment === undefined
-          ? "No payments"
-          : formatMoney(latestPayment.amount),
-      hint: latestPayment?.date ?? "Record payments as they are received",
-    },
-  ];
-
-  return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-md border bg-card text-card-foreground",
-        className,
-      )}
-    >
-      <dl className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        {figures.map((figure) => (
-          <div className="min-w-0 p-3" key={figure.label}>
-            <dt className="text-muted-foreground text-xs">{figure.label}</dt>
-            <dd className="mt-1 truncate font-semibold text-lg tabular-nums">
-              {figure.value}
-            </dd>
-            <dd className="mt-1 truncate text-muted-foreground text-xs">
-              {figure.hint}
-            </dd>
-          </div>
-        ))}
-      </dl>
     </div>
   );
 }
@@ -280,7 +200,7 @@ function LeasesPanel({
   const handleSubmit = createFormSubmit(leaseFormSchema, onCreateLease);
 
   return (
-    <Card className="rounded-md py-0">
+    <Card id="leases" className="scroll-mt-20 rounded-md py-0">
       <h2 className="sr-only">Leases</h2>
       <Accordion defaultValue={initialOpen}>
         <AccordionItem value="leases" className="border-b-0">
@@ -572,154 +492,242 @@ function LeaseCard({
   );
 }
 
-function RentEventPanel({
-  leases,
-  propertyId,
-  latestPayment,
+export function RentPaymentPanel({
+  ledger,
+  year,
+  today,
   className,
 }: {
-  leases: Lease[];
-  propertyId: string;
-  latestPayment?: RentEvent;
+  ledger: RentLedger;
+  year: number;
+  today: string;
   className?: string;
 }) {
-  const { error, runMutation } = useMutation();
-  const onRecordEvent = async (input: NewRentEventInput) =>
-    (await runMutation(() => recordRentEvent(propertyId, input))).ok;
-  const [selectedLeaseId, setSelectedLeaseId] = useState("");
-  const [paymentDate, setPaymentDate] = useState("");
-  const [amount, setAmount] = useState("");
+  const { leases } = ledger;
+  const onlyLease = leases.length === 1 ? leases[0] : undefined;
+  const defaultDate = today.startsWith(`${year}-`) ? today : "";
+  const [selectedLeaseId, setSelectedLeaseId] = useState(onlyLease?.id ?? "");
+  const [paymentDate, setPaymentDate] = useState(defaultDate);
+  const [amount, setAmount] = useState(
+    onlyLease ? formatFormAmount(onlyLease.rentAmount) : "",
+  );
   const [memo, setMemo] = useState("");
-  const hasLeases = leases.length > 0;
-  const selectedLeaseLabel =
-    leases.find((lease) => lease.id === selectedLeaseId)?.tenantName ??
-    "Select lease";
+  const [isSaving, setIsSaving] = useState(false);
+  const saving = useRef(false);
+  const [error, setError] = useState<string>();
+  const [savedPayment, setSavedPayment] = useState<{
+    tenant: string;
+    amount: number;
+    date: string;
+  }>();
+  const selectedLease = leases.find((lease) => lease.id === selectedLeaseId);
+  const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
+  const canSave =
+    selectedLease !== undefined && paymentDate !== "" && Number(amount) > 0;
   const handleSubmit = createFormSubmit(rentEventFormSchema, async (input) => {
-    const saved = await onRecordEvent(input);
-
-    if (saved) {
-      setSelectedLeaseId("");
-      setPaymentDate("");
+    if (saving.current || !selectedLease) return false;
+    saving.current = true;
+    setIsSaving(true);
+    setError(undefined);
+    setSavedPayment(undefined);
+    try {
+      const result = await recordRentEvent(ledger.property.id, input);
+      if (!result.ok) {
+        setError(result.error ?? SAVE_FAILED_MESSAGE);
+        return false;
+      }
+      setSavedPayment({
+        tenant: selectedLease.tenantName,
+        amount: input.amount,
+        date: input.date,
+      });
+      // Keep the tenant selected, but require a fresh amount for another payment.
       setAmount("");
       setMemo("");
+      setPaymentDate(defaultDate);
+      return true;
+    } catch {
+      setError(SAVE_FAILED_MESSAGE);
+      return false;
+    } finally {
+      saving.current = false;
+      setIsSaving(false);
     }
-
-    return saved;
   });
-
-  function prefillLatestPayment() {
-    if (latestPayment === undefined) {
-      return;
-    }
-
-    setSelectedLeaseId(latestPayment.leaseId ?? "");
-    setPaymentDate(nextMonthlyPaymentDate(latestPayment.date));
-    setAmount(formatFormAmount(latestPayment.amount));
-    setMemo(latestPayment.memo ?? "");
-  }
-
   return (
-    <Card className={cn("rounded-md", className)}>
+    <Card className={cn("rounded-xl ring-brand-border", className)}>
       <CardHeader>
-        <CardTitle as="h2">Record rent payment</CardTitle>
+        <CardTitle as="h2">Record rent</CardTitle>
         <CardDescription>
-          Record the rent amount received during the selected tax year.
+          Confirm the amount and date you received, then save.
         </CardDescription>
-        {latestPayment !== undefined ? (
-          <CardAction>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-md"
-              onClick={prefillLatestPayment}
-            >
-              <CopyPlus data-icon="inline-start" />
-              Use last payment
-            </Button>
-          </CardAction>
-        ) : null}
       </CardHeader>
       <CardContent className="grid gap-4">
-        <form className="grid gap-3" onSubmit={handleSubmit}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="event-lease">Lease</FieldLabel>
-              <Select
-                name="leaseId"
-                disabled={!hasLeases}
-                value={selectedLeaseId}
-                onValueChange={(value) => {
-                  setSelectedLeaseId(value ?? "");
-                }}
-              >
-                <SelectTrigger id="event-lease" className="w-full">
-                  <span
-                    className={cn(
-                      "flex flex-1 text-left",
-                      selectedLeaseId === "" && "text-muted-foreground",
-                    )}
+        {leases.length === 0 ? (
+          <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-4">
+            <p className="font-medium">
+              {ledger.units.length === 0
+                ? "Add a unit, then a lease to record rent."
+                : "Add a lease to record rent."}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              A lease connects each payment to its tenant and unit.
+            </p>
+            <Link
+              href={ledger.units.length === 0 ? "#units" : "#leases"}
+              className="inline-flex min-h-11 items-center text-sm font-medium text-brand underline underline-offset-4"
+            >
+              {ledger.units.length === 0 ? "Add unit" : "Add lease"}
+            </Link>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <fieldset disabled={isSaving} className="grid min-w-0 gap-4">
+              {onlyLease ? (
+                <div className="border-b pb-4">
+                  <input type="hidden" name="leaseId" value={selectedLeaseId} />
+                  <p className="font-medium">{onlyLease.tenantName}</p>
+                  <p className="mt-1 text-muted-foreground text-sm">
+                    {unitLabels.get(onlyLease.unitId) ?? "Unknown unit"} ·{" "}
+                    {formatMoney(onlyLease.rentAmount)} ·{" "}
+                    {FREQUENCY_LABELS[onlyLease.rentFrequency]}
+                  </p>
+                </div>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="event-lease">Tenant / lease</FieldLabel>
+                  <Select
+                    name="leaseId"
+                    value={selectedLeaseId}
+                    onValueChange={(value) => {
+                      const lease = leases.find((item) => item.id === value);
+                      setSelectedLeaseId(value ?? "");
+                      setAmount(
+                        lease ? formatFormAmount(lease.rentAmount) : "",
+                      );
+                    }}
                   >
-                    {selectedLeaseLabel}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {leases.map((lease) => (
-                    <SelectItem key={lease.id} value={lease.id}>
-                      {lease.tenantName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="event-date">Date</FieldLabel>
-              <DatePickerField
-                id="event-date"
-                name="date"
-                required
-                value={paymentDate}
-                onChange={setPaymentDate}
-              />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="event-amount">Amount</FieldLabel>
-              <Input
-                id="event-amount"
-                name="amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                required
-                value={amount}
-                onChange={(event) => {
-                  setAmount(event.target.value);
-                }}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="event-memo">Memo</FieldLabel>
-              <Input
-                id="event-memo"
-                name="memo"
-                placeholder="Optional note"
-                value={memo}
-                onChange={(event) => {
-                  setMemo(event.target.value);
-                }}
-              />
-            </Field>
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit" disabled={selectedLeaseId === ""}>
-              <Plus data-icon="inline-start" />
-              Record payment
-            </Button>
-          </div>
-        </form>
-        <FormErrorAlert message={error} />
+                    <SelectTrigger id="event-lease" className="min-h-11 w-full">
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 truncate text-left",
+                          !selectedLease && "text-muted-foreground",
+                        )}
+                      >
+                        {selectedLease
+                          ? `${selectedLease.tenantName} · ${unitLabels.get(selectedLease.unitId) ?? "Unknown unit"}`
+                          : "Select a tenant"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leases.map((lease) => (
+                        <SelectItem key={lease.id} value={lease.id}>
+                          {lease.tenantName} ·{" "}
+                          {unitLabels.get(lease.unitId) ?? "Unknown unit"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+              <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                <Field className="min-w-0">
+                  <FieldLabel htmlFor="event-amount">
+                    Amount received
+                  </FieldLabel>
+                  <Input
+                    id="event-amount"
+                    name="amount"
+                    className="h-11 tabular-nums"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                  />
+                  {selectedLease && (
+                    <FieldDescription>
+                      Lease rent: {formatMoney(selectedLease.rentAmount)}
+                    </FieldDescription>
+                  )}
+                </Field>
+                <Field className="min-w-0">
+                  <FieldLabel htmlFor="event-date">Date received</FieldLabel>
+                  <Input
+                    id="event-date"
+                    name="date"
+                    className="h-11 min-w-0"
+                    type="date"
+                    required
+                    value={paymentDate}
+                    onChange={(event) => setPaymentDate(event.target.value)}
+                  />
+                  {paymentDate === "" && (
+                    <FieldDescription>
+                      Choose the date you received rent in {year}.
+                    </FieldDescription>
+                  )}
+                </Field>
+              </div>
+              {paymentDate !== "" && !paymentDate.startsWith(`${year}-`) && (
+                <p className="text-sm text-review-text">
+                  This payment will appear in {paymentDate.slice(0, 4)}. You’re
+                  viewing {year}.
+                </p>
+              )}
+              <details>
+                <summary className="cursor-pointer py-2 text-muted-foreground text-sm">
+                  Add a note (optional)
+                </summary>
+                <Field className="mt-2">
+                  <FieldLabel htmlFor="event-memo">Payment note</FieldLabel>
+                  <Input
+                    id="event-memo"
+                    name="memo"
+                    className="h-11"
+                    placeholder="e.g. Partial payment"
+                    value={memo}
+                    onChange={(event) => setMemo(event.target.value)}
+                  />
+                </Field>
+              </details>
+              <FormErrorAlert message={error} />
+              <Button
+                type="submit"
+                className="min-h-11 w-full"
+                disabled={!canSave || isSaving}
+              >
+                <Plus data-icon="inline-start" aria-hidden="true" />
+                {isSaving
+                  ? "Saving…"
+                  : canSave
+                    ? `Record ${formatMoney(Number(amount))}`
+                    : "Record rent"}
+              </Button>
+              <p className="text-muted-foreground text-xs">
+                Records money already received. No payment is collected.
+              </p>
+            </fieldset>
+          </form>
+        )}
+        {savedPayment && (
+          <p
+            role="status"
+            className="rounded-lg border border-ready-border bg-ready-surface p-3 text-sm text-ready-text"
+          >
+            Recorded {formatMoney(savedPayment.amount)} for{" "}
+            {savedPayment.tenant} on {savedPayment.date}.
+            {!savedPayment.date.startsWith(`${year}-`) && (
+              <Link
+                className="ml-1 underline underline-offset-4"
+                href={`/properties/${ledger.property.id}?year=${savedPayment.date.slice(0, 4)}`}
+              >
+                View {savedPayment.date.slice(0, 4)} payments
+              </Link>
+            )}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -869,13 +877,6 @@ export function RentActivityCard({
       </CardContent>
     </Card>
   );
-}
-
-function getLatestRentPayment(events: RentEvent[]): RentEvent | undefined {
-  return events
-    .filter((event) => event.type === "payment")
-    .toSorted((a, b) => a.date.localeCompare(b.date))
-    .at(-1);
 }
 
 function formatFormAmount(value: number) {

@@ -3,8 +3,6 @@
 import {
   AlertTriangle,
   ArrowRight,
-  BanknoteArrowDown,
-  BanknoteArrowUp,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -24,9 +22,8 @@ import {
 } from "@/components/evidence-binder/evidence-workspace";
 import {
   RentActivityCard,
-  RentActivityTools,
-  RentIncomeSummaryStrip,
   RentLedgerDetail,
+  RentPaymentPanel,
 } from "@/components/rent-ledger/rent-ledger-detail";
 import {
   Accordion,
@@ -36,13 +33,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import type {
   PropertyReadiness,
   RentalProperty,
@@ -67,10 +58,12 @@ export function PropertyWorkspaceDetail({
   property,
   rentLedger,
   year,
+  today,
 }: {
   property: RentalProperty;
   rentLedger: RentLedger;
   year: number;
+  today: string;
 }) {
   const filingReadiness = getFilingReadiness(property, year, "property");
   const { setup: readiness, yearEnd: yearEndReadiness } = filingReadiness;
@@ -80,28 +73,40 @@ export function PropertyWorkspaceDetail({
     (yearEndReadiness.uncategorizedTransactions > 0 ||
       yearEndReadiness.missingReceipts > 0);
   const mortgagePaymentSummary = getMortgagePaymentSummary(property, year);
-  const taxableActivitySummary = getTaxableActivitySummary(
-    property,
-    rentLedger,
-    year,
-  );
+  const taxableActivitySummary = getTaxableActivitySummary(property, year);
 
   return (
     <>
       <section id="summary" className="grid scroll-mt-4 gap-4">
-        <PropertySetupOverview
+        <PropertyWorkspaceHeader
           property={property}
           readiness={readiness}
           year={year}
-        >
-          <FilingReadinessOverview
+        />
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+          <RentPaymentPanel
+            key={`${property.id}-${year}-${rentLedger.leases.map((lease) => lease.id).join("-")}`}
+            ledger={rentLedger}
+            year={year}
+            today={today}
+            className="lg:col-start-2 lg:row-start-1"
+          />
+          <PropertyFinancialSummary
             property={property}
             rentLedger={rentLedger}
             taxYear={year}
-            filingReadiness={filingReadiness}
+            uncategorizedTransactions={
+              yearEndReadiness.uncategorizedTransactions
+            }
+            className="lg:col-start-1 lg:row-start-1"
           />
-        </PropertySetupOverview>
+        </div>
       </section>
+      <FilingReadinessOverview
+        property={property}
+        taxYear={year}
+        filingReadiness={filingReadiness}
+      />
       <section id="setup" className="grid scroll-mt-4 gap-4">
         <PropertySetup property={property} readiness={readiness} />
       </section>
@@ -109,9 +114,10 @@ export function PropertyWorkspaceDetail({
         <RentLedgerDetail
           ledger={rentLedger}
           year={year}
+          today={today}
           showActivityTools={false}
           showActivityTable={false}
-          defaultOpenLeases={false}
+          defaultOpenLeases={rentLedger.leases.length === 0}
         />
       </section>
       <WorkflowDetails
@@ -135,34 +141,20 @@ export function PropertyWorkspaceDetail({
         id="tax-activity"
         icon={CircleDollarSign}
         summary={taxableActivitySummary}
-        title="Record taxable activity"
+        title="Expenses & non-rent income"
         description={
           deferActivity
-            ? "Rent, deductions, and income are available, but setup should be fixed first."
-            : `Rent payments, deductions, and non-rent income for ${year}.`
+            ? "Deductions and non-rent income are available, but setup should be fixed first."
+            : `Deductions and non-rent income for ${year}.`
         }
         open={openTaxActivity}
       >
         <div className="grid gap-3">
           <EvidenceBinderPanel property={property} />
-          <RentIncomeSummaryStrip ledger={rentLedger} year={year} />
-          <div className="grid items-stretch gap-4 xl:grid-cols-2">
-            <RentActivityTools
-              className="h-full"
-              ledger={rentLedger}
-              year={year}
-              showActivity={false}
-            />
-            <DeductionsAndIncomePanel className="h-full" property={property} />
-            <RentActivityCard
-              ledger={rentLedger}
-              year={year}
-              variant="table"
-              className="xl:col-span-2"
-            />
-          </div>
+          <DeductionsAndIncomePanel property={property} />
         </div>
       </WorkflowDetails>
+      <RentActivityCard ledger={rentLedger} year={year} variant="table" />
     </>
   );
 }
@@ -225,51 +217,17 @@ function WorkflowDetails({
 
 function FilingReadinessOverview({
   property,
-  rentLedger,
   taxYear,
   filingReadiness,
 }: {
   property: RentalProperty;
-  rentLedger: RentLedger;
   taxYear: number;
   filingReadiness: ReturnType<typeof getFilingReadiness>;
 }) {
-  const { status, counts, rows, yearEnd: yearEndReadiness } = filingReadiness;
+  const { status, counts, rows } = filingReadiness;
   const nextRow = rows.find((row) => row.status !== "clear");
   const tone = getOverallFilingTone(status);
   const StatusIcon = getOverallFilingIcon(status);
-  const financials = summarizeTaxYearFinancials(
-    { ...property, rentEvents: rentLedger.rentEvents },
-    taxYear,
-    yearEndReadiness.uncategorizedTransactions,
-  );
-  const metrics = [
-    {
-      label: "Gross rental income",
-      value: formatMoney(financials.grossRentalIncome),
-      icon: BanknoteArrowUp,
-      accent: toneChip.ready,
-    },
-    {
-      label: "Payments received",
-      value: formatMoney(financials.paymentsReceived),
-      icon: WalletCards,
-      accent: toneChip.info,
-    },
-    {
-      label: "Deductible expenses",
-      value: formatMoney(financials.deductibleExpenses),
-      icon: BanknoteArrowDown,
-      accent: toneChip.review,
-    },
-    {
-      label: "Net recorded income",
-      value: formatMoney(financials.netRecordedRentalIncome),
-      icon: CircleDollarSign,
-      accent: "bg-brand-surface text-brand",
-      incomplete: financials.incompleteTransactionCount > 0,
-    },
-  ];
 
   return (
     <section
@@ -336,12 +294,6 @@ function FilingReadinessOverview({
           <FilingReadinessCheckRow key={row.id} row={row} />
         ))}
       </ul>
-
-      <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-2">
-        {metrics.map((metric) => (
-          <FilingFinancialMetric key={metric.label} {...metric} />
-        ))}
-      </dl>
     </section>
   );
 }
@@ -378,41 +330,58 @@ function FilingReadinessCheckRow({ row }: { row: YearEndReadinessRow }) {
   );
 }
 
-function FilingFinancialMetric({
-  label,
-  value,
-  icon: Icon,
-  accent,
-  incomplete,
+function PropertyFinancialSummary({
+  property,
+  rentLedger,
+  taxYear,
+  uncategorizedTransactions,
+  className,
 }: {
-  label: string;
-  value: string;
-  icon: LucideIcon;
-  accent: string;
-  incomplete?: boolean;
+  property: RentalProperty;
+  rentLedger: RentLedger;
+  taxYear: number;
+  uncategorizedTransactions: number;
+  className?: string;
 }) {
+  const financials = summarizeTaxYearFinancials(
+    { ...property, rentEvents: rentLedger.rentEvents },
+    taxYear,
+    uncategorizedTransactions,
+  );
+  const figures = [
+    { label: "Rent received", amount: financials.paymentsReceived },
+    { label: "Gross rental income", amount: financials.grossRentalIncome },
+    { label: "Deductible expenses", amount: financials.deductibleExpenses },
+    {
+      label: "Net recorded income",
+      amount: financials.netRecordedRentalIncome,
+      incomplete: financials.incompleteTransactionCount > 0,
+    },
+  ];
   return (
-    <div className="grid min-w-0 gap-2 rounded-md border bg-muted/30 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <dt className="text-muted-foreground text-xs">{label}</dt>
-        <span
-          className={cn("grid size-7 place-items-center rounded-md", accent)}
-        >
-          <Icon className="size-3.5" aria-hidden="true" />
-        </span>
-      </div>
-      <dd className="min-w-0 whitespace-nowrap font-semibold text-lg tabular-nums">
-        {value}
-      </dd>
-      {incomplete ? (
-        <Badge
-          variant="outline"
-          className={cn("w-fit rounded-md", toneSurface.review)}
-        >
-          Incomplete
-        </Badge>
-      ) : null}
-    </div>
+    <section
+      aria-label={`Financial summary for ${taxYear}`}
+      className={cn("overflow-hidden rounded-xl border bg-card", className)}
+    >
+      <dl className="divide-y">
+        {figures.map((figure) => (
+          <div key={figure.label} className="px-5 py-4">
+            <dt className="text-sm text-muted-foreground">{figure.label}</dt>
+            <dd className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight tabular-nums">
+              {formatMoney(figure.amount)}
+              {figure.incomplete && (
+                <Badge variant="outline" className={toneSurface.review}>
+                  Incomplete
+                </Badge>
+              )}
+            </dd>
+            <dd className="mt-1 text-xs text-muted-foreground">
+              {taxYear} · Recorded amounts
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
@@ -451,23 +420,11 @@ function getMortgagePaymentSummary(property: RentalProperty, year: number) {
   return `${pluralize(paymentCount, "payment")} in ${year}`;
 }
 
-function getTaxableActivitySummary(
-  property: RentalProperty,
-  rentLedger: RentLedger,
-  year: number,
-) {
-  const yearPrefix = `${year}-`;
-  const rentPaymentCount = rentLedger.rentEvents.filter(
-    (event) => event.type === "payment" && event.date.startsWith(yearPrefix),
+function getTaxableActivitySummary(property: RentalProperty, year: number) {
+  const count = property.ledgerEntries.filter((entry) =>
+    entry.date.startsWith(`${year}-`),
   ).length;
-  const transactionCount = property.ledgerEntries.filter((entry) =>
-    entry.date.startsWith(yearPrefix),
-  ).length;
-
-  return `${pluralize(rentPaymentCount, "rent payment")} · ${pluralize(
-    transactionCount,
-    "transaction",
-  )}`;
+  return `${pluralize(count, "transaction")} in ${year}`;
 }
 
 function formatDisplayDate(value: string) {
@@ -488,177 +445,72 @@ function formatDisplayDate(value: string) {
   }).format(new Date(year, month - 1, day));
 }
 
-function PropertySetupOverview({
+function PropertyWorkspaceHeader({
   property,
   readiness,
   year,
-  children,
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
   year: number;
-  children: ReactNode;
 }) {
-  const setupGaps = readiness.tasks.filter(
+  const nextSetupGap = readiness.tasks.find(
     (task) => task.status !== "complete",
   );
-  const nextSetupGap = setupGaps[0];
-  const setupComplete = nextSetupGap === undefined;
-  const readinessTone =
-    nextSetupGap === undefined
-      ? "ready"
-      : getSetupTaskTone(nextSetupGap.status);
-  const StatusIcon =
-    nextSetupGap === undefined
-      ? CheckCircle2
-      : getSetupTaskIcon(nextSetupGap.status);
-  const setupGapLabel = `${readiness.setupGapCount} setup gap${
-    readiness.setupGapCount === 1 ? "" : "s"
-  }`;
-  const setupStatusLabel = setupComplete
-    ? "Setup complete"
-    : `${setupGapLabel}: ${nextSetupGap.label}`;
-  const setupStatusDetail = setupComplete
-    ? `${readiness.completedCount} of ${readiness.totalCount} setup items complete.`
-    : nextSetupGap.detail;
-  const setupAction =
-    nextSetupGap === undefined ? null : getSetupAction(nextSetupGap.id);
-  const setupFacts = [
-    { label: "Units", value: property.units.length },
-    { label: "Owners", value: property.owners.length },
-    { label: "Ownership periods", value: property.ownershipPeriods.length },
-  ];
-
+  const tone = nextSetupGap ? getSetupTaskTone(nextSetupGap.status) : "ready";
   return (
-    <Card className="rounded-md">
-      <CardHeader className="pb-3">
-        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <CardTitle as="h1" className="truncate text-xl">
-              {property.name}
-            </CardTitle>
-            <CardDescription className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="size-3.5" aria-hidden="true" />
-                {property.line1}, {property.municipality}, {property.province}{" "}
-                {property.postalCode}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <CalendarDays className="size-3.5" aria-hidden="true" />
-                Acquired {formatDisplayDate(property.acquisitionDate)}
-              </span>
-            </CardDescription>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
-            <div className="flex items-center gap-1 rounded-md border bg-background p-1">
-              <span className="sr-only">Tax year</span>
-              <Link
-                href={`/properties/${property.id}?year=${year - 1}`}
-                aria-label={`View ${year - 1}`}
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "icon" }),
-                  "size-7 rounded-sm",
-                )}
-              >
-                <ChevronLeft aria-hidden="true" />
-              </Link>
-              <span className="px-2 font-medium text-sm tabular-nums">
-                {year}
-              </span>
-              <Link
-                href={`/properties/${property.id}?year=${year + 1}`}
-                aria-label={`View ${year + 1}`}
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "icon" }),
-                  "size-7 rounded-sm",
-                )}
-              >
-                <ChevronRight aria-hidden="true" />
-              </Link>
-            </div>
-            <Badge
-              variant="outline"
-              className={cn("rounded-md", toneSurface[readinessTone])}
-            >
-              {setupGapLabel}
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="border-t p-0">
-        <div className="grid lg:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)]">
-          <section
-            aria-labelledby="property-setup-overview-title"
-            className="grid content-start gap-3 p-4 lg:border-r"
+    <header className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="font-semibold text-2xl tracking-tight">
+          {property.name}
+        </h1>
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-sm">
+          <span className="inline-flex items-center gap-1">
+            <MapPin className="size-3.5" aria-hidden="true" />
+            {property.line1}, {property.municipality}, {property.province}{" "}
+            {property.postalCode}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <CalendarDays className="size-3.5" aria-hidden="true" />
+            Acquired {formatDisplayDate(property.acquisitionDate)}
+          </span>
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 rounded-md border bg-background p-1">
+          <span className="sr-only">Tax year</span>
+          <Link
+            href={`/properties/${property.id}?year=${year - 1}`}
+            aria-label={`View ${year - 1}`}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon" }),
+              "min-h-11 min-w-11",
+            )}
           >
-            <div className="min-w-0">
-              <h2
-                id="property-setup-overview-title"
-                className="font-heading font-medium text-base leading-snug"
-              >
-                Property setup
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Ownership and unit records required before filing.
-              </p>
-            </div>
-            <div
-              className={cn(
-                "grid gap-3 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center lg:grid-cols-1",
-                toneSurface[readinessTone],
-              )}
-            >
-              <div className="flex min-w-0 items-start gap-2.5">
-                <StatusIcon
-                  className={cn(
-                    "mt-0.5 size-4 shrink-0",
-                    toneIcon[readinessTone],
-                  )}
-                  aria-hidden="true"
-                />
-                <div className="min-w-0">
-                  <p className="font-medium text-sm">{setupStatusLabel}</p>
-                  <p className="text-xs">{setupStatusDetail}</p>
-                </div>
-              </div>
-              <Badge
-                variant="outline"
-                className="justify-self-start rounded-md bg-background/70 text-xs tabular-nums sm:justify-self-end lg:justify-self-start"
-              >
-                {readiness.completedCount}/{readiness.totalCount} complete
-              </Badge>
-              {setupAction ? (
-                <Link
-                  href={setupAction.href}
-                  className={cn(
-                    buttonVariants({ variant: "default", size: "sm" }),
-                    "justify-self-start rounded-md",
-                  )}
-                >
-                  {setupAction.label}
-                </Link>
-              ) : null}
-            </div>
-            <dl className="grid overflow-hidden rounded-md border sm:grid-cols-3 sm:divide-x lg:grid-cols-1 lg:divide-x-0 lg:divide-y">
-              {setupFacts.map((fact) => (
-                <div
-                  className="flex items-center justify-between gap-3 px-3 py-2"
-                  key={fact.label}
-                >
-                  <dt className="text-muted-foreground text-xs">
-                    {fact.label}
-                  </dt>
-                  <dd className="font-semibold text-sm tabular-nums">
-                    {fact.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-          <div className="min-w-0 border-t p-4 lg:border-t-0">{children}</div>
+            <ChevronLeft aria-hidden="true" />
+          </Link>
+          <span className="px-2 font-medium text-sm tabular-nums">{year}</span>
+          <Link
+            href={`/properties/${property.id}?year=${year + 1}`}
+            aria-label={`View ${year + 1}`}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon" }),
+              "min-h-11 min-w-11",
+            )}
+          >
+            <ChevronRight aria-hidden="true" />
+          </Link>
         </div>
-      </CardContent>
-    </Card>
+        <Badge
+          variant="outline"
+          className={cn("rounded-md", toneSurface[tone])}
+        >
+          {nextSetupGap
+            ? `${readiness.setupGapCount} setup gap${readiness.setupGapCount === 1 ? "" : "s"}`
+            : "Setup complete"}
+        </Badge>
+      </div>
+    </header>
   );
 }
 
@@ -773,18 +625,6 @@ function formatReadableList(items: string[]) {
   return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
 }
 
-function getSetupAction(id: PropertyReadiness["tasks"][number]["id"]) {
-  if (id === "units") {
-    return { href: "#units", label: "Add unit" };
-  }
-
-  if (id === "owners" || id === "ownership") {
-    return { href: "#ownership-history", label: "Fix ownership shares" };
-  }
-
-  return { href: "#property-setup", label: "Review setup" };
-}
-
 function getSetupTaskTone(
   status: PropertyReadiness["tasks"][number]["status"],
 ) {
@@ -797,18 +637,4 @@ function getSetupTaskTone(
   }
 
   return "review";
-}
-
-function getSetupTaskIcon(
-  status: PropertyReadiness["tasks"][number]["status"],
-) {
-  if (status === "complete") {
-    return CheckCircle2;
-  }
-
-  if (status === "warning") {
-    return AlertTriangle;
-  }
-
-  return CircleDot;
 }
