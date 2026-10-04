@@ -303,7 +303,14 @@ function FilingReadinessCheckRow({ row }: { row: YearEndReadinessRow }) {
   const StatusIcon = getReadinessIcon(row.status);
 
   return (
-    <li className="grid gap-3 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center">
+    <li
+      className={cn(
+        "grid gap-3 p-3 sm:items-center",
+        row.actionLabel
+          ? "sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+          : "sm:grid-cols-[auto_minmax(0,1fr)_auto]",
+      )}
+    >
       <span
         className={cn(
           "grid size-8 place-items-center rounded-md",
@@ -317,15 +324,17 @@ function FilingReadinessCheckRow({ row }: { row: YearEndReadinessRow }) {
         <p className="text-muted-foreground text-xs">{row.detail}</p>
       </div>
       <ReadinessStatusBadge status={row.status} count={row.count} />
-      <Link
-        href={row.href}
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "w-fit rounded-md",
-        )}
-      >
-        {row.actionLabel}
-      </Link>
+      {row.actionLabel ? (
+        <Link
+          href={row.href}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "w-fit rounded-md",
+          )}
+        >
+          {row.actionLabel}
+        </Link>
+      ) : null}
     </li>
   );
 }

@@ -23,7 +23,7 @@ export type YearEndReadinessRow = {
   count: number;
   detail: string;
   href: string;
-  actionLabel: string;
+  actionLabel?: string;
 };
 
 /** The same setup and year-end checklist drives every filing-readiness surface. */
@@ -57,7 +57,6 @@ export function getFilingReadiness(
         surface === "property"
           ? anchor
           : `/properties/${property.id}?year=${taxYear}${anchor}`,
-      actionLabel: gaps.length > 0 ? "Fix setup" : "View",
     },
     ...getYearEndReadinessRows({
       propertyId: property.id,
