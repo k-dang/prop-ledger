@@ -137,7 +137,6 @@ describe("portfolio dashboard summary", () => {
 
     expect(summary.totals).toEqual({
       grossRentalIncome: 2120,
-      paymentsReceived: 2000,
       deductibleExpenses: 1300,
       netRecordedRentalIncome: 820,
       incompleteTransactionCount: 0,
