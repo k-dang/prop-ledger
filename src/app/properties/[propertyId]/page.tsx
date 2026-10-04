@@ -44,6 +44,9 @@ async function PropertyContent({
         property={workspace.property}
         rentLedger={workspace.rentLedger}
         year={parseTaxYearSearchParam(year)}
+        today={new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Toronto",
+        }).format(new Date())}
       />
     </section>
   );
