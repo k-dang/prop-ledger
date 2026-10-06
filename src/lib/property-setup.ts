@@ -311,11 +311,24 @@ export function withOwnerMode(form: SetupForm, mode: OwnerMode): SetupForm {
   return { ...form, ownerMode: mode, owners };
 }
 
-/** Answered units that switching to `layout` would remove, so the wizard can confirm first. */
+/**
+ * Units with any answer (occupancy, or a name or type changed from the
+ * default) that switching to `layout` would remove, labelled for a confirm.
+ */
 export function unitsDroppedBy(form: SetupForm, layout: LayoutKey) {
-  return form.units
-    .slice(LAYOUTS[layout].units.length)
-    .filter((unit) => unit.occupancy !== null);
+  const preset = form.layout ? LAYOUTS[form.layout].units : [];
+  return form.units.flatMap((unit, index) => {
+    if (index < LAYOUTS[layout].units.length) return [];
+    const [label, unitType] = preset[index] ?? [
+      `Unit ${index + 1}`,
+      "Apartment",
+    ];
+    const answered =
+      unit.occupancy !== null ||
+      unit.label.trim() !== label ||
+      unit.unitType !== unitType;
+    return answered ? [unit.label.trim() || `Unit ${index + 1}`] : [];
+  });
 }
 
 /** Regenerates units for a layout, keeping tenant answers for units in the same position. */

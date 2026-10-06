@@ -149,10 +149,12 @@ describe("property setup choices", () => {
       { id: "5", name: "", share: "" },
     );
 
-    expect(unitsDroppedBy(form, "duplex").map((unit) => unit.label)).toEqual([
-      "Unit 3",
-    ]);
+    expect(unitsDroppedBy(form, "duplex")).toEqual(["Unit 3"]);
     expect(unitsDroppedBy(form, "triplex")).toEqual([]);
+    const renamed = withLayout(completeForm(), "triplex");
+    expect(unitsDroppedBy(renamed, "duplex")).toEqual([]);
+    renamed.units[2].label = "Attic";
+    expect(unitsDroppedBy(renamed, "duplex")).toEqual(["Attic"]);
     expect(ownersDroppedBy(multi, "partner")).toEqual([
       "Casey Chen",
       "Owner 4",

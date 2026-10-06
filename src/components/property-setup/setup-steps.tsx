@@ -443,7 +443,7 @@ export function UnitsStep({ form, errors, onChange }: StepProps) {
           if (
             dropped.length > 0 &&
             !window.confirm(
-              `Switching to ${LAYOUTS[layout].label} removes ${listNames(dropped.map((unit) => unit.label.trim()))} and the tenant details you entered.`,
+              `Switching to ${LAYOUTS[layout].label} removes ${listNames(dropped)} and what you entered for ${dropped.length === 1 ? "it" : "them"}.`,
             )
           ) {
             return;
