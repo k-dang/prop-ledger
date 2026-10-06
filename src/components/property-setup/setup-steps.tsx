@@ -13,6 +13,7 @@ import {
   newSetupUnit,
   type Occupancy,
   type OwnerMode,
+  ownersDroppedBy,
   ownershipTotal,
   PROVINCES,
   type SetupForm,
@@ -20,6 +21,7 @@ import {
   type SetupStep,
   type SetupUnit,
   UNIT_TYPES,
+  unitsDroppedBy,
   withLayout,
   withOwner,
   withOwnerMode,
@@ -89,6 +91,11 @@ const FREQUENCY_OPTIONS = RENT_FREQUENCIES.map((value) => ({
 }));
 const PROVINCE_OPTIONS = PROVINCES.map((value) => ({ value, label: value }));
 const UNIT_TYPE_OPTIONS = UNIT_TYPES.map((value) => ({ value, label: value }));
+
+/** `A`, `A and B`, or `A, B, and C`. */
+function listNames(names: string[]) {
+  return new Intl.ListFormat("en-CA", { type: "conjunction" }).format(names);
+}
 
 export function StepHeading({
   ref,
@@ -232,6 +239,15 @@ export function OwnershipStep({ form, errors, onChange }: StepProps) {
   const mode = form.ownerMode;
 
   function setMode(next: OwnerMode) {
+    const dropped = ownersDroppedBy(form, next);
+    if (
+      dropped.length > 0 &&
+      !window.confirm(
+        `Switching removes ${listNames(dropped.map((owner) => owner.name.trim()))} from the owners.`,
+      )
+    ) {
+      return;
+    }
     onChange(withOwnerMode(form, next), ["ownerMode", "owners"]);
   }
 
@@ -422,9 +438,18 @@ export function UnitsStep({ form, errors, onChange }: StepProps) {
         label="How is it rented out?"
         value={form.layout}
         options={LAYOUT_OPTIONS}
-        onValueChange={(layout) =>
-          onChange(withLayout(form, layout), ["layout", "units"])
-        }
+        onValueChange={(layout) => {
+          const dropped = unitsDroppedBy(form, layout);
+          if (
+            dropped.length > 0 &&
+            !window.confirm(
+              `Switching to ${LAYOUTS[layout].label} removes ${listNames(dropped.map((unit) => unit.label.trim()))} and the tenant details you entered.`,
+            )
+          ) {
+            return;
+          }
+          onChange(withLayout(form, layout), ["layout", "units"]);
+        }}
         error={errors.layout}
         columns={3}
       />

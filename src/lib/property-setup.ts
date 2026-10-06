@@ -278,6 +278,13 @@ export function withUnit(
   return { ...form, units };
 }
 
+/** Named owners that switching to `mode` would remove, so the wizard can confirm first. */
+export function ownersDroppedBy(form: SetupForm, mode: OwnerMode) {
+  const kept =
+    mode === "solo" ? 1 : mode === "partner" ? 2 : form.owners.length;
+  return form.owners.slice(kept).filter((owner) => owner.name.trim());
+}
+
 /** Switching modes keeps the names already typed. */
 export function withOwnerMode(form: SetupForm, mode: OwnerMode): SetupForm {
   if (form.ownerMode === mode) return form;
@@ -295,6 +302,13 @@ export function withOwnerMode(form: SetupForm, mode: OwnerMode): SetupForm {
           : [owner(first, ""), owner(second, "")];
 
   return { ...form, ownerMode: mode, owners };
+}
+
+/** Answered units that switching to `layout` would remove, so the wizard can confirm first. */
+export function unitsDroppedBy(form: SetupForm, layout: LayoutKey) {
+  return form.units
+    .slice(LAYOUTS[layout].units.length)
+    .filter((unit) => unit.occupancy !== null);
 }
 
 /** Regenerates units for a layout, keeping tenant answers for units in the same position. */

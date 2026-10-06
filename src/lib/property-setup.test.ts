@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   emptySetupForm,
   firstIncompleteStep,
+  ownersDroppedBy,
   type SetupForm,
   setupSteps,
   toPropertyValues,
   toSetupRows,
+  unitsDroppedBy,
   validateOwnershipStep,
   validatePropertyStep,
   validateSetup,
@@ -135,6 +137,21 @@ describe("property setup choices", () => {
       ["Unit 3", ""],
     ]);
     expect(setupSteps(form)).toHaveLength(7);
+  });
+
+  it("reports answered units and named owners a switch would remove", () => {
+    const form = withLayout(completeForm(), "triplex");
+    form.units[2].occupancy = "vacant";
+    const multi = withOwnerMode(form, "multi");
+    multi.owners.push({ id: "3", name: "Casey Chen", share: "" });
+
+    expect(unitsDroppedBy(form, "duplex").map((unit) => unit.label)).toEqual([
+      "Unit 3",
+    ]);
+    expect(unitsDroppedBy(form, "triplex")).toEqual([]);
+    expect(
+      ownersDroppedBy(multi, "partner").map((owner) => owner.name),
+    ).toEqual(["Casey Chen"]);
   });
 
   it("resumes at the first unanswered screen", () => {

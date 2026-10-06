@@ -196,6 +196,13 @@ function SetupRun({
     }
 
     if (step.kind === "review") {
+      // Rail jumps skip each screen's checks, so check them all before finishing.
+      const incomplete = firstIncompleteStep(form, today);
+      if (incomplete !== index) {
+        goTo(incomplete);
+        showErrors(validateStep(form, steps[incomplete], today));
+        return;
+      }
       void complete();
       return;
     }
