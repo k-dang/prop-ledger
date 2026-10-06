@@ -299,6 +299,11 @@ function SetupRun({
   }
 
   function confirmLeave(event: { preventDefault: () => void }) {
+    // Leaving mid-save would hide the result, including any upload failures.
+    if (status !== "idle") {
+      event.preventDefault();
+      return;
+    }
     if (
       form !== initialForm &&
       !window.confirm("Leave setup? Your answers on this page won’t be saved.")
@@ -326,9 +331,11 @@ function SetupRun({
         <Link
           href={cancelHref}
           onClick={confirmLeave}
+          aria-disabled={working || undefined}
           className={cn(
             buttonVariants({ variant: "link" }),
             "-ml-1 h-auto px-1 text-brand-text",
+            working && "pointer-events-none opacity-50",
           )}
         >
           <ChevronLeft data-icon="inline-start" aria-hidden="true" />
