@@ -311,18 +311,20 @@ export function withOwnerMode(form: SetupForm, mode: OwnerMode): SetupForm {
   return { ...form, ownerMode: mode, owners };
 }
 
+/** The name and type the current layout gave unit `index` (or "Add unit" did). */
+function defaultUnit(form: SetupForm, index: number) {
+  const preset = form.layout ? LAYOUTS[form.layout].units : [];
+  return preset[index] ?? [`Unit ${index + 1}`, "Apartment"];
+}
+
 /**
  * Units with any answer (occupancy, or a name or type changed from the
  * default) that switching to `layout` would remove, labelled for a confirm.
  */
 export function unitsDroppedBy(form: SetupForm, layout: LayoutKey) {
-  const preset = form.layout ? LAYOUTS[form.layout].units : [];
   return form.units.flatMap((unit, index) => {
     if (index < LAYOUTS[layout].units.length) return [];
-    const [label, unitType] = preset[index] ?? [
-      `Unit ${index + 1}`,
-      "Apartment",
-    ];
+    const [label, unitType] = defaultUnit(form, index);
     const answered =
       unit.occupancy !== null ||
       unit.label.trim() !== label ||
@@ -331,15 +333,23 @@ export function unitsDroppedBy(form: SetupForm, layout: LayoutKey) {
   });
 }
 
-/** Regenerates units for a layout, keeping tenant answers for units in the same position. */
+/**
+ * Regenerates units for a layout. Units in the same position keep their tenant
+ * answers and any name or type the user changed; defaults follow the new layout.
+ */
 export function withLayout(form: SetupForm, layout: LayoutKey): SetupForm {
   if (form.layout === layout) return form;
 
   const units = LAYOUTS[layout].units.map(([label, unitType], index) => {
     const previous = form.units[index];
-    return previous
-      ? { ...previous, label, unitType }
-      : newSetupUnit(label, unitType);
+    if (previous === undefined) return newSetupUnit(label, unitType);
+
+    const [oldLabel, oldType] = defaultUnit(form, index);
+    return {
+      ...previous,
+      label: previous.label.trim() === oldLabel ? label : previous.label,
+      unitType: previous.unitType === oldType ? unitType : previous.unitType,
+    };
   });
 
   return { ...form, layout, units };

@@ -161,6 +161,22 @@ describe("property setup choices", () => {
     ]);
   });
 
+  it("keeps unit names and types the user changed when the layout changes", () => {
+    const form = completeForm();
+    form.units[0].label = "Top flat";
+    form.units[1].unitType = "Basement apartment";
+
+    expect(
+      withLayout(form, "basement").units.map((unit) => [
+        unit.label,
+        unit.unitType,
+      ]),
+    ).toEqual([
+      ["Top flat", "Apartment"],
+      ["Basement", "Basement apartment"],
+    ]);
+  });
+
   it("resumes at the first unanswered screen", () => {
     const form = withLayout(completeForm(), "triplex");
 
