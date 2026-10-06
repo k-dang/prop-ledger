@@ -63,6 +63,7 @@ import {
   recordRentEvent,
 } from "@/lib/actions";
 import {
+  FREQUENCY_LABELS,
   formatMoney,
   getLeaseDocuments,
   type Lease,
@@ -73,12 +74,6 @@ import {
 import { toneIcon } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
 import { uploadLeaseDocument } from "./lease-document-upload";
-
-const FREQUENCY_LABELS: Record<RentFrequency, string> = {
-  monthly: "Monthly",
-  biweekly: "Biweekly",
-  weekly: "Weekly",
-};
 
 const leaseFormSchema = z
   .object({
@@ -324,7 +319,9 @@ function LeasesPanel({
               <FormErrorAlert message={leaseError} />
               {!hasUnits ? (
                 <EmptyState icon={Users}>
-                  Add a unit to this property before creating a lease.
+                  {ledger.property.setupDraft
+                    ? "Finish setup to add units and leases."
+                    : "Add a unit to this property before creating a lease."}
                 </EmptyState>
               ) : !hasLeases ? (
                 <EmptyState icon={FileText}>No leases recorded.</EmptyState>
@@ -505,6 +502,23 @@ export function RentPaymentPanel({
 }) {
   const { leases } = ledger;
   const onlyLease = leases.length === 1 ? leases[0] : undefined;
+  const nextStep = ledger.property.setupDraft
+    ? {
+        message: "Finish setup to record rent.",
+        href: `/properties/${ledger.property.id}/setup`,
+        label: "Continue setup",
+      }
+    : ledger.units.length === 0
+      ? {
+          message: "Add a unit, then a lease to record rent.",
+          href: "#units",
+          label: "Add unit",
+        }
+      : {
+          message: "Add a lease to record rent.",
+          href: "#leases",
+          label: "Add lease",
+        };
   const defaultDate = today.startsWith(`${year}-`) ? today : "";
   const [selectedLeaseId, setSelectedLeaseId] = useState(onlyLease?.id ?? "");
   const [paymentDate, setPaymentDate] = useState(defaultDate);
@@ -565,19 +579,15 @@ export function RentPaymentPanel({
       <CardContent className="grid gap-4">
         {leases.length === 0 ? (
           <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-4">
-            <p className="font-medium">
-              {ledger.units.length === 0
-                ? "Add a unit, then a lease to record rent."
-                : "Add a lease to record rent."}
-            </p>
+            <p className="font-medium">{nextStep.message}</p>
             <p className="text-sm text-muted-foreground">
               A lease connects each payment to its tenant and unit.
             </p>
             <Link
-              href={ledger.units.length === 0 ? "#units" : "#leases"}
+              href={nextStep.href}
               className="inline-flex min-h-11 items-center text-sm font-medium text-brand underline underline-offset-4"
             >
-              {ledger.units.length === 0 ? "Add unit" : "Add lease"}
+              {nextStep.label}
             </Link>
           </div>
         ) : (

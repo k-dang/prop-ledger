@@ -11,6 +11,7 @@ import type {
   NewLease,
   Property,
   RentEvent,
+  RentFrequency,
   Unit,
 } from "@/db/schema";
 import { roundMoney } from "@/lib/money";
@@ -102,6 +103,12 @@ const moneyFormatter = new Intl.NumberFormat("en-CA", {
 });
 
 /** Format a dollar amount as Canadian currency for display. */
+export const FREQUENCY_LABELS: Record<RentFrequency, string> = {
+  monthly: "Monthly",
+  biweekly: "Biweekly",
+  weekly: "Weekly",
+};
+
 export function formatMoney(value: number): string {
   // Guard against non-finite inputs so a bad upstream amount renders as $0.00
   // rather than the literal "$NaN".

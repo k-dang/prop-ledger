@@ -1,0 +1,1 @@
+ALTER TABLE "rental"."properties" ADD COLUMN "setup_draft" jsonb;

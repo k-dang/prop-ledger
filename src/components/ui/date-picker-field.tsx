@@ -13,9 +13,12 @@ import {
 import { cn } from "@/lib/utils";
 
 type DatePickerFieldProps = {
+  "aria-describedby"?: string;
   className?: string;
   defaultValue?: string | null;
+  /** Lands on the picker button, so a `FieldLabel htmlFor` focuses it. */
   id: string;
+  invalid?: boolean;
   name: string;
   onChange?: (value: string) => void;
   placeholder?: string;
@@ -30,9 +33,11 @@ const dateFormatter = new Intl.DateTimeFormat("en-CA", {
 });
 
 export function DatePickerField({
+  "aria-describedby": describedBy,
   className,
   defaultValue,
   id,
+  invalid,
   name,
   onChange,
   placeholder = "Select date",
@@ -59,7 +64,6 @@ export function DatePickerField({
   return (
     <div className={cn("grid gap-2", className)}>
       <input
-        id={id}
         name={name}
         required={required}
         type="hidden"
@@ -67,13 +71,17 @@ export function DatePickerField({
       />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
+          id={id}
           type="button"
           className={cn(
             buttonVariants({ variant: "outline" }),
             "w-full justify-start rounded-md px-2.5 font-normal",
             !selectedDate && "text-muted-foreground",
           )}
-          aria-describedby={descriptionId}
+          aria-describedby={
+            describedBy ? `${describedBy} ${descriptionId}` : descriptionId
+          }
+          aria-invalid={invalid || undefined}
         >
           <CalendarDays data-icon="inline-start" aria-hidden="true" />
           {selectedDate ? dateFormatter.format(selectedDate) : placeholder}

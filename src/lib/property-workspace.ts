@@ -1,7 +1,6 @@
 import type {
   NewOwner,
   NewOwnershipPeriod,
-  NewProperty,
   NewUnit,
   Owner,
   OwnershipPeriod,
@@ -23,12 +22,10 @@ export type RentalUnit = Unit;
 export type PropertyOwner = Owner;
 
 /**
- * Form inputs for the create/add server actions: the insert shapes minus the
- * columns the database fills in (`id`, `createdAt`) and the `propertyId` the
- * action supplies from context. Components build these; `src/lib/actions.ts`
- * writes them straight through.
+ * Form inputs for the add server actions: the insert shapes minus the `id`
+ * the database fills in and the `propertyId` the action supplies from context.
+ * Components build these; `src/lib/actions.ts` writes them straight through.
  */
-export type NewPropertyInput = Omit<NewProperty, "id" | "createdAt">;
 export type NewUnitInput = Omit<NewUnit, "id" | "propertyId">;
 export type NewOwnerInput = Omit<NewOwner, "id" | "propertyId">;
 export type NewOwnershipPeriodInput = Omit<
@@ -203,6 +200,34 @@ export function formatDisplayDate(date: string) {
     ][Number(month) - 1] ?? "January";
 
   return `${monthName} ${Number(day)}`;
+}
+
+/** Today's date in Ontario as `YYYY-MM-DD`. */
+export function todayIso() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+  }).format(new Date());
+}
+
+const dateWithYearFormatter = new Intl.DateTimeFormat("en-CA", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+/** `YYYY-MM-DD` as e.g. `Mar 4, 2024`; other input is returned as is. */
+export function formatDateWithYear(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return value;
+  }
+
+  return dateWithYearFormatter.format(new Date(year, month - 1, day));
 }
 
 export function formatPercent(value: number) {

@@ -23,7 +23,6 @@ import {
 } from "@/lib/action-utils";
 import {
   allAppDataCacheTags,
-  portfolioMutationCacheTags,
   propertyRentSetupMutationCacheTags,
   propertySetupMutationCacheTags,
   rentLedgerMutationCacheTags,
@@ -48,31 +47,9 @@ import {
   formatDisplayDate,
   formatPercent,
   type NewOwnerWithOwnershipInput,
-  type NewPropertyInput,
   type NewUnitInput,
 } from "@/lib/property-workspace";
 import type { NewLeaseInput, NewRentEventInput } from "@/lib/rent-ledger";
-
-// Server-side contract for a new property. A server action is a public
-// endpoint, so the client form's schema cannot be trusted: re-validate here and
-// require `acquisitionDate` to be a real ISO date, since the dashboard derives
-// active-year and tax-year logic from it by string comparison.
-const newPropertySchema = z.object({
-  name: z.string().trim().min(1),
-  line1: z.string().trim().min(1),
-  line2: z
-    .string()
-    .trim()
-    .transform((value) => (value.length > 0 ? value : null))
-    .nullish(),
-  municipality: z.string().trim().min(1),
-  province: z.string().trim().min(1),
-  postalCode: z.string().trim().min(1),
-  acquisitionDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .refine((value) => !Number.isNaN(new Date(value).getTime())),
-});
 
 type LeaseMutationSuccess = { ok: true; propertyId: string };
 const isoDateSchema = z
@@ -101,29 +78,6 @@ const rentPaymentInputSchema = z
       memo: data.memo ?? null,
     }),
   );
-
-export async function createProperty(
-  input: NewPropertyInput,
-): Promise<ActionResult> {
-  return runAction(
-    "Property creation mutation",
-    async () => {
-      const parsed = newPropertySchema.safeParse(input);
-
-      if (!parsed.success) {
-        return {
-          ok: false,
-          error: "Enter valid property details before saving.",
-        };
-      }
-
-      await db.insert(properties).values(parsed.data);
-
-      return { ok: true };
-    },
-    { invalidate: portfolioMutationCacheTags() },
-  );
-}
 
 export async function addUnit(
   propertyId: string,

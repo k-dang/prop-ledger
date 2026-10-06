@@ -16,6 +16,7 @@ const property: YearEndPackageSource = {
   postalCode: "L8P 1A1",
   acquisitionDate: "2020-01-01",
   createdAt: new Date("2020-01-01T00:00:00Z"),
+  setupDraft: null,
   units: [],
   owners: [
     {

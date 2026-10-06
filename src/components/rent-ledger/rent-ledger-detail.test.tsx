@@ -24,6 +24,7 @@ const ledger: RentLedger = {
     postalCode: "M1M 1M1",
     acquisitionDate: "2026-01-01",
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    setupDraft: null,
   },
   units: [
     {

@@ -53,8 +53,9 @@ export function getFilingReadiness(
         gaps.length > 0
           ? gaps.map((task) => task.label).join(", ")
           : "Property details, units, owners, and ownership shares are complete.",
-      href:
-        surface === "property"
+      href: property.setupDraft
+        ? `/properties/${property.id}/setup`
+        : surface === "property"
           ? anchor
           : `/properties/${property.id}?year=${taxYear}${anchor}`,
     },

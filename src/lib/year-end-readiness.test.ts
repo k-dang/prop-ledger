@@ -73,6 +73,7 @@ function makeProperty(property: Partial<RentalProperty> = {}): RentalProperty {
     postalCode: "L8P 1A1",
     acquisitionDate: "2021-04-15",
     createdAt: new Date("2021-04-15T00:00:00.000Z"),
+    setupDraft: null,
     units: [],
     owners: [
       {

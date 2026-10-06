@@ -20,6 +20,7 @@ import {
   DeductionsAndIncomePanel,
   EvidenceBinderPanel,
 } from "@/components/evidence-binder/evidence-workspace";
+import { FinishSetupCard } from "@/components/property-setup/finish-setup-card";
 import {
   RentActivityCard,
   RentLedgerDetail,
@@ -34,9 +35,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type {
-  PropertyReadiness,
-  RentalProperty,
+import {
+  formatDateWithYear,
+  type PropertyReadiness,
+  type RentalProperty,
 } from "@/lib/property-workspace";
 import { formatMoney, type RentLedger } from "@/lib/rent-ledger";
 import {
@@ -83,6 +85,9 @@ export function PropertyWorkspaceDetail({
           readiness={readiness}
           year={year}
         />
+        {property.setupDraft ? (
+          <FinishSetupCard property={property} today={today} />
+        ) : null}
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <RentPaymentPanel
             key={`${property.id}-${year}-${rentLedger.leases.map((lease) => lease.id).join("-")}`}
@@ -107,9 +112,11 @@ export function PropertyWorkspaceDetail({
         taxYear={year}
         filingReadiness={filingReadiness}
       />
-      <section id="setup" className="grid scroll-mt-4 gap-4">
-        <PropertySetup property={property} readiness={readiness} />
-      </section>
+      {property.setupDraft ? null : (
+        <section id="setup" className="grid scroll-mt-4 gap-4">
+          <PropertySetup property={property} readiness={readiness} />
+        </section>
+      )}
       <section id="rent" className="scroll-mt-4">
         <RentLedgerDetail
           ledger={rentLedger}
@@ -436,24 +443,6 @@ function getTaxableActivitySummary(property: RentalProperty, year: number) {
   return `${pluralize(count, "transaction")} in ${year}`;
 }
 
-function formatDisplayDate(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day)
-  ) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-CA", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(year, month - 1, day));
-}
-
 function PropertyWorkspaceHeader({
   property,
   readiness,
@@ -481,7 +470,7 @@ function PropertyWorkspaceHeader({
           </span>
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="size-3.5" aria-hidden="true" />
-            Acquired {formatDisplayDate(property.acquisitionDate)}
+            Acquired {formatDateWithYear(property.acquisitionDate)}
           </span>
         </p>
       </div>
@@ -514,9 +503,11 @@ function PropertyWorkspaceHeader({
           variant="outline"
           className={cn("rounded-md", toneSurface[tone])}
         >
-          {nextSetupGap
-            ? `${readiness.setupGapCount} setup gap${readiness.setupGapCount === 1 ? "" : "s"}`
-            : "Setup complete"}
+          {property.setupDraft
+            ? "Setup in progress"
+            : nextSetupGap
+              ? `${readiness.setupGapCount} setup gap${readiness.setupGapCount === 1 ? "" : "s"}`
+              : "Setup complete"}
         </Badge>
       </div>
     </header>

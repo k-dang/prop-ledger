@@ -13,6 +13,7 @@ function property(overrides: Partial<RentalProperty> = {}): RentalProperty {
     postalCode: "L8P 1A1",
     acquisitionDate: "2020-01-01",
     createdAt: new Date("2020-01-01T00:00:00Z"),
+    setupDraft: null,
     units: [
       {
         id: "unit-1",
@@ -53,6 +54,19 @@ describe("shared filing readiness", () => {
         "missing_documents",
         "capital_assets",
       ]);
+    }
+  });
+
+  it("sends unfinished guided setup back to the setup wizard", () => {
+    const draft = property({
+      units: [],
+      owners: [],
+      ownershipPeriods: [],
+      setupDraft: { ownerMode: null, owners: [], layout: null, units: [] },
+    });
+    for (const surface of ["property", "portfolio", "year-end"] as const) {
+      const [setup] = getFilingReadiness(draft, 2026, surface).rows;
+      expect(setup.href).toBe("/properties/property-1/setup");
     }
   });
 
