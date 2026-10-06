@@ -92,6 +92,13 @@
       "when": 1791059568307,
       "tag": "0012_remove_unused_property_tax_years",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791138763305,
+      "tag": "0013_property_setup_draft",
+      "breakpoints": true
     }
   ]
 }

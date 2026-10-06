@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PropertyWorkspaceDetail } from "@/components/property-workspace/property-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPropertyWorkspace } from "@/db/queries";
+import { todayIso } from "@/lib/property-workspace";
 import { parseTaxYearSearchParam } from "@/lib/tax-year";
 
 export const metadata: Metadata = {
@@ -44,9 +45,7 @@ async function PropertyContent({
         property={workspace.property}
         rentLedger={workspace.rentLedger}
         year={parseTaxYearSearchParam(year)}
-        today={new Intl.DateTimeFormat("en-CA", {
-          timeZone: "America/Toronto",
-        }).format(new Date())}
+        today={todayIso()}
       />
     </section>
   );

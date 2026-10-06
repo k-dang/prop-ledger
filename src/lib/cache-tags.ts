@@ -21,15 +21,6 @@ export function yearEndCacheTag(propertyId: string, taxYear: number) {
   return `year-end:${propertyId}:${taxYear}`;
 }
 
-export function portfolioMutationCacheTags() {
-  return [
-    appDataCacheTags.portfolio,
-    appDataCacheTags.portfolioDashboard,
-    appDataCacheTags.properties,
-    appDataCacheTags.propertyNavigation,
-  ];
-}
-
 export function propertySetupMutationCacheTags(propertyId: string) {
   return [
     appDataCacheTags.portfolio,

@@ -5,10 +5,10 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AddPropertySheet } from "@/components/property-workspace/add-property-sheet";
 import { TaxYearSelect } from "@/components/property-workspace/tax-year-select";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -73,7 +73,10 @@ function DashboardHeader({ summary }: { summary: PortfolioDashboardSummary }) {
             years={summary.availableTaxYears}
           />
         ) : null}
-        <AddPropertySheet />
+        <Link href="/properties/new" className={buttonVariants()}>
+          <Plus data-icon="inline-start" aria-hidden="true" />
+          Add property
+        </Link>
       </div>
     </div>
   );

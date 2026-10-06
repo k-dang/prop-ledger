@@ -4,6 +4,7 @@ import {
   date,
   doublePrecision,
   integer,
+  jsonb,
   pgSchema,
   text,
   timestamp,
@@ -13,6 +14,7 @@ import type {
   RentalIncomeCategory,
   T776Category,
 } from "../domain/ledger-categories";
+import type { PropertySetupDraft } from "../lib/property-setup";
 
 const rental = pgSchema("rental");
 const pgTable = rental.table.bind(rental);
@@ -35,6 +37,10 @@ export const properties = pgTable("properties", {
   province: text("province").notNull(),
   postalCode: text("postal_code").notNull(),
   acquisitionDate: date("acquisition_date", { mode: "string" }).notNull(),
+  // Unfinished guided setup (owners, units, leases not yet written). Null once
+  // setup is complete. The database doesn't enforce the shape;
+  // `setupFormFromProperty` in `src/lib/property-setup.ts` re-checks it on read.
+  setupDraft: jsonb("setup_draft").$type<PropertySetupDraft>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -354,7 +360,6 @@ export type Document = typeof documents.$inferSelect;
 export type DocumentLink = typeof documentLinks.$inferSelect;
 export type AccountantNote = typeof accountantNotes.$inferSelect;
 
-export type NewProperty = typeof properties.$inferInsert;
 export type NewUnit = typeof units.$inferInsert;
 export type NewOwner = typeof owners.$inferInsert;
 export type NewOwnershipPeriod = typeof ownershipPeriods.$inferInsert;

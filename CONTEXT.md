@@ -60,9 +60,18 @@ cleanup. Ownership setup gaps appear once in the filing checklist rather than al
 appearing as a year-end ownership warning.
 _Avoid_: error, validation failure
 
+**Setup Draft**:
+The unfinished answers from guided property setup, saved on the property with
+"Save and finish later". Owners, ownership periods, units and leases are written
+together only when setup finishes; until then the property shows a "Finish setting
+up" checklist that reopens the guided flow.
+_Avoid_: partial setup, incomplete property
+
 ## Relationships
 
-- Property setup owns units, owners and effective-dated ownership periods.
+- Property setup owns units, owners and effective-dated ownership periods. New
+  properties are set up through the guided flow; later changes, such as ownership
+  history, use the setup panel on the property page.
 - A Tax Year selects rent payments, transactions, mortgage payments and ownership
   periods by date. Prepaid amounts are allocated over their recorded service dates.
 - Documents are uploaded once and linked to the records they support. Files live
