@@ -143,15 +143,20 @@ describe("property setup choices", () => {
     const form = withLayout(completeForm(), "triplex");
     form.units[2].occupancy = "vacant";
     const multi = withOwnerMode(form, "multi");
-    multi.owners.push({ id: "3", name: "Casey Chen", share: "" });
+    multi.owners.push(
+      { id: "3", name: "Casey Chen", share: "" },
+      { id: "4", name: "", share: "10" },
+      { id: "5", name: "", share: "" },
+    );
 
     expect(unitsDroppedBy(form, "duplex").map((unit) => unit.label)).toEqual([
       "Unit 3",
     ]);
     expect(unitsDroppedBy(form, "triplex")).toEqual([]);
-    expect(
-      ownersDroppedBy(multi, "partner").map((owner) => owner.name),
-    ).toEqual(["Casey Chen"]);
+    expect(ownersDroppedBy(multi, "partner")).toEqual([
+      "Casey Chen",
+      "Owner 4",
+    ]);
   });
 
   it("resumes at the first unanswered screen", () => {

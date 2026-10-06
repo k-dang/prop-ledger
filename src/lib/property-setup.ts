@@ -278,11 +278,18 @@ export function withUnit(
   return { ...form, units };
 }
 
-/** Named owners that switching to `mode` would remove, so the wizard can confirm first. */
+/**
+ * Owners with any answer (name or share) that switching to `mode` would
+ * remove, labelled by name or position, so the wizard can confirm first.
+ */
 export function ownersDroppedBy(form: SetupForm, mode: OwnerMode) {
   const kept =
     mode === "solo" ? 1 : mode === "partner" ? 2 : form.owners.length;
-  return form.owners.slice(kept).filter((owner) => owner.name.trim());
+  return form.owners.flatMap((owner, index) =>
+    index >= kept && (owner.name.trim() || owner.share.trim())
+      ? [owner.name.trim() || `Owner ${index + 1}`]
+      : [],
+  );
 }
 
 /** Switching modes keeps the names already typed. */

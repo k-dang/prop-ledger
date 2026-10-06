@@ -243,7 +243,7 @@ export function OwnershipStep({ form, errors, onChange }: StepProps) {
     if (
       dropped.length > 0 &&
       !window.confirm(
-        `Switching removes ${listNames(dropped.map((owner) => owner.name.trim()))} from the owners.`,
+        `Switching removes ${listNames(dropped)} from the owners.`,
       )
     ) {
       return;
