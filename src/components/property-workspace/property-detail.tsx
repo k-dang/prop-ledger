@@ -49,12 +49,8 @@ import { PropertySetup } from "./property-setup";
 
 type PropertyTab = "rent" | "expenses" | "mortgage" | "setup";
 
-/**
- * In-page anchors used elsewhere in the workspace (readiness rows, "Add
- * lease"/"Add unit" buttons) that now resolve to a tab. Selecting the tab is
- * not enough on its own: the target element only mounts once its panel is
- * active, so the effect below re-scrolls after the switch.
- */
+// Anchors used elsewhere in the workspace; the target mounts only after its
+// tab is active, so switching tab is not enough on its own.
 const TAB_FOR_ANCHOR: Record<string, PropertyTab> = {
   "#rent": "rent",
   "#leases": "rent",
@@ -66,19 +62,10 @@ const TAB_FOR_ANCHOR: Record<string, PropertyTab> = {
   "#property-setup": "setup",
 };
 
-/**
- * Anchors that resolve to the Setup tab *and* live inside its accordion, which
- * unmounts while collapsed (`keepMounted` defaults to false). Opening the tab
- * alone would scroll into nothing, so these also have to expand the accordion.
- */
+// Inside the setup accordion, so these have to expand it as well as switch tab.
 const SETUP_SECTION_ANCHORS = new Set(["#units", "#ownership-history"]);
 
-/**
- * The target element can take more than one frame to mount: the tab panel
- * lands on one render and the Setup accordion expands on the next. Keep
- * looking for a bounded number of frames rather than scrolling once into
- * nothing.
- */
+// The panel mounts a frame or two after the switch, so retry briefly.
 function scrollToTarget(id: string, attemptsLeft = 20) {
   const target = document.getElementById(id);
 
@@ -111,8 +98,7 @@ export function PropertyWorkspaceDetail({
     (yearEndReadiness.uncategorizedTransactions > 0 ||
       yearEndReadiness.missingReceipts > 0);
 
-  // Tabs that are actually rendered; the setup tab is absent while guided
-  // setup is unfinished (setup lives on its own page then).
+  // No setup tab while guided setup is unfinished; setup lives on its own page.
   const availableTabs = useMemo<PropertyTab[]>(() => {
     const tabs: PropertyTab[] = ["rent", "expenses", "mortgage"];
     if (!property.setupDraft) {
@@ -126,15 +112,11 @@ export function PropertyWorkspaceDetail({
     openTaxActivity ? "expenses" : "rent",
   );
 
-  // The setup accordion starts closed once setup is complete. Seeded from
-  // readiness and frozen at mount so it does not snap shut as gaps are
-  // resolved, then re-opened by a deep link into one of its sections.
+  // Seeded from readiness so the panel does not snap shut as gaps are resolved.
   const [setupOpen, setSetupOpen] = useState<string[]>(() =>
     readiness.setupGapCount === 0 ? [] : ["setup"],
   );
 
-  // Honour a deep link (initial hash or a later `#anchor` click) by opening
-  // the tab that owns it, then scrolling to the now-mounted target.
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash;
@@ -244,11 +226,6 @@ export function PropertyWorkspaceDetail({
   );
 }
 
-/**
- * One band that answers the two questions a landlord opens this page with:
- * "am I ready to file?" and "what are the numbers?" Readiness sits on a calm
- * status tint above the tab row; the four T776 figures sit below it.
- */
 function PropertySummaryBand({
   property,
   rentLedger,
