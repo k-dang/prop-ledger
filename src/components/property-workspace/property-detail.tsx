@@ -7,14 +7,11 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
   CircleDot,
-  type LucideIcon,
   MapPin,
-  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { useEffect, useState } from "react";
 import { MortgagePaymentsPanel } from "@/components/evidence-binder/allocation-controls";
 import {
   DeductionsAndIncomePanel,
@@ -26,15 +23,9 @@ import {
   RentLedgerDetail,
   RentPaymentPanel,
 } from "@/components/rent-ledger/rent-ledger-detail";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   formatDateWithYear,
   type PropertyReadiness,
@@ -56,6 +47,26 @@ import {
 } from "@/lib/year-end-readiness-view-model";
 import { PropertySetup } from "./property-setup";
 
+type PropertyTab = "rent" | "expenses" | "mortgage" | "setup";
+
+type AnchorTarget = {
+  tab: PropertyTab;
+  inSetupAccordion?: boolean;
+};
+
+// Anchors used elsewhere in the workspace; the target mounts only after its
+// tab is active, so switching tab is not enough on its own.
+const ANCHOR_TARGETS: Record<string, AnchorTarget> = {
+  "#rent": { tab: "rent" },
+  "#leases": { tab: "rent" },
+  "#transactions": { tab: "expenses" },
+  "#tax-activity": { tab: "expenses" },
+  "#mortgage-payments": { tab: "mortgage" },
+  "#property-setup": { tab: "setup" },
+  "#units": { tab: "setup", inSetupAccordion: true },
+  "#ownership-history": { tab: "setup", inSetupAccordion: true },
+};
+
 export function PropertyWorkspaceDetail({
   property,
   rentLedger,
@@ -74,12 +85,49 @@ export function PropertyWorkspaceDetail({
     !deferActivity &&
     (yearEndReadiness.uncategorizedTransactions > 0 ||
       yearEndReadiness.missingReceipts > 0);
-  const mortgagePaymentSummary = getMortgagePaymentSummary(property, year);
-  const taxableActivitySummary = getTaxableActivitySummary(property, year);
+
+  // Open on whatever needs attention first, else rent (the primary action).
+  const [activeTab, setActiveTab] = useState<PropertyTab>(() =>
+    openTaxActivity ? "expenses" : "rent",
+  );
+
+  // Seeded from readiness so the panel does not snap shut as gaps are resolved.
+  const [setupOpen, setSetupOpen] = useState<string[]>(() =>
+    readiness.setupGapCount === 0 ? [] : ["setup"],
+  );
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      const hash = window.location.hash;
+      const target = ANCHOR_TARGETS[hash];
+      // Setup lives on its own page while guided setup is unfinished.
+      if (!target || (target.tab === "setup" && property.setupDraft)) {
+        return;
+      }
+
+      if (target.inSetupAccordion) {
+        setSetupOpen(["setup"]);
+      }
+
+      setActiveTab(target.tab);
+      // The panel mounts on the next commit, so scroll after it.
+      requestAnimationFrame(() => {
+        document.getElementById(hash.slice(1))?.scrollIntoView();
+      });
+    };
+
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, [property.setupDraft]);
 
   return (
     <>
-      <section id="summary" className="grid scroll-mt-4 gap-4">
+      <section
+        id="summary"
+        aria-label={`Property summary for ${year}`}
+        className="grid scroll-mt-4 gap-4"
+      >
         <PropertyWorkspaceHeader
           property={property}
           readiness={readiness}
@@ -88,191 +136,127 @@ export function PropertyWorkspaceDetail({
         {property.setupDraft ? (
           <FinishSetupCard property={property} today={today} />
         ) : null}
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <RentPaymentPanel
-            key={`${property.id}-${year}-${rentLedger.leases.map((lease) => lease.id).join("-")}`}
-            ledger={rentLedger}
-            year={year}
-            today={today}
-            className="lg:col-start-2 lg:row-start-1"
-          />
-          <PropertyFinancialSummary
-            property={property}
-            rentLedger={rentLedger}
-            taxYear={year}
-            uncategorizedTransactions={
-              yearEndReadiness.uncategorizedTransactions
-            }
-            className="lg:col-start-1 lg:row-start-1"
-          />
-        </div>
-      </section>
-      <FilingReadinessOverview
-        property={property}
-        taxYear={year}
-        filingReadiness={filingReadiness}
-      />
-      {property.setupDraft ? null : (
-        <section id="setup" className="grid scroll-mt-4 gap-4">
-          <PropertySetup property={property} readiness={readiness} />
-        </section>
-      )}
-      <section id="rent" className="scroll-mt-4">
-        <RentLedgerDetail
-          ledger={rentLedger}
-          year={year}
-          today={today}
-          showActivityTools={false}
-          showActivityTable={false}
-          defaultOpenLeases={rentLedger.leases.length === 0}
+        <PropertySummaryBand
+          property={property}
+          rentLedger={rentLedger}
+          taxYear={year}
+          filingReadiness={filingReadiness}
         />
       </section>
-      <WorkflowDetails
-        id="mortgage-payments"
-        icon={WalletCards}
-        summary={mortgagePaymentSummary}
-        title="Mortgage payments"
-        description={
-          deferActivity
-            ? "Available after setup, but secondary to the current readiness gap."
-            : "Record deductible interest and supporting principal amounts."
-        }
-        open={false}
-      >
-        <MortgagePaymentsPanel
-          propertyId={property.id}
-          payments={property.mortgagePayments}
-        />
-      </WorkflowDetails>
-      <WorkflowDetails
-        id="tax-activity"
-        icon={CircleDollarSign}
-        summary={taxableActivitySummary}
-        title="Expenses & non-rent income"
-        description={
-          deferActivity
-            ? "Deductions and non-rent income are available, but setup should be fixed first."
-            : `Deductions and non-rent income for ${year}.`
-        }
-        open={openTaxActivity}
-      >
-        <div className="grid gap-3">
-          <EvidenceBinderPanel property={property} />
-          <DeductionsAndIncomePanel property={property} />
-        </div>
-      </WorkflowDetails>
-      <RentActivityCard ledger={rentLedger} year={year} variant="table" />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList variant="line" className="w-full justify-start border-b">
+          <TabsTrigger value="rent">Rent</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses &amp; income</TabsTrigger>
+          <TabsTrigger value="mortgage">Mortgage</TabsTrigger>
+          {property.setupDraft ? null : (
+            <TabsTrigger value="setup">Setup</TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="rent" id="rent" className="mt-4">
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+            <RentLedgerDetail
+              ledger={rentLedger}
+              year={year}
+              today={today}
+              showActivityTools={false}
+              showActivityTable={false}
+              defaultOpenLeases={rentLedger.leases.length === 0}
+            />
+            <RentPaymentPanel
+              key={`${property.id}-${year}-${rentLedger.leases.map((lease) => lease.id).join("-")}`}
+              ledger={rentLedger}
+              year={year}
+              today={today}
+            />
+          </div>
+          <div className="mt-4">
+            <RentActivityCard ledger={rentLedger} year={year} variant="table" />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="expenses" id="tax-activity" className="mt-4">
+          <div className="grid gap-4">
+            <EvidenceBinderPanel property={property} />
+            <DeductionsAndIncomePanel property={property} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="mortgage" id="mortgage-payments" className="mt-4">
+          <MortgagePaymentsPanel
+            propertyId={property.id}
+            payments={property.mortgagePayments}
+          />
+        </TabsContent>
+
+        {property.setupDraft ? null : (
+          <TabsContent value="setup" className="mt-4">
+            <PropertySetup
+              property={property}
+              readiness={readiness}
+              open={setupOpen}
+              onOpenChange={setSetupOpen}
+            />
+          </TabsContent>
+        )}
+      </Tabs>
     </>
   );
 }
 
-function WorkflowDetails({
-  id,
-  icon: Icon,
-  summary,
-  title,
-  description,
-  open,
-  children,
-}: {
-  id: string;
-  icon: LucideIcon;
-  summary: string;
-  title: string;
-  description: string;
-  open: boolean;
-  children: ReactNode;
-}) {
-  // Freeze the uncontrolled Accordion's initial state; `open` is derived from
-  // live readiness data and changes across re-renders.
-  const [initialOpen] = useState(() => (open ? [id] : []));
-  return (
-    <section id={id} className="scroll-mt-4">
-      <Card className="rounded-md py-0">
-        <h2 className="sr-only">{title}</h2>
-        <Accordion defaultValue={initialOpen}>
-          <AccordionItem value={id} className="border-b-0">
-            <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
-              <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
-                <Icon
-                  className="size-4 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0">
-                  <span className="block font-medium text-sm">{title}</span>
-                  <span className="block truncate text-muted-foreground text-xs">
-                    {description}
-                  </span>
-                </div>
-                <span className="ml-auto hidden shrink-0 text-muted-foreground text-xs tabular-nums sm:inline">
-                  {summary}
-                </span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent
-              id={`${id}-panel`}
-              className="grid gap-4 border-t px-4 py-4"
-            >
-              {children}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </Card>
-    </section>
-  );
-}
-
-function FilingReadinessOverview({
+function PropertySummaryBand({
   property,
+  rentLedger,
   taxYear,
   filingReadiness,
 }: {
   property: RentalProperty;
+  rentLedger: RentLedger;
   taxYear: number;
   filingReadiness: ReturnType<typeof getFilingReadiness>;
 }) {
   const { status, counts, rows } = filingReadiness;
-  const nextRow = rows.find((row) => row.status !== "clear");
+  const openRows = rows.filter((row) => row.status !== "clear");
+  const nextRow = openRows[0];
   const tone = getOverallFilingTone(status);
   const StatusIcon = getOverallFilingIcon(status);
+  const financials = summarizeTaxYearFinancials(
+    { ...property, rentEvents: rentLedger.rentEvents },
+    taxYear,
+    filingReadiness.yearEnd.uncategorizedTransactions,
+  );
 
   return (
     <section
       aria-labelledby="filing-readiness-title"
-      className="grid min-w-0 content-start gap-4"
+      className="grid content-start gap-3"
     >
-      <div className={cn("rounded-md border p-3", toneSurface[tone])}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <StatusIcon
-              className={cn("mt-0.5 size-4 shrink-0", toneIcon[tone])}
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <h2
-                id="filing-readiness-title"
-                className="font-heading font-medium text-base text-foreground leading-snug"
-              >
-                Filing readiness for {taxYear}
-              </h2>
-              <p className="mt-1 text-sm">
-                <span className="font-medium">
-                  {formatOverallFilingStatus(status)}
-                </span>
-                <span aria-hidden="true"> · </span>
-                <span>{formatFilingCheckSummary(counts, rows.length)}</span>
-              </p>
-              <p className="mt-1 max-w-2xl text-xs">
-                {getFilingReadinessMessage(status, rows)}
-              </p>
-            </div>
+      <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-3 px-4 py-3",
+            toneSurface[tone],
+          )}
+        >
+          <StatusIcon
+            className={cn("size-4 shrink-0", toneIcon[tone])}
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <h2 id="filing-readiness-title" className="font-medium text-sm">
+              {formatOverallFilingStatus(status)} for {taxYear}
+            </h2>
+            <p className="text-xs">
+              {formatFilingCheckSummary(counts, rows.length)}
+            </p>
           </div>
           {nextRow ? (
             <Link
               href={nextRow.href}
               className={cn(
-                buttonVariants({ variant: "default", size: "sm" }),
-                "w-fit rounded-md",
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "ml-auto w-fit rounded-md",
               )}
             >
               {status === "blocked" ? "Review next item" : "Open review"}
@@ -283,7 +267,7 @@ function FilingReadinessOverview({
               href={`/year-end?propertyId=${property.id}&year=${taxYear}`}
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "w-fit rounded-md",
+                "ml-auto w-fit rounded-md",
               )}
             >
               Open year-end
@@ -291,17 +275,68 @@ function FilingReadinessOverview({
             </Link>
           )}
         </div>
+
+        <dl className="grid grid-cols-2 gap-px border-t border-border bg-border sm:grid-cols-4">
+          <FinancialFigure
+            label="Rent received"
+            amount={financials.paymentsReceived}
+          />
+          <FinancialFigure
+            label="Gross rental income"
+            amount={financials.grossRentalIncome}
+          />
+          <FinancialFigure
+            label="Deductible expenses"
+            amount={financials.deductibleExpenses}
+          />
+          <FinancialFigure
+            label="Net recorded income"
+            amount={financials.netRecordedRentalIncome}
+            incomplete={financials.incompleteTransactionCount > 0}
+          />
+        </dl>
       </div>
 
-      <ul
-        className="divide-y overflow-hidden rounded-md border"
-        aria-label={`Filing readiness checks for ${taxYear}`}
-      >
-        {rows.map((row) => (
-          <FilingReadinessCheckRow key={row.id} row={row} />
-        ))}
-      </ul>
+      {openRows.length > 0 ? (
+        <ul
+          className="divide-y overflow-hidden rounded-xl ring-1 ring-foreground/10"
+          aria-label={`Filing readiness checks for ${taxYear}`}
+        >
+          {openRows.map((row) => (
+            <FilingReadinessCheckRow key={row.id} row={row} />
+          ))}
+        </ul>
+      ) : null}
     </section>
+  );
+}
+
+function FinancialFigure({
+  label,
+  amount,
+  incomplete,
+}: {
+  label: string;
+  amount: number;
+  incomplete?: boolean;
+}) {
+  return (
+    <div className="bg-card px-5 py-4">
+      <dt className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        {label}
+      </dt>
+      <dd className="mt-1 flex flex-wrap items-center gap-2 font-semibold text-xl tabular-nums tracking-tight">
+        {formatMoney(amount)}
+        {incomplete ? (
+          <Badge
+            variant="outline"
+            className={cn("rounded-md", toneSurface.review)}
+          >
+            Incomplete
+          </Badge>
+        ) : null}
+      </dd>
+    </div>
   );
 }
 
@@ -312,7 +347,7 @@ function FilingReadinessCheckRow({ row }: { row: YearEndReadinessRow }) {
   return (
     <li
       className={cn(
-        "grid gap-3 p-3 sm:items-center",
+        "grid gap-3 bg-card p-3 sm:items-center",
         row.actionLabel
           ? "sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
           : "sm:grid-cols-[auto_minmax(0,1fr)_auto]",
@@ -346,61 +381,6 @@ function FilingReadinessCheckRow({ row }: { row: YearEndReadinessRow }) {
   );
 }
 
-function PropertyFinancialSummary({
-  property,
-  rentLedger,
-  taxYear,
-  uncategorizedTransactions,
-  className,
-}: {
-  property: RentalProperty;
-  rentLedger: RentLedger;
-  taxYear: number;
-  uncategorizedTransactions: number;
-  className?: string;
-}) {
-  const financials = summarizeTaxYearFinancials(
-    { ...property, rentEvents: rentLedger.rentEvents },
-    taxYear,
-    uncategorizedTransactions,
-  );
-  const figures = [
-    { label: "Rent received", amount: financials.paymentsReceived },
-    { label: "Gross rental income", amount: financials.grossRentalIncome },
-    { label: "Deductible expenses", amount: financials.deductibleExpenses },
-    {
-      label: "Net recorded income",
-      amount: financials.netRecordedRentalIncome,
-      incomplete: financials.incompleteTransactionCount > 0,
-    },
-  ];
-  return (
-    <section
-      aria-label={`Financial summary for ${taxYear}`}
-      className={cn("overflow-hidden rounded-xl border bg-card", className)}
-    >
-      <dl className="divide-y">
-        {figures.map((figure) => (
-          <div key={figure.label} className="px-5 py-4">
-            <dt className="text-sm text-muted-foreground">{figure.label}</dt>
-            <dd className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight tabular-nums">
-              {formatMoney(figure.amount)}
-              {figure.incomplete && (
-                <Badge variant="outline" className={toneSurface.review}>
-                  Incomplete
-                </Badge>
-              )}
-            </dd>
-            <dd className="mt-1 text-xs text-muted-foreground">
-              {taxYear} · Recorded amounts
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
-
 function ReadinessStatusBadge({
   status,
   count,
@@ -421,26 +401,6 @@ function ReadinessStatusBadge({
       {label}
     </Badge>
   );
-}
-
-function pluralize(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
-
-function getMortgagePaymentSummary(property: RentalProperty, year: number) {
-  const yearPrefix = `${year}-`;
-  const paymentCount = property.mortgagePayments.filter((payment) =>
-    payment.date.startsWith(yearPrefix),
-  ).length;
-
-  return `${pluralize(paymentCount, "payment")} in ${year}`;
-}
-
-function getTaxableActivitySummary(property: RentalProperty, year: number) {
-  const count = property.ledgerEntries.filter((entry) =>
-    entry.date.startsWith(`${year}-`),
-  ).length;
-  return `${pluralize(count, "transaction")} in ${year}`;
 }
 
 function PropertyWorkspaceHeader({
@@ -587,42 +547,6 @@ function formatOverallFilingStatus(status: FilingStatus) {
   }
 
   return "Blocked";
-}
-
-function getFilingReadinessMessage(
-  status: FilingStatus,
-  rows: YearEndReadinessRow[],
-) {
-  if (status === "ready") {
-    return "Records are ready for year-end export.";
-  }
-
-  const activeRows = rows.filter((row) =>
-    status === "blocked" ? row.status === "blocking" : row.status === "warning",
-  );
-  const reason = formatReadableList(activeRows.map((row) => row.label));
-
-  if (status === "blocked") {
-    return `Blocked by ${reason}. Resolve blocking items before export.`;
-  }
-
-  return `Review ${reason} before export.`;
-}
-
-function formatReadableList(items: string[]) {
-  if (items.length === 0) {
-    return "remaining checks";
-  }
-
-  if (items.length === 1) {
-    return items[0];
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`;
-  }
-
-  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
 }
 
 function getSetupTaskTone(

@@ -5,11 +5,5 @@
   "autoupdate": false,
   "share": "disabled",
   "snapshot": false,
-  "enabled_providers": ["vercel"],
-  "experimental": {
-    "policies": [
-      { "effect": "deny", "action": "provider.use", "resource": "*" },
-      { "effect": "allow", "action": "provider.use", "resource": "vercel" }
-    ]
-  }
+  "enabled_providers": ["vercel", "opencode"]
 }
