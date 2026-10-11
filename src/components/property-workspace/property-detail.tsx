@@ -11,7 +11,7 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { MortgagePaymentsPanel } from "@/components/evidence-binder/allocation-controls";
 import {
   DeductionsAndIncomePanel,
@@ -49,21 +49,23 @@ import { PropertySetup } from "./property-setup";
 
 type PropertyTab = "rent" | "expenses" | "mortgage" | "setup";
 
-// Anchors used elsewhere in the workspace; the target mounts only after its
-// tab is active, so switching tab is not enough on its own.
-const TAB_FOR_ANCHOR: Record<string, PropertyTab> = {
-  "#rent": "rent",
-  "#leases": "rent",
-  "#transactions": "expenses",
-  "#tax-activity": "expenses",
-  "#mortgage-payments": "mortgage",
-  "#units": "setup",
-  "#ownership-history": "setup",
-  "#property-setup": "setup",
+type AnchorTarget = {
+  tab: PropertyTab;
+  inSetupAccordion?: boolean;
 };
 
-// Inside the setup accordion, so these have to expand it as well as switch tab.
-const SETUP_SECTION_ANCHORS = new Set(["#units", "#ownership-history"]);
+// Anchors used elsewhere in the workspace; the target mounts only after its
+// tab is active, so switching tab is not enough on its own.
+const ANCHOR_TARGETS: Record<string, AnchorTarget> = {
+  "#rent": { tab: "rent" },
+  "#leases": { tab: "rent" },
+  "#transactions": { tab: "expenses" },
+  "#tax-activity": { tab: "expenses" },
+  "#mortgage-payments": { tab: "mortgage" },
+  "#property-setup": { tab: "setup" },
+  "#units": { tab: "setup", inSetupAccordion: true },
+  "#ownership-history": { tab: "setup", inSetupAccordion: true },
+};
 
 export function PropertyWorkspaceDetail({
   property,
@@ -84,15 +86,6 @@ export function PropertyWorkspaceDetail({
     (yearEndReadiness.uncategorizedTransactions > 0 ||
       yearEndReadiness.missingReceipts > 0);
 
-  // No setup tab while guided setup is unfinished; setup lives on its own page.
-  const availableTabs = useMemo<PropertyTab[]>(() => {
-    const tabs: PropertyTab[] = ["rent", "expenses", "mortgage"];
-    if (!property.setupDraft) {
-      tabs.push("setup");
-    }
-    return tabs;
-  }, [property.setupDraft]);
-
   // Open on whatever needs attention first, else rent (the primary action).
   const [activeTab, setActiveTab] = useState<PropertyTab>(() =>
     openTaxActivity ? "expenses" : "rent",
@@ -106,27 +99,27 @@ export function PropertyWorkspaceDetail({
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash;
-      const target = TAB_FOR_ANCHOR[hash];
-      if (!target || !availableTabs.includes(target)) {
+      const target = ANCHOR_TARGETS[hash];
+      // Setup lives on its own page while guided setup is unfinished.
+      if (!target || (target.tab === "setup" && property.setupDraft)) {
         return;
       }
 
-      if (SETUP_SECTION_ANCHORS.has(hash)) {
+      if (target.inSetupAccordion) {
         setSetupOpen(["setup"]);
       }
 
-      const id = hash.slice(1);
-      setActiveTab(target);
+      setActiveTab(target.tab);
       // The panel mounts on the next commit, so scroll after it.
       requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView();
+        document.getElementById(hash.slice(1))?.scrollIntoView();
       });
     };
 
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
-  }, [availableTabs]);
+  }, [property.setupDraft]);
 
   return (
     <>
@@ -151,11 +144,7 @@ export function PropertyWorkspaceDetail({
         />
       </section>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as PropertyTab)}
-        className="w-full"
-      >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList variant="line" className="w-full justify-start border-b">
           <TabsTrigger value="rent">Rent</TabsTrigger>
           <TabsTrigger value="expenses">Expenses &amp; income</TabsTrigger>
@@ -228,7 +217,8 @@ function PropertySummaryBand({
   filingReadiness: ReturnType<typeof getFilingReadiness>;
 }) {
   const { status, counts, rows } = filingReadiness;
-  const nextRow = rows.find((row) => row.status !== "clear");
+  const openRows = rows.filter((row) => row.status !== "clear");
+  const nextRow = openRows[0];
   const tone = getOverallFilingTone(status);
   const StatusIcon = getOverallFilingIcon(status);
   const financials = summarizeTaxYearFinancials(
@@ -238,7 +228,10 @@ function PropertySummaryBand({
   );
 
   return (
-    <div className="grid content-start gap-3">
+    <section
+      aria-labelledby="filing-readiness-title"
+      className="grid content-start gap-3"
+    >
       <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
         <div
           className={cn(
@@ -251,7 +244,7 @@ function PropertySummaryBand({
             aria-hidden="true"
           />
           <div className="min-w-0">
-            <h2 className="font-medium text-sm">
+            <h2 id="filing-readiness-title" className="font-medium text-sm">
               {formatOverallFilingStatus(status)} for {taxYear}
             </h2>
             <p className="text-xs">
@@ -304,19 +297,17 @@ function PropertySummaryBand({
         </dl>
       </div>
 
-      {rows.some((row) => row.status !== "clear") ? (
+      {openRows.length > 0 ? (
         <ul
           className="divide-y overflow-hidden rounded-xl ring-1 ring-foreground/10"
           aria-label={`Filing readiness checks for ${taxYear}`}
         >
-          {rows
-            .filter((row) => row.status !== "clear")
-            .map((row) => (
-              <FilingReadinessCheckRow key={row.id} row={row} />
-            ))}
+          {openRows.map((row) => (
+            <FilingReadinessCheckRow key={row.id} row={row} />
+          ))}
         </ul>
       ) : null}
-    </div>
+    </section>
   );
 }
 
