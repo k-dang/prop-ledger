@@ -66,6 +66,25 @@ const TAB_FOR_ANCHOR: Record<string, PropertyTab> = {
   "#property-setup": "setup",
 };
 
+/**
+ * The target element can take more than one frame to mount: the tab panel
+ * lands on one render and the Setup accordion expands on the next. Keep
+ * looking for a bounded number of frames rather than scrolling once into
+ * nothing.
+ */
+function scrollToTarget(id: string, attemptsLeft = 20) {
+  const target = document.getElementById(id);
+
+  if (target) {
+    target.scrollIntoView();
+    return;
+  }
+
+  if (attemptsLeft > 0) {
+    requestAnimationFrame(() => scrollToTarget(id, attemptsLeft - 1));
+  }
+}
+
 export function PropertyWorkspaceDetail({
   property,
   rentLedger,
