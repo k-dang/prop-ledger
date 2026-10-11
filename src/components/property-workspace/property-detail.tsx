@@ -65,20 +65,6 @@ const TAB_FOR_ANCHOR: Record<string, PropertyTab> = {
 // Inside the setup accordion, so these have to expand it as well as switch tab.
 const SETUP_SECTION_ANCHORS = new Set(["#units", "#ownership-history"]);
 
-// The panel mounts a frame or two after the switch, so retry briefly.
-function scrollToTarget(id: string, attemptsLeft = 20) {
-  const target = document.getElementById(id);
-
-  if (target) {
-    target.scrollIntoView();
-    return;
-  }
-
-  if (attemptsLeft > 0) {
-    requestAnimationFrame(() => scrollToTarget(id, attemptsLeft - 1));
-  }
-}
-
 export function PropertyWorkspaceDetail({
   property,
   rentLedger,
@@ -129,8 +115,12 @@ export function PropertyWorkspaceDetail({
         setSetupOpen(["setup"]);
       }
 
+      const id = hash.slice(1);
       setActiveTab(target);
-      scrollToTarget(hash.slice(1));
+      // The panel mounts on the next commit, so scroll after it.
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView();
+      });
     };
 
     syncFromHash();
