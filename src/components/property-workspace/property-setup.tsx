@@ -9,7 +9,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -92,9 +92,13 @@ const ownerFormSchema = z
 export function PropertySetup({
   property,
   readiness,
+  open,
+  onOpenChange,
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
+  open: string[];
+  onOpenChange: (open: string[]) => void;
 }) {
   const { error: unitError, runMutation: runUnitMutation } = useMutation();
   const { error: ownerError, runMutation: runOwnerMutation } = useMutation();
@@ -115,14 +119,11 @@ export function PropertySetup({
     property.owners.length,
     "owner",
   )}`;
-  // Freeze the uncontrolled Accordion's initial state; `complete` changes as
-  // setup gaps are resolved.
-  const [initialOpen] = useState(() => (complete ? [] : ["setup"]));
 
   return (
     <Card id="property-setup" className="rounded-md py-0">
       <h2 className="sr-only">Property setup</h2>
-      <Accordion defaultValue={initialOpen}>
+      <Accordion value={open} onValueChange={onOpenChange}>
         <AccordionItem value="setup" className="border-b-0">
           <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
             <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">

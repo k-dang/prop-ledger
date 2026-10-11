@@ -67,6 +67,13 @@ const TAB_FOR_ANCHOR: Record<string, PropertyTab> = {
 };
 
 /**
+ * Anchors that resolve to the Setup tab *and* live inside its accordion, which
+ * unmounts while collapsed (`keepMounted` defaults to false). Opening the tab
+ * alone would scroll into nothing, so these also have to expand the accordion.
+ */
+const SETUP_SECTION_ANCHORS = new Set(["#units", "#ownership-history"]);
+
+/**
  * The target element can take more than one frame to mount: the tab panel
  * lands on one render and the Setup accordion expands on the next. Keep
  * looking for a bounded number of frames rather than scrolling once into
@@ -119,19 +126,29 @@ export function PropertyWorkspaceDetail({
     openTaxActivity ? "expenses" : "rent",
   );
 
+  // The setup accordion starts closed once setup is complete. Seeded from
+  // readiness and frozen at mount so it does not snap shut as gaps are
+  // resolved, then re-opened by a deep link into one of its sections.
+  const [setupOpen, setSetupOpen] = useState<string[]>(() =>
+    readiness.setupGapCount === 0 ? [] : ["setup"],
+  );
+
   // Honour a deep link (initial hash or a later `#anchor` click) by opening
   // the tab that owns it, then scrolling to the now-mounted target.
   useEffect(() => {
     const syncFromHash = () => {
-      const target = TAB_FOR_ANCHOR[window.location.hash];
+      const hash = window.location.hash;
+      const target = TAB_FOR_ANCHOR[hash];
       if (!target || !availableTabs.includes(target)) {
         return;
       }
+
+      if (SETUP_SECTION_ANCHORS.has(hash)) {
+        setSetupOpen(["setup"]);
+      }
+
       setActiveTab(target);
-      const id = window.location.hash.slice(1);
-      requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView();
-      });
+      scrollToTarget(hash.slice(1));
     };
 
     syncFromHash();
@@ -214,7 +231,12 @@ export function PropertyWorkspaceDetail({
 
         {property.setupDraft ? null : (
           <TabsContent value="setup" className="mt-4">
-            <PropertySetup property={property} readiness={readiness} />
+            <PropertySetup
+              property={property}
+              readiness={readiness}
+              open={setupOpen}
+              onOpenChange={setSetupOpen}
+            />
           </TabsContent>
         )}
       </Tabs>
