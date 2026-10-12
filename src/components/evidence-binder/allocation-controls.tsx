@@ -622,6 +622,7 @@ function MortgagePaymentForm({
             <Button
               type="button"
               variant="outline"
+              size="sm"
               className="rounded-md"
               onClick={prefillLatestPayment}
             >
