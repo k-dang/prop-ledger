@@ -149,9 +149,6 @@ describe("evidence sheet receipt upload", () => {
       "receipt.pdf attached to this record.",
     );
     expect(picker.value).toBe("");
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Attach receipt" }),
-    );
   });
 
   it("shows the failure for a rejected upload and retries the same file", async () => {

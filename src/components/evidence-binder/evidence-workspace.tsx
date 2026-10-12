@@ -11,13 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { type ReactNode, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import { DocumentOpenLink } from "@/components/documents/document-open-link";
 import { CapitalAssetControl } from "@/components/evidence-binder/capital-asset-control";
@@ -856,7 +850,6 @@ function TransactionEvidenceControl({
   const uploadFeedbackId = `${fileInputId}-feedback`;
   const linkedCount = documents.length;
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const uploadInFlight = useRef(false);
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
@@ -891,12 +884,6 @@ function TransactionEvidenceControl({
     transactionId,
     onUploadEvidence: handleUploadEvidence,
   });
-
-  useEffect(() => {
-    if (!isUploading && uploadedName) {
-      uploadButtonRef.current?.focus({ preventScroll: true });
-    }
-  }, [isUploading, uploadedName]);
 
   function upload(file: File) {
     if (uploadInFlight.current || isUploading) return;
@@ -1079,7 +1066,6 @@ function TransactionEvidenceControl({
               <FieldLabel htmlFor={fileInputId}>Receipt or invoice</FieldLabel>
               <div>
                 <Button
-                  ref={uploadButtonRef}
                   type="button"
                   disabled={isUploading}
                   aria-describedby={uploadHelpId}
