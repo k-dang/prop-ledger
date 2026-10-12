@@ -9,8 +9,9 @@ import {
 } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
+import { Toaster } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/action-utils";
+import { recordRentEvent } from "@/lib/actions";
 import type { RentLedger } from "@/lib/rent-ledger";
 
 vi.mock("@/lib/actions", () => ({
@@ -27,6 +28,7 @@ import { LeasesPanel, RentPaymentPanel } from "./rent-ledger-detail";
 afterEach(() => {
   cleanup();
   vi.mocked(uploadLeaseDocument).mockReset();
+  vi.mocked(recordRentEvent).mockReset();
 });
 
 const ledger: RentLedger = {
@@ -277,5 +279,97 @@ describe("rent payment defaults", () => {
     );
     expect(markup).not.toContain('value="2026-10-03"');
     expect(markup).toContain("Choose the date you received rent in 2025.");
+  });
+});
+
+describe("rent payment feedback", () => {
+  it("shows a receipt outside the form and replaces it on the next successful save", async () => {
+    let finish!: (result: ActionResult) => void;
+    vi.mocked(recordRentEvent)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue({ ok: true });
+    render(
+      <>
+        <RentPaymentPanel ledger={ledger} year={2026} today="2026-10-12" />
+        <Toaster />
+      </>,
+    );
+    const form = screen
+      .getByRole("button", { name: "Record $2,000.00" })
+      .closest("form");
+    if (!form) throw new Error("Rent form was not rendered");
+
+    fireEvent.submit(form);
+    expect(screen.queryByText(/Recorded \$/)).toBeNull();
+    await act(async () => finish({ ok: true }));
+    const firstReceipt = screen.getByText(
+      "Recorded $2,000.00 for Test tenant on 2026-10-12.",
+    );
+    expect(firstReceipt.closest('[data-slot="card"]')).toBeNull();
+    expect(firstReceipt.closest('[data-slot="toast"]')).toBeTruthy();
+    expect(
+      (
+        screen.getByRole("spinbutton", {
+          name: "Amount received",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("");
+
+    fireEvent.change(
+      screen.getByRole("spinbutton", { name: "Amount received" }),
+      { target: { value: "1500" } },
+    );
+    fireEvent.change(screen.getByLabelText("Date received"), {
+      target: { value: "2025-12-20" },
+    });
+    await act(async () => fireEvent.submit(form));
+    expect(
+      screen.queryByText("Recorded $2,000.00 for Test tenant on 2026-10-12."),
+    ).toBeNull();
+    expect(
+      screen.getByText("Recorded $1,500.00 for Test tenant on 2025-12-20."),
+    ).toBeTruthy();
+    expect(document.querySelectorAll('[data-slot="toast"]')).toHaveLength(1);
+    expect(
+      screen
+        .getByRole("link", { name: "View 2025 payments" })
+        .getAttribute("href"),
+    ).toBe("/properties/property-1?year=2025");
+    fireEvent.keyDown(document, { key: "F6" });
+    expect(screen.getByRole("button", { name: "Close toast" })).toBeTruthy();
+  });
+
+  it("keeps a failed save inline without showing a success receipt", async () => {
+    vi.mocked(recordRentEvent).mockResolvedValue({
+      ok: false,
+      error: "Connection lost. Try again.",
+    });
+    render(
+      <>
+        <RentPaymentPanel ledger={ledger} year={2026} today="2026-10-12" />
+        <Toaster />
+      </>,
+    );
+    const form = screen
+      .getByRole("button", { name: "Record $2,000.00" })
+      .closest("form");
+    if (!form) throw new Error("Rent form was not rendered");
+    await act(async () => fireEvent.submit(form));
+    expect(
+      screen.getByText("Connection lost. Try again.").closest("form"),
+    ).toBe(form);
+    expect(document.querySelector('[data-slot="toast"]')).toBeNull();
+    expect(
+      (
+        screen.getByRole("spinbutton", {
+          name: "Amount received",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("2000.00");
   });
 });
