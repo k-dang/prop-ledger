@@ -4,6 +4,7 @@ import type { RentEvent } from "@/db/schema";
 import {
   type DocumentWithLinks,
   getLeaseDocuments,
+  getRentPaymentPrefill,
   summarizeRentLedger,
 } from "./rent-ledger";
 
@@ -21,6 +22,67 @@ function makeEvent(
     ...event,
   };
 }
+
+describe("rent payment prefill", () => {
+  it("uses the selected lease's latest recorded month, across tax years", () => {
+    const events = [
+      makeEvent({ id: "latest", amount: 2400, date: "2026-12-20" }),
+      makeEvent({ id: "older", amount: 2000, date: "2026-11-20" }),
+      makeEvent({
+        id: "other-tenant",
+        leaseId: "lease-2",
+        amount: 3000,
+        date: "2027-02-01",
+      }),
+      makeEvent({
+        id: "unassigned",
+        leaseId: null,
+        amount: 100,
+        date: "2027-03-01",
+      }),
+    ];
+
+    expect(getRentPaymentPrefill(events, "lease-1")).toEqual({
+      amount: 2400,
+      date: "2027-01-20",
+      sourceMonth: "2026-12",
+    });
+  });
+
+  it("adds split payments in the latest month and advances its latest date", () => {
+    const events = [
+      makeEvent({ id: "partial", amount: 1000.1, date: "2026-04-05" }),
+      makeEvent({ id: "balance", amount: 1399.2, date: "2026-04-20" }),
+      makeEvent({ id: "older", amount: 2000, date: "2026-03-20" }),
+    ];
+
+    expect(getRentPaymentPrefill(events, "lease-1")).toEqual({
+      amount: 2399.3,
+      date: "2026-05-20",
+      sourceMonth: "2026-04",
+    });
+  });
+
+  it.each([
+    ["2026-01-31", "2026-02-28"],
+    ["2028-01-31", "2028-02-29"],
+    ["2026-03-31", "2026-04-30"],
+  ])("advances %s to %s without overflowing", (date, expected) => {
+    expect(
+      getRentPaymentPrefill(
+        [makeEvent({ id: "p1", amount: 2400, date })],
+        "lease-1",
+      )?.date,
+    ).toBe(expected);
+  });
+
+  it("offers no prefill without payments for the selected lease", () => {
+    expect(getRentPaymentPrefill([], "lease-1")).toBeUndefined();
+    expect(
+      getRentPaymentPrefill([makeEvent({ id: "p1", amount: 2400 })], "lease-2"),
+    ).toBeUndefined();
+  });
+});
 
 describe("rent ledger summary", () => {
   const events: RentEvent[] = [

@@ -3,6 +3,7 @@
 import {
   CheckCircle2,
   CircleDot,
+  Copy,
   FileText,
   type LucideIcon,
   Receipt,
@@ -60,6 +61,7 @@ import {
   FREQUENCY_LABELS,
   formatMoney,
   getLeaseDocuments,
+  getRentPaymentPrefill,
   type Lease,
   type NewLeaseInput,
   type NewRentEventInput,
@@ -462,6 +464,7 @@ export function RentPaymentPanel({
     date: string;
   }>();
   const selectedLease = leases.find((lease) => lease.id === selectedLeaseId);
+  const prefill = getRentPaymentPrefill(ledger.rentEvents, selectedLeaseId);
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
   const canSave =
     selectedLease !== undefined && paymentDate !== "" && Number(amount) > 0;
@@ -498,7 +501,34 @@ export function RentPaymentPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2">Record rent</CardTitle>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <CardTitle as="h2">Record rent</CardTitle>
+          {leases.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-11 sm:min-h-8"
+              disabled={!prefill || isSaving}
+              title={
+                prefill
+                  ? `Use ${formatMoney(prefill.amount)} from ${prefill.sourceMonth} for ${prefill.date}.`
+                  : selectedLease
+                    ? "Record a payment first to prefill the next month."
+                    : "Select a tenant to prefill their latest rent."
+              }
+              onClick={() => {
+                if (!prefill) return;
+                setAmount(formatFormAmount(prefill.amount));
+                setPaymentDate(prefill.date);
+                setError(undefined);
+              }}
+            >
+              <Copy data-icon="inline-start" aria-hidden="true" />
+              Prefill rent
+            </Button>
+          )}
+        </div>
         <CardDescription>
           Confirm the amount and date you received, then save.
         </CardDescription>
@@ -542,6 +572,8 @@ export function RentPaymentPanel({
                       setAmount(
                         lease ? formatFormAmount(lease.rentAmount) : "",
                       );
+                      setPaymentDate(defaultDate);
+                      setMemo("");
                     }}
                   >
                     <SelectTrigger id="event-lease" className="min-h-11 w-full">
@@ -586,6 +618,12 @@ export function RentPaymentPanel({
                   {selectedLease && (
                     <FieldDescription>
                       Lease rent: {formatMoney(selectedLease.rentAmount)}
+                      {prefill && (
+                        <span className="block">
+                          Latest month: {formatMoney(prefill.amount)} ·{" "}
+                          {prefill.sourceMonth}
+                        </span>
+                      )}
                     </FieldDescription>
                   )}
                 </Field>
