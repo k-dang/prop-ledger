@@ -269,7 +269,6 @@ function PropertySummaryBand({
               )}
             >
               Open year-end
-              <ArrowRight data-icon="inline-end" aria-hidden="true" />
             </Link>
           )}
         </div>
