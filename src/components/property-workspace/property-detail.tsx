@@ -19,8 +19,8 @@ import {
 } from "@/components/evidence-binder/evidence-workspace";
 import { FinishSetupCard } from "@/components/property-setup/finish-setup-card";
 import {
+  LeasesPanel,
   RentActivityCard,
-  RentLedgerDetail,
   RentPaymentPanel,
 } from "@/components/rent-ledger/rent-ledger-detail";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,7 @@ import {
 } from "@/lib/year-end-readiness-view-model";
 import { PropertySetup } from "./property-setup";
 
-type PropertyTab = "rent" | "expenses" | "mortgage" | "setup";
+type PropertyTab = "leases" | "rent" | "expenses" | "mortgage" | "setup";
 
 type AnchorTarget = {
   tab: PropertyTab;
@@ -58,7 +58,7 @@ type AnchorTarget = {
 // tab is active, so switching tab is not enough on its own.
 const ANCHOR_TARGETS: Record<string, AnchorTarget> = {
   "#rent": { tab: "rent" },
-  "#leases": { tab: "rent" },
+  "#leases": { tab: "leases" },
   "#transactions": { tab: "expenses" },
   "#tax-activity": { tab: "expenses" },
   "#mortgage-payments": { tab: "mortgage" },
@@ -145,7 +145,11 @@ export function PropertyWorkspaceDetail({
       </section>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList variant="line" className="w-full justify-start border-b">
+        <TabsList
+          variant="line"
+          className="group-data-horizontal/tabs:h-auto w-full flex-wrap justify-start gap-2 border-b"
+        >
+          <TabsTrigger value="leases">Leases</TabsTrigger>
           <TabsTrigger value="rent">Rent</TabsTrigger>
           <TabsTrigger value="expenses">Expenses &amp; income</TabsTrigger>
           <TabsTrigger value="mortgage">Mortgage</TabsTrigger>
@@ -154,25 +158,19 @@ export function PropertyWorkspaceDetail({
           )}
         </TabsList>
 
+        <TabsContent value="leases" id="leases" className="mt-4 scroll-mt-20">
+          <LeasesPanel ledger={rentLedger} />
+        </TabsContent>
+
         <TabsContent value="rent" id="rent" className="mt-4">
-          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <RentLedgerDetail
-              ledger={rentLedger}
-              year={year}
-              today={today}
-              showActivityTools={false}
-              showActivityTable={false}
-              defaultOpenLeases={rentLedger.leases.length === 0}
-            />
+          <div className="grid gap-4">
             <RentPaymentPanel
               key={`${property.id}-${year}-${rentLedger.leases.map((lease) => lease.id).join("-")}`}
               ledger={rentLedger}
               year={year}
               today={today}
             />
-          </div>
-          <div className="mt-4">
-            <RentActivityCard ledger={rentLedger} year={year} variant="table" />
+            <RentActivityCard ledger={rentLedger} year={year} />
           </div>
         </TabsContent>
 

@@ -21,15 +21,10 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -112,74 +107,13 @@ const rentEventFormSchema = z
     }),
   );
 
-export function RentLedgerDetail({
-  ledger,
-  year,
-  today,
-  showActivityTools = true,
-  showActivityTable = true,
-  defaultOpenLeases,
-}: {
-  ledger: RentLedger;
-  year: number;
-  today: string;
-  showActivityTools?: boolean;
-  showActivityTable?: boolean;
-  defaultOpenLeases?: boolean;
-}) {
-  const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
-
-  return (
-    <div className="grid gap-4">
-      <div
-        className={cn(
-          "grid gap-4",
-          showActivityTools && "xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]",
-        )}
-      >
-        <LeasesPanel
-          ledger={ledger}
-          unitLabels={unitLabels}
-          defaultOpen={defaultOpenLeases}
-        />
-        {showActivityTools ? (
-          <div className="grid gap-4">
-            <RentPaymentPanel
-              key={`${year}-${ledger.leases.map((lease) => lease.id).join("-")}`}
-              ledger={ledger}
-              year={year}
-              today={today}
-            />
-            <RentActivityCard ledger={ledger} year={year} variant="compact" />
-          </div>
-        ) : null}
-      </div>
-      {showActivityTable ? (
-        <RentActivityCard ledger={ledger} year={year} variant="table" />
-      ) : null}
-    </div>
-  );
-}
-
-function LeasesPanel({
-  ledger,
-  unitLabels,
-  defaultOpen,
-}: {
-  ledger: RentLedger;
-  unitLabels: Map<string, string>;
-  defaultOpen?: boolean;
-}) {
+export function LeasesPanel({ ledger }: { ledger: RentLedger }) {
   const { error: leaseError, runMutation } = useMutation();
   const onCreateLease = async (input: NewLeaseInput) =>
     (await runMutation(() => createLease(input))).ok;
   const hasUnits = ledger.units.length > 0;
   const hasLeases = ledger.leases.length > 0;
-  const hasErrors = Boolean(leaseError);
-  const shouldOpen = defaultOpen ?? (!hasUnits || !hasLeases || hasErrors);
-  // Freeze the uncontrolled Accordion's initial state; `shouldOpen` is derived
-  // from live ledger data and changes across re-renders.
-  const [initialOpen] = useState(() => (shouldOpen ? ["leases"] : []));
+  const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
   const linkedDocumentCount = ledger.documents.filter((document) =>
     document.links.some((link) => link.targetType === "lease"),
   ).length;
@@ -193,155 +127,154 @@ function LeasesPanel({
     ledger.units.find((unit) => unit.id === selectedUnitId)?.label ??
     "Select unit";
   const handleSubmit = createFormSubmit(leaseFormSchema, onCreateLease);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // The lease list sits above the form, so the header action jumps to it.
+  function focusForm() {
+    const firstField = formRef.current?.querySelector<HTMLElement>(
+      "button:not([disabled]), input:not([disabled])",
+    );
+    firstField?.focus();
+    firstField?.scrollIntoView({ block: "center" });
+  }
 
   return (
-    <Card id="leases" className="scroll-mt-20 rounded-md py-0">
-      <h2 className="sr-only">Leases</h2>
-      <Accordion defaultValue={initialOpen}>
-        <AccordionItem value="leases" className="border-b-0">
-          <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
-            <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
-              {hasLeases ? (
-                <CheckCircle2
-                  className={cn("size-4 shrink-0", toneIcon.ready)}
-                  aria-hidden="true"
-                />
-              ) : (
-                <CircleDot
-                  className={cn("size-4 shrink-0", toneIcon.review)}
-                  aria-hidden="true"
-                />
-              )}
-              <div className="min-w-0">
-                <span className="block font-medium text-sm">Leases</span>
-                <span className="block truncate text-muted-foreground text-xs">
-                  Tenant, unit, rent amount, and lease evidence.
-                </span>
-              </div>
-              <span className="ml-auto hidden shrink-0 text-muted-foreground text-xs tabular-nums sm:inline">
-                {summary}
-              </span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-4">
-            <div className="grid gap-4 border-t pt-4">
-              <form className="grid gap-3" onSubmit={handleSubmit}>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="lease-unit">Unit</FieldLabel>
-                    <Select
-                      name="unitId"
-                      disabled={!hasUnits}
-                      value={selectedUnitId}
-                      onValueChange={(value) => {
-                        setSelectedUnitId(value ?? "");
-                      }}
-                    >
-                      <SelectTrigger id="lease-unit" className="w-full">
-                        <span
-                          className={cn(
-                            "flex flex-1 text-left",
-                            selectedUnitId === "" && "text-muted-foreground",
-                          )}
-                        >
-                          {selectedUnitLabel}
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ledger.units.map((unit) => (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="lease-tenant">Tenant</FieldLabel>
-                    <Input id="lease-tenant" name="tenantName" required />
-                  </Field>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Field>
-                    <FieldLabel htmlFor="lease-start">Start date</FieldLabel>
-                    <DatePickerField
-                      id="lease-start"
-                      name="startDate"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="lease-end">End date</FieldLabel>
-                    <DatePickerField id="lease-end" name="endDate" />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="lease-rent">Rent</FieldLabel>
-                    <Input
-                      id="lease-rent"
-                      name="rentAmount"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="lease-frequency">Frequency</FieldLabel>
-                    <Select
-                      name="rentFrequency"
-                      value={rentFrequency}
-                      onValueChange={(value) => {
-                        setRentFrequency(value as RentFrequency);
-                      }}
-                    >
-                      <SelectTrigger id="lease-frequency" className="w-full">
-                        <span className="flex flex-1 text-left">
-                          {FREQUENCY_LABELS[rentFrequency]}
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RENT_FREQUENCIES.map((frequency) => (
-                          <SelectItem key={frequency} value={frequency}>
-                            {FREQUENCY_LABELS[frequency]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={!hasUnits}>
-                    <Plus data-icon="inline-start" />
-                    Add lease
-                  </Button>
-                </div>
-              </form>
-              <FormErrorAlert message={leaseError} />
-              {!hasUnits ? (
-                <EmptyState icon={Users}>
-                  {ledger.property.setupDraft
-                    ? "Finish setup to add units and leases."
-                    : "Add a unit to this property before creating a lease."}
-                </EmptyState>
-              ) : !hasLeases ? (
-                <EmptyState icon={FileText}>No leases recorded.</EmptyState>
-              ) : (
-                <div className="grid gap-3">
-                  {ledger.leases.map((lease) => (
-                    <LeaseCard
-                      key={lease.id}
-                      lease={lease}
-                      propertyId={ledger.property.id}
-                      unitLabel={unitLabels.get(lease.unitId) ?? "Unknown unit"}
-                      documents={getLeaseDocuments(ledger.documents, lease.id)}
-                    />
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          {hasLeases ? (
+            <CheckCircle2
+              className={cn("size-4 shrink-0", toneIcon.ready)}
+              aria-hidden="true"
+            />
+          ) : (
+            <CircleDot
+              className={cn("size-4 shrink-0", toneIcon.review)}
+              aria-hidden="true"
+            />
+          )}
+          <CardTitle as="h2">Leases</CardTitle>
+        </div>
+        <CardDescription>{summary}</CardDescription>
+        <CardAction>
+          <Button type="button" variant="outline" size="sm" onClick={focusForm}>
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            Add lease
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <FormErrorAlert message={leaseError} />
+        {!hasUnits ? (
+          <EmptyState icon={Users}>
+            {ledger.property.setupDraft
+              ? "Finish setup to add units and leases."
+              : "Add a unit to this property before creating a lease."}
+          </EmptyState>
+        ) : !hasLeases ? (
+          <EmptyState icon={FileText}>No leases recorded.</EmptyState>
+        ) : (
+          <div className="grid gap-3">
+            {ledger.leases.map((lease) => (
+              <LeaseCard
+                key={lease.id}
+                lease={lease}
+                propertyId={ledger.property.id}
+                unitLabel={unitLabels.get(lease.unitId) ?? "Unknown unit"}
+                documents={getLeaseDocuments(ledger.documents, lease.id)}
+              />
+            ))}
+          </div>
+        )}
+        <Separator />
+        <form ref={formRef} className="grid gap-3" onSubmit={handleSubmit}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="lease-unit">Unit</FieldLabel>
+              <Select
+                name="unitId"
+                disabled={!hasUnits}
+                value={selectedUnitId}
+                onValueChange={(value) => {
+                  setSelectedUnitId(value ?? "");
+                }}
+              >
+                <SelectTrigger id="lease-unit" className="w-full">
+                  <span
+                    className={cn(
+                      "flex flex-1 text-left",
+                      selectedUnitId === "" && "text-muted-foreground",
+                    )}
+                  >
+                    {selectedUnitLabel}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {ledger.units.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.label}
+                    </SelectItem>
                   ))}
-                </div>
-              )}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="lease-tenant">Tenant</FieldLabel>
+              <Input id="lease-tenant" name="tenantName" required />
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field>
+              <FieldLabel htmlFor="lease-start">Start date</FieldLabel>
+              <DatePickerField id="lease-start" name="startDate" required />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="lease-end">End date</FieldLabel>
+              <DatePickerField id="lease-end" name="endDate" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="lease-rent">Rent</FieldLabel>
+              <Input
+                id="lease-rent"
+                name="rentAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="lease-frequency">Frequency</FieldLabel>
+              <Select
+                name="rentFrequency"
+                value={rentFrequency}
+                onValueChange={(value) => {
+                  setRentFrequency(value as RentFrequency);
+                }}
+              >
+                <SelectTrigger id="lease-frequency" className="w-full">
+                  <span className="flex flex-1 text-left">
+                    {FREQUENCY_LABELS[rentFrequency]}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {RENT_FREQUENCIES.map((frequency) => (
+                    <SelectItem key={frequency} value={frequency}>
+                      {FREQUENCY_LABELS[frequency]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={!hasUnits}>
+              <Plus data-icon="inline-start" />
+              Add lease
+            </Button>
+          </div>
+        </form>
+      </CardContent>
     </Card>
   );
 }
@@ -493,12 +426,10 @@ export function RentPaymentPanel({
   ledger,
   year,
   today,
-  className,
 }: {
   ledger: RentLedger;
   year: number;
   today: string;
-  className?: string;
 }) {
   const { leases } = ledger;
   const onlyLease = leases.length === 1 ? leases[0] : undefined;
@@ -569,7 +500,7 @@ export function RentPaymentPanel({
     }
   });
   return (
-    <Card className={cn("rounded-xl ring-brand-border", className)}>
+    <Card>
       <CardHeader>
         <CardTitle as="h2">Record rent</CardTitle>
         <CardDescription>
@@ -640,7 +571,7 @@ export function RentPaymentPanel({
                   </Select>
                 </Field>
               )}
-              <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Field className="min-w-0">
                   <FieldLabel htmlFor="event-amount">
                     Amount received
@@ -679,18 +610,7 @@ export function RentPaymentPanel({
                     </FieldDescription>
                   )}
                 </Field>
-              </div>
-              {paymentDate !== "" && !paymentDate.startsWith(`${year}-`) && (
-                <p className="text-sm text-review-text">
-                  This payment will appear in {paymentDate.slice(0, 4)}. You’re
-                  viewing {year}.
-                </p>
-              )}
-              <details>
-                <summary className="cursor-pointer py-2 text-muted-foreground text-sm">
-                  Add a note (optional)
-                </summary>
-                <Field className="mt-2">
+                <Field className="min-w-0">
                   <FieldLabel htmlFor="event-memo">Payment note</FieldLabel>
                   <Input
                     id="event-memo"
@@ -701,23 +621,31 @@ export function RentPaymentPanel({
                     onChange={(event) => setMemo(event.target.value)}
                   />
                 </Field>
-              </details>
+              </div>
+              {paymentDate !== "" && !paymentDate.startsWith(`${year}-`) && (
+                <p className="text-sm text-review-text">
+                  This payment will appear in {paymentDate.slice(0, 4)}. You’re
+                  viewing {year}.
+                </p>
+              )}
               <FormErrorAlert message={error} />
-              <Button
-                type="submit"
-                className="min-h-11 w-full"
-                disabled={!canSave || isSaving}
-              >
-                <Plus data-icon="inline-start" aria-hidden="true" />
-                {isSaving
-                  ? "Saving…"
-                  : canSave
-                    ? `Record ${formatMoney(Number(amount))}`
-                    : "Record rent"}
-              </Button>
-              <p className="text-muted-foreground text-xs">
-                Records money already received. No payment is collected.
-              </p>
+              <div className="flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
+                <Button
+                  type="submit"
+                  className="min-h-11 w-full sm:w-auto"
+                  disabled={!canSave || isSaving}
+                >
+                  <Plus data-icon="inline-start" aria-hidden="true" />
+                  {isSaving
+                    ? "Saving…"
+                    : canSave
+                      ? `Record ${formatMoney(Number(amount))}`
+                      : "Record rent"}
+                </Button>
+                <p className="text-muted-foreground text-xs">
+                  Records money already received. No payment is collected.
+                </p>
+              </div>
             </fieldset>
           </form>
         )}
@@ -746,12 +674,10 @@ export function RentPaymentPanel({
 export function RentActivityCard({
   ledger,
   year,
-  variant,
   className,
 }: {
   ledger: RentLedger;
   year: number;
-  variant: "compact" | "table";
   className?: string;
 }) {
   const { error, runMutation } = useMutation();
@@ -771,10 +697,7 @@ export function RentActivityCard({
     )
     .toSorted((a, b) => b.date.localeCompare(a.date));
 
-  const description =
-    variant === "compact"
-      ? "Recent rent payments for this tax year."
-      : `Saved rent payments for ${year}, newest first.`;
+  const description = `Saved rent payments for ${year}, newest first.`;
   const handleDelete = (rentEventId: string) => {
     if (
       window.confirm("Delete this rent payment? This will update rent totals.")
@@ -786,7 +709,7 @@ export function RentActivityCard({
   };
 
   return (
-    <Card className={cn("rounded-md", className)}>
+    <Card className={className}>
       <CardHeader>
         <CardTitle as="h2">Rent payments</CardTitle>
         <CardDescription>{description}</CardDescription>
@@ -797,46 +720,6 @@ export function RentActivityCard({
           <EmptyState icon={Receipt}>
             No rent payments recorded for {year}.
           </EmptyState>
-        ) : variant === "compact" ? (
-          <ul className="grid gap-2">
-            {events.map((event) => (
-              <li
-                className="grid gap-1 rounded-md border bg-background p-3"
-                key={event.id}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-sm">
-                      {event.leaseId
-                        ? (tenantByLease.get(event.leaseId) ?? "-")
-                        : "Property-level"}
-                    </p>
-                    <p className="mt-1 text-muted-foreground text-xs">
-                      {event.date}
-                    </p>
-                  </div>
-                  <span className="shrink-0 font-medium tabular-nums text-sm">
-                    {formatMoney(event.amount)}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Delete rent payment from ${event.date}`}
-                    disabled={isDeleting}
-                    onClick={() => {
-                      handleDelete(event.id);
-                    }}
-                  >
-                    <Trash2 aria-hidden="true" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
-                  <span>{event.memo ?? "No memo"}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
         ) : (
           <Table>
             <TableHeader>

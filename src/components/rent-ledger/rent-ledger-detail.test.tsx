@@ -11,7 +11,7 @@ vi.mock("@/lib/actions", () => ({
 }));
 vi.mock("./lease-document-upload", () => ({ uploadLeaseDocument: vi.fn() }));
 
-import { RentLedgerDetail, RentPaymentPanel } from "./rent-ledger-detail";
+import { LeasesPanel, RentPaymentPanel } from "./rent-ledger-detail";
 
 const ledger: RentLedger = {
   property: {
@@ -71,14 +71,7 @@ const ledger: RentLedger = {
 
 describe("lease document controls", () => {
   it("lets a landlord choose and upload a lease document", () => {
-    const markup = renderToStaticMarkup(
-      <RentLedgerDetail
-        ledger={ledger}
-        year={2026}
-        today="2026-10-03"
-        defaultOpenLeases
-      />,
-    );
+    const markup = renderToStaticMarkup(<LeasesPanel ledger={ledger} />);
 
     expect(markup).toContain('type="file"');
     expect(markup).toContain("Add document");
@@ -89,6 +82,13 @@ describe("lease document controls", () => {
     expect(markup).toContain('class="m-0 grid gap-2"');
     expect(markup).not.toContain("Add link");
     expect(markup).not.toContain("link a document already online");
+  });
+
+  it("summarises the leases and offers the add action", () => {
+    const markup = renderToStaticMarkup(<LeasesPanel ledger={ledger} />);
+
+    expect(markup).toContain("1 lease · 1 open-ended · 1 document");
+    expect(markup).toContain("Add lease");
   });
 });
 
