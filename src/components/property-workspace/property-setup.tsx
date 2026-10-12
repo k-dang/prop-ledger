@@ -5,7 +5,6 @@ import {
   CircleDot,
   Home,
   type LucideIcon,
-  Plus,
   Trash2,
   Users,
 } from "lucide-react";
@@ -227,7 +226,6 @@ function AddUnitSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <Button type="button" onClick={() => setOpen(true)}>
-        <Plus data-icon="inline-start" />
         Add unit
       </Button>
       <SheetContent className="overflow-y-auto sm:max-w-lg">
@@ -253,7 +251,6 @@ function AddUnitSheet({
             />
           </Field>
           <Button type="submit" className="justify-self-start">
-            <Plus data-icon="inline-start" />
             Add unit
           </Button>
         </form>
@@ -285,7 +282,6 @@ function AddOwnerSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <Button type="button" onClick={() => setOpen(true)}>
-        <Plus data-icon="inline-start" />
         Add owner
       </Button>
       <SheetContent className="overflow-y-auto sm:max-w-lg">
@@ -331,7 +327,6 @@ function AddOwnerSheet({
             </Field>
           </div>
           <Button type="submit" className="justify-self-start">
-            <Plus data-icon="inline-start" />
             Add owner
           </Button>
         </form>

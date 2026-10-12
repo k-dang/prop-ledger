@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
-  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -74,7 +73,6 @@ function DashboardHeader({ summary }: { summary: PortfolioDashboardSummary }) {
           />
         ) : null}
         <Link href="/properties/new" className={buttonVariants()}>
-          <Plus data-icon="inline-start" aria-hidden="true" />
           Add property
         </Link>
       </div>

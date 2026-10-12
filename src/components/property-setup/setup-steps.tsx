@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { Ref } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -365,7 +365,6 @@ export function OwnershipStep({ form, errors, onChange }: StepProps) {
                   )
                 }
               >
-                <Plus data-icon="inline-start" aria-hidden="true" />
                 Add owner
               </Button>
               <ShareTotal total={ownershipTotal(form)} />
@@ -516,7 +515,6 @@ export function UnitsStep({ form, errors, onChange }: StepProps) {
               )
             }
           >
-            <Plus data-icon="inline-start" aria-hidden="true" />
             Add unit
           </Button>
         </div>
