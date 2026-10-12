@@ -4,14 +4,16 @@ import {
   CheckCircle2,
   CircleDot,
   FileText,
+  LoaderCircle,
   type LucideIcon,
   Receipt,
   Trash2,
+  Upload,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import type { FormEvent, ReactNode } from "react";
-import { useRef, useState, useTransition } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -56,6 +58,7 @@ import {
   deleteRentEvent,
   recordRentEvent,
 } from "@/lib/actions";
+import { validateEvidenceFileDeclaration } from "@/lib/evidence-upload-policy";
 import {
   FREQUENCY_LABELS,
   formatMoney,
@@ -290,31 +293,69 @@ function LeaseCard({
   const { error, runMutation } = useMutation();
   const onDeleteLease = async (leaseId: string) =>
     (await runMutation(() => deleteLease(leaseId))).ok;
-  const onUploadLeaseDocument = async (leaseId: string, formData: FormData) =>
-    (
-      await runMutation(() =>
-        uploadLeaseDocument(propertyId, leaseId, formData),
-      )
-    ).ok;
   const [isDeleting, startDelete] = useTransition();
   const [isUploading, startUpload] = useTransition();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uploadButtonRef = useRef<HTMLButtonElement>(null);
+  const uploadInFlight = useRef(false);
+  const dragDepth = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File>();
+  const [uploadError, setUploadError] = useState<string>();
+  const [uploadedName, setUploadedName] = useState<string>();
   const fileInputId = `lease-document-${lease.id}`;
+  const uploadHelpId = `${fileInputId}-help`;
+  const uploadFeedbackId = `${fileInputId}-feedback`;
 
-  function handleUploadSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
+  useEffect(() => {
+    if (!isUploading && uploadedName) {
+      uploadButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, [isUploading, uploadedName]);
 
+  function upload(file: File) {
+    if (uploadInFlight.current || isDeleting) return;
+
+    setUploadError(undefined);
+    setUploadedName(undefined);
+    const problem = validateEvidenceFileDeclaration({
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size,
+    });
+    if (problem) {
+      setSelectedFile(undefined);
+      setUploadError(problem);
+      return;
+    }
+
+    setSelectedFile(file);
+    uploadInFlight.current = true;
     startUpload(async () => {
-      const saved = await onUploadLeaseDocument(lease.id, new FormData(form));
-
-      if (saved) {
-        form.reset();
+      try {
+        const formData = new FormData();
+        formData.set("file", file);
+        const result = await uploadLeaseDocument(
+          propertyId,
+          lease.id,
+          formData,
+        );
+        if (result.ok) {
+          setSelectedFile(undefined);
+          setUploadedName(file.name);
+        } else {
+          setUploadError(result.error ?? SAVE_FAILED_MESSAGE);
+        }
+      } catch {
+        setUploadError(SAVE_FAILED_MESSAGE);
+      } finally {
+        uploadInFlight.current = false;
       }
     });
   }
 
   return (
-    <div className="grid gap-3 rounded-md border bg-background p-3">
+    <div className="grid min-w-0 gap-3 rounded-md border bg-background p-3">
       <FormErrorAlert message={error} />
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
@@ -332,7 +373,7 @@ function LeaseCard({
             variant="ghost"
             size="icon"
             aria-label={`Delete lease for ${lease.tenantName}`}
-            disabled={isDeleting}
+            disabled={isDeleting || isUploading}
             onClick={() => {
               if (
                 window.confirm(
@@ -350,20 +391,73 @@ function LeaseCard({
         </div>
       </div>
       <Separator />
-      <div className="flex flex-col gap-3">
-        <p className="m-0! font-medium text-muted-foreground text-xs uppercase">
-          Lease documents
-        </p>
+      <section
+        aria-label={`Lease documents for ${lease.tenantName}`}
+        className={cn(
+          "flex min-w-0 flex-col gap-3 rounded-lg transition-colors",
+          dragging &&
+            "bg-brand-surface outline-2 outline-brand outline-offset-4",
+        )}
+        onDragEnter={(event) => {
+          if (!event.dataTransfer.types.includes("Files")) return;
+          event.preventDefault();
+          if (uploadInFlight.current || isDeleting) return;
+          dragDepth.current += 1;
+          setDragging(true);
+        }}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes("Files")) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect =
+            uploadInFlight.current || isDeleting ? "none" : "copy";
+        }}
+        onDragLeave={() => {
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragging(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          dragDepth.current = 0;
+          setDragging(false);
+          if (uploadInFlight.current || isDeleting) return;
+          const files = event.dataTransfer.files;
+          if (files.length > 1) {
+            setSelectedFile(undefined);
+            setUploadedName(undefined);
+            setUploadError("Choose one document at a time.");
+          } else if (files[0]) {
+            upload(files[0]);
+          }
+        }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-medium text-sm">
+            Lease documents{" "}
+            <span className="font-normal text-muted-foreground text-xs">
+              ({documents.length})
+            </span>
+          </h3>
+          <Button
+            ref={uploadButtonRef}
+            type="button"
+            disabled={isUploading || isDeleting}
+            aria-describedby={uploadHelpId}
+            onClick={() => inputRef.current?.click()}
+          >
+            <Upload data-icon="inline-start" aria-hidden="true" />
+            Upload document
+          </Button>
+        </div>
         {documents.length === 0 ? (
           <p className="m-0 text-muted-foreground text-xs">
-            No documents linked yet.
+            No documents yet. Add your signed lease here.
           </p>
         ) : (
-          <ul className="m-0 flex flex-col gap-1 p-0">
+          <ul className="m-0 flex min-w-0 flex-col gap-1 p-0">
             {documents.map((document) => (
               <li
                 key={document.id}
-                className="flex items-center gap-2 text-sm leading-5"
+                className="flex min-w-0 items-center gap-2 text-sm leading-5"
               >
                 <FileText
                   className="size-3.5 shrink-0 text-muted-foreground"
@@ -372,48 +466,84 @@ function LeaseCard({
                 {document.storageUrl ? (
                   <a
                     href={document.storageUrl}
-                    className="truncate underline underline-offset-2"
+                    className="min-w-0 truncate underline underline-offset-2"
                     target="_blank"
                     rel="noreferrer"
                   >
                     {document.fileName}
                   </a>
                 ) : (
-                  <span className="truncate">{document.fileName}</span>
+                  <span className="min-w-0 truncate">{document.fileName}</span>
                 )}
-                <span className="text-muted-foreground text-xs">
+                <span className="shrink-0 text-muted-foreground text-xs">
                   ({document.documentType})
                 </span>
               </li>
             ))}
           </ul>
         )}
-        <form className="m-0 grid gap-2" onSubmit={handleUploadSubmit}>
-          <Field className="gap-1">
-            <FieldLabel htmlFor={fileInputId}>Lease document</FieldLabel>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Input
-                id={fileInputId}
-                name="file"
-                type="file"
-                accept="application/pdf,image/*"
-                className="flex-1"
-                required
-                disabled={isUploading}
+        <input
+          ref={inputRef}
+          id={fileInputId}
+          type="file"
+          accept="application/pdf,image/*"
+          className="sr-only"
+          tabIndex={-1}
+          aria-label={`Choose a lease document for ${lease.tenantName}`}
+          aria-describedby={`${uploadHelpId} ${uploadFeedbackId}`}
+          disabled={isUploading || isDeleting}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) upload(file);
+          }}
+        />
+        <div id={uploadFeedbackId} role="status" aria-atomic="true">
+          {isUploading && selectedFile ? (
+            <p className="flex items-center gap-2 text-muted-foreground text-xs">
+              <LoaderCircle
+                className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
               />
-              <Button
-                type="submit"
-                variant="outline"
-                className="w-full sm:w-auto"
-                disabled={isUploading}
-              >
-                {isUploading ? "Adding..." : "Add document"}
-              </Button>
+              <span className="min-w-0 break-all">
+                Uploading {selectedFile.name}…
+              </span>
+            </p>
+          ) : uploadError ? (
+            <div className="grid gap-2">
+              <FormErrorAlert message={uploadError} />
+              {selectedFile ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 break-all text-muted-foreground text-xs">
+                    {selectedFile.name}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isDeleting}
+                    onClick={() => upload(selectedFile)}
+                  >
+                    Retry upload
+                  </Button>
+                </div>
+              ) : null}
             </div>
-            <FieldDescription>PDF or image, up to 20 MB.</FieldDescription>
-          </Field>
-        </form>
-      </div>
+          ) : uploadedName ? (
+            <p
+              className={cn("flex items-center gap-2 text-xs", toneIcon.ready)}
+            >
+              <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 break-all">
+                {uploadedName} added to this lease.
+              </span>
+            </p>
+          ) : null}
+        </div>
+        <p id={uploadHelpId} className="text-muted-foreground text-xs">
+          PDF or image, up to 20 MB. You can also drop a file here.
+        </p>
+      </section>
     </div>
   );
 }
