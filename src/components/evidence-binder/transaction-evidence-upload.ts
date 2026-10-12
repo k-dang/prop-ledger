@@ -41,16 +41,6 @@ export function useTransactionEvidenceUpload({
 }) {
   const [isUploading, startUpload] = useTransition();
 
-  function uploadForm(form: HTMLFormElement) {
-    startUpload(async () => {
-      const saved = await onUploadEvidence(transactionId, new FormData(form));
-
-      if (saved) {
-        form.reset();
-      }
-    });
-  }
-
   function uploadFile(input: HTMLInputElement, file: File) {
     const formData = new FormData();
     formData.set("file", file);
@@ -64,5 +54,5 @@ export function useTransactionEvidenceUpload({
     });
   }
 
-  return { isUploading, uploadFile, uploadForm };
+  return { isUploading, uploadFile };
 }

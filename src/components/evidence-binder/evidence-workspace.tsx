@@ -1,14 +1,23 @@
 "use client";
 
 import {
+  CheckCircle2,
   FileText,
+  LoaderCircle,
   type LucideIcon,
   Paperclip,
   Receipt,
   Trash2,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { z } from "zod";
 import { DocumentOpenLink } from "@/components/documents/document-open-link";
 import { CapitalAssetControl } from "@/components/evidence-binder/capital-asset-control";
@@ -54,6 +63,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMutation } from "@/hooks/use-mutation";
+import { SAVE_FAILED_MESSAGE } from "@/lib/action-utils";
 import type { ManualTransactionCreationResult } from "@/lib/evidence-actions";
 import {
   createManualTransaction,
@@ -70,6 +80,7 @@ import {
   RENTAL_INCOME_CATEGORY_OPTIONS,
   T776_CATEGORY_OPTIONS,
 } from "@/lib/evidence-binder";
+import { validateEvidenceFileDeclaration } from "@/lib/evidence-upload-policy";
 import type { RentalProperty } from "@/lib/property-workspace";
 import { toneIcon, toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
@@ -841,15 +852,74 @@ function TransactionEvidenceControl({
 }) {
   const [open, setOpen] = useState(false);
   const fileInputId = `evidence-${transactionId}`;
+  const uploadHelpId = `${fileInputId}-help`;
+  const uploadFeedbackId = `${fileInputId}-feedback`;
   const linkedCount = documents.length;
-  const { isUploading, uploadForm } = useTransactionEvidenceUpload({
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uploadButtonRef = useRef<HTMLButtonElement>(null);
+  const uploadInFlight = useRef(false);
+  const dragDepth = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File>();
+  const [uploadError, setUploadError] = useState<string>();
+  const [uploadedName, setUploadedName] = useState<string>();
+
+  async function handleUploadEvidence(
+    id: string,
+    formData: FormData,
+  ): Promise<boolean> {
+    try {
+      const saved = await onUploadEvidence(id, formData);
+      const file = formData.get("file");
+
+      if (saved) {
+        setUploadError(undefined);
+        setSelectedFile(undefined);
+        setUploadedName(file instanceof File ? file.name : undefined);
+      } else {
+        setUploadedName(undefined);
+        setUploadError(SAVE_FAILED_MESSAGE);
+      }
+
+      return saved;
+    } finally {
+      uploadInFlight.current = false;
+    }
+  }
+
+  const { isUploading, uploadFile } = useTransactionEvidenceUpload({
     transactionId,
-    onUploadEvidence,
+    onUploadEvidence: handleUploadEvidence,
   });
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    uploadForm(event.currentTarget);
-  };
+
+  useEffect(() => {
+    if (!isUploading && uploadedName) {
+      uploadButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, [isUploading, uploadedName]);
+
+  function upload(file: File) {
+    if (uploadInFlight.current || isUploading) return;
+
+    setUploadError(undefined);
+    setUploadedName(undefined);
+    const problem = validateEvidenceFileDeclaration({
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size,
+    });
+    if (problem) {
+      setSelectedFile(undefined);
+      setUploadError(problem);
+      return;
+    }
+
+    setSelectedFile(file);
+    const input = inputRef.current;
+    if (!input) return;
+    uploadInFlight.current = true;
+    uploadFile(input, file);
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -966,32 +1036,129 @@ function TransactionEvidenceControl({
             )}
           </section>
 
-          <form className="grid gap-2" onSubmit={handleSubmit}>
+          <section
+            aria-label={`Receipt or invoice for ${transaction.vendor}`}
+            className={cn(
+              "grid gap-2 rounded-lg transition-colors",
+              dragging &&
+                "bg-brand-surface outline-2 outline-brand outline-offset-4",
+            )}
+            onDragEnter={(event) => {
+              if (!event.dataTransfer.types.includes("Files")) return;
+              event.preventDefault();
+              if (uploadInFlight.current || isUploading) return;
+              dragDepth.current += 1;
+              setDragging(true);
+            }}
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes("Files")) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect =
+                uploadInFlight.current || isUploading ? "none" : "copy";
+            }}
+            onDragLeave={() => {
+              dragDepth.current = Math.max(0, dragDepth.current - 1);
+              if (dragDepth.current === 0) setDragging(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              dragDepth.current = 0;
+              setDragging(false);
+              if (uploadInFlight.current || isUploading) return;
+              const files = event.dataTransfer.files;
+              if (files.length > 1) {
+                setSelectedFile(undefined);
+                setUploadedName(undefined);
+                setUploadError("Choose one receipt at a time.");
+              } else if (files[0]) {
+                upload(files[0]);
+              }
+            }}
+          >
             <Field className="gap-1">
               <FieldLabel htmlFor={fileInputId}>Receipt or invoice</FieldLabel>
-              <Input
+              <div>
+                <Button
+                  ref={uploadButtonRef}
+                  type="button"
+                  disabled={isUploading}
+                  aria-describedby={uploadHelpId}
+                  onClick={() => {
+                    inputRef.current?.click();
+                  }}
+                >
+                  <Upload data-icon="inline-start" aria-hidden="true" />
+                  {linkedCount > 0 ? "Add receipt" : "Attach receipt"}
+                </Button>
+              </div>
+              <input
+                ref={inputRef}
                 id={fileInputId}
-                name="file"
                 type="file"
                 accept="application/pdf,image/*"
-                required
+                className="sr-only"
+                tabIndex={-1}
+                aria-describedby={`${uploadHelpId} ${uploadFeedbackId}`}
                 disabled={isUploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) upload(file);
+                }}
               />
+              <div id={uploadFeedbackId} role="status" aria-atomic="true">
+                {isUploading && selectedFile ? (
+                  <p className="flex items-center gap-2 text-muted-foreground text-xs">
+                    <LoaderCircle
+                      className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 break-all">
+                      Attaching {selectedFile.name}…
+                    </span>
+                  </p>
+                ) : uploadError ? (
+                  <div className="grid gap-2">
+                    <FormErrorAlert message={uploadError} />
+                    {selectedFile ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="min-w-0 break-all text-muted-foreground text-xs">
+                          {selectedFile.name}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isUploading}
+                          onClick={() => upload(selectedFile)}
+                        >
+                          Retry upload
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : uploadedName ? (
+                  <p
+                    className={cn(
+                      "flex items-center gap-2 text-xs",
+                      toneIcon.ready,
+                    )}
+                  >
+                    <CheckCircle2
+                      className="size-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 break-all">
+                      {uploadedName} attached to this record.
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+              <FieldDescription id={uploadHelpId}>
+                PDF or image, up to 20 MB. You can also drop a file here.
+              </FieldDescription>
             </Field>
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              className="w-fit rounded-md"
-              disabled={isUploading}
-            >
-              {isUploading
-                ? "Attaching..."
-                : linkedCount > 0
-                  ? "Add receipt"
-                  : "Attach receipt"}
-            </Button>
-          </form>
+          </section>
         </div>
       </SheetContent>
     </Sheet>
