@@ -1,6 +1,15 @@
 "use client";
 
-import { Banknote, CopyPlus, Split, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Banknote,
+  CopyPlus,
+  Split,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -78,10 +87,35 @@ export function MortgagePaymentsPanel({
   payments: MortgagePayment[];
 }) {
   const [error, setError] = useState<string>();
-  const sortedPayments = payments.toSorted((a, b) =>
-    a.date.localeCompare(b.date),
-  );
-  const latestPayment = sortedPayments.at(-1);
+  const [sortKey, setSortKey] = useState<"date" | "lender" | "total">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const toggleSort = (key: "date" | "lender" | "total") => {
+    if (key === sortKey) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "lender" ? "asc" : "desc");
+    }
+  };
+  const sortedPayments = payments.toSorted((a, b) => {
+    const multiplier = sortDir === "asc" ? 1 : -1;
+    if (sortKey === "lender") {
+      return a.lender.localeCompare(b.lender) * multiplier !== 0
+        ? a.lender.localeCompare(b.lender) * multiplier
+        : b.date.localeCompare(a.date);
+    }
+    if (sortKey === "total") {
+      return a.totalAmount !== b.totalAmount
+        ? (a.totalAmount - b.totalAmount) * multiplier
+        : b.date.localeCompare(a.date);
+    }
+    return a.date.localeCompare(b.date) * multiplier !== 0
+      ? a.date.localeCompare(b.date) * multiplier
+      : a.id.localeCompare(b.id);
+  });
+  const latestPayment = payments
+    .toSorted((a, b) => a.date.localeCompare(b.date))
+    .at(-1);
 
   return (
     <Card className="rounded-md">
@@ -89,7 +123,8 @@ export function MortgagePaymentsPanel({
         <CardTitle as="h2">Mortgage payments</CardTitle>
         <CardDescription>
           Record each payment directly. Interest is deductible; principal is
-          kept for support but excluded from expense totals.
+          kept for support but excluded from expense totals. Newest first.
+          Select Date, Lender, or Total to change sort order.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -108,9 +143,87 @@ export function MortgagePaymentsPanel({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Lender</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead
+                  aria-sort={
+                    sortKey === "date"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="-ml-2 h-7 px-2"
+                    aria-label={`Sort by date, currently ${sortKey === "date" ? (sortDir === "asc" ? "oldest first" : "newest first") : "newest first"}`}
+                    onClick={() => toggleSort("date")}
+                  >
+                    Date
+                    {sortKey !== "date" ? (
+                      <ArrowUpDown aria-hidden="true" />
+                    ) : sortDir === "asc" ? (
+                      <ArrowUp aria-hidden="true" />
+                    ) : (
+                      <ArrowDown aria-hidden="true" />
+                    )}
+                  </Button>
+                </TableHead>
+                <TableHead
+                  aria-sort={
+                    sortKey === "lender"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="-ml-2 h-7 px-2"
+                    aria-label={`Sort by lender, currently ${sortKey === "lender" ? (sortDir === "asc" ? "A to Z" : "Z to A") : "unsorted"}`}
+                    onClick={() => toggleSort("lender")}
+                  >
+                    Lender
+                    {sortKey !== "lender" ? (
+                      <ArrowUpDown aria-hidden="true" />
+                    ) : sortDir === "asc" ? (
+                      <ArrowUp aria-hidden="true" />
+                    ) : (
+                      <ArrowDown aria-hidden="true" />
+                    )}
+                  </Button>
+                </TableHead>
+                <TableHead
+                  aria-sort={
+                    sortKey === "total"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="-ml-2 h-7 px-2"
+                    aria-label={`Sort by total, currently ${sortKey === "total" ? (sortDir === "asc" ? "lowest first" : "highest first") : "unsorted"}`}
+                    onClick={() => toggleSort("total")}
+                  >
+                    Total
+                    {sortKey !== "total" ? (
+                      <ArrowUpDown aria-hidden="true" />
+                    ) : sortDir === "asc" ? (
+                      <ArrowUp aria-hidden="true" />
+                    ) : (
+                      <ArrowDown aria-hidden="true" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead>Principal</TableHead>
                 <TableHead>Interest</TableHead>
                 <TableHead>Status</TableHead>
