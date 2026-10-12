@@ -5,7 +5,10 @@ import {
   isMortgagePaymentAllocated,
   mortgageInterestForYear,
   mortgagePaymentComponentsBalance,
+  mortgageSplitSummary,
   totalMortgageInterest,
+  validateMortgageAllocation,
+  validateMortgagePaymentInput,
 } from "./mortgage-payments";
 
 function makePayment(
@@ -85,5 +88,112 @@ describe("mortgage payment allocation", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("mortgage payment validation", () => {
+  it("accepts an unallocated split", () => {
+    expect(
+      validateMortgageAllocation({ principal: null, interest: null }),
+    ).toBeUndefined();
+  });
+
+  it("accepts a balanced split", () => {
+    expect(
+      validateMortgageAllocation({ principal: 3000, interest: 156 }),
+    ).toBeUndefined();
+  });
+
+  it("allows a split that misses the total so the mismatch stays visible", () => {
+    expect(
+      validateMortgageAllocation({ principal: 3000, interest: 100 }),
+    ).toBeUndefined();
+  });
+
+  it("rejects negative components", () => {
+    expect(validateMortgageAllocation({ principal: -1, interest: 100 })).toBe(
+      "Principal can't be negative.",
+    );
+    expect(validateMortgageAllocation({ principal: 100, interest: -1 })).toBe(
+      "Interest can't be negative.",
+    );
+  });
+
+  it("rejects non-finite components", () => {
+    expect(
+      validateMortgageAllocation({
+        principal: Number.NaN,
+        interest: null,
+      }),
+    ).toBe("Enter a valid principal amount.");
+  });
+
+  it("requires a lender and a positive total for a full payment", () => {
+    expect(
+      validateMortgagePaymentInput({
+        date: "2026-01-20",
+        lender: "   ",
+        totalAmount: 3156,
+        principal: null,
+        interest: null,
+      }),
+    ).toBe("Enter the lender or payee.");
+    expect(
+      validateMortgagePaymentInput({
+        date: "2026-01-20",
+        lender: "RBC",
+        totalAmount: 0,
+        principal: null,
+        interest: null,
+      }),
+    ).toBe("Enter a payment amount greater than zero.");
+    expect(
+      validateMortgagePaymentInput({
+        date: "2026-01-20",
+        lender: "RBC",
+        totalAmount: 3156,
+        principal: 3000,
+        interest: 156,
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("mortgage split summary", () => {
+  it("sums the split against the payment total", () => {
+    expect(mortgageSplitSummary(3156, 3000, 100)).toEqual({
+      allocated: 3100,
+      remaining: 56,
+      balanced: false,
+    });
+  });
+
+  it("reports a balanced split as fully allocated with nothing remaining", () => {
+    expect(mortgageSplitSummary(3156, 3000, 156)).toEqual({
+      allocated: 3156,
+      remaining: 0,
+      balanced: true,
+    });
+  });
+
+  it("treats a missing component as zero", () => {
+    expect(mortgageSplitSummary(1500, 1500, null)).toEqual({
+      allocated: 1500,
+      remaining: 0,
+      balanced: true,
+    });
+  });
+
+  it("reports a fully unallocated split against the whole total", () => {
+    expect(mortgageSplitSummary(1500, null, null)).toEqual({
+      allocated: 0,
+      remaining: 1500,
+      balanced: false,
+    });
+  });
+
+  it("rounds to cents, matching the balance badge rule", () => {
+    expect(mortgageSplitSummary(3156, 3155.996, null).balanced).toBe(true);
+    expect(mortgageSplitSummary(3156, 3000, 100.004).remaining).toBe(56);
   });
 });
