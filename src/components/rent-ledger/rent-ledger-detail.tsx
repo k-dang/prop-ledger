@@ -61,6 +61,7 @@ import {
   FREQUENCY_LABELS,
   formatMoney,
   getLeaseDocuments,
+  getRentPaymentPrefill,
   type Lease,
   type NewLeaseInput,
   type NewRentEventInput,
@@ -466,6 +467,7 @@ export function RentPaymentPanel({
     date: string;
   }>();
   const selectedLease = leases.find((lease) => lease.id === selectedLeaseId);
+  const prefill = getRentPaymentPrefill(ledger.rentEvents, selectedLeaseId);
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
   const canSave =
     selectedLease !== undefined && paymentDate !== "" && Number(amount) > 0;
@@ -546,6 +548,8 @@ export function RentPaymentPanel({
                       setAmount(
                         lease ? formatFormAmount(lease.rentAmount) : "",
                       );
+                      setPaymentDate(defaultDate);
+                      setMemo("");
                     }}
                   >
                     <SelectTrigger id="event-lease" className="min-h-11 w-full">
@@ -571,6 +575,29 @@ export function RentPaymentPanel({
                   </Select>
                 </Field>
               )}
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full sm:w-auto"
+                  disabled={!prefill || isSaving}
+                  onClick={() => {
+                    if (!prefill) return;
+                    setAmount(formatFormAmount(prefill.amount));
+                    setPaymentDate(prefill.date);
+                    setError(undefined);
+                  }}
+                >
+                  Prefill rent
+                </Button>
+                <p className="text-muted-foreground text-sm">
+                  {prefill
+                    ? `Use ${formatMoney(prefill.amount)} from ${prefill.sourceMonth} and advance the date one month.`
+                    : selectedLease
+                      ? "Record a payment first to prefill the next month."
+                      : "Select a tenant to prefill their latest rent."}
+                </p>
+              </div>
               <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Field className="min-w-0">
                   <FieldLabel htmlFor="event-amount">

@@ -63,6 +63,37 @@ export type RentLedgerSummary = {
   paymentCount: number;
 };
 
+/** Prefill the next month from a lease's latest month of received rent. */
+export function getRentPaymentPrefill(events: RentEvent[], leaseId: string) {
+  const payments = events.filter(
+    (event) => event.type === "payment" && event.leaseId === leaseId,
+  );
+  const latestDate = payments.reduce(
+    (latest, event) => (event.date > latest ? event.date : latest),
+    "",
+  );
+  if (!latestDate) return undefined;
+
+  const latestMonth = latestDate.slice(0, 7);
+  const amount = roundMoney(
+    payments.reduce(
+      (total, event) =>
+        event.date.startsWith(latestMonth) ? total + event.amount : total,
+      0,
+    ),
+  );
+  const [year, month, day] = latestDate.split("-").map(Number);
+  // Clamp month-end dates rather than letting them overflow into another month.
+  const nextMonthEnd = new Date(Date.UTC(year, month + 1, 0));
+  const date = new Date(
+    Date.UTC(year, month, Math.min(day, nextMonthEnd.getUTCDate())),
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  return { amount, date, sourceMonth: latestMonth };
+}
+
 /** Build the year-scoped rent summary for a property's recorded payments. */
 export function summarizeRentLedger(
   events: RentEvent[],
