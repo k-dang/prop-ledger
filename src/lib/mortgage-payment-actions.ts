@@ -6,7 +6,12 @@ import { db } from "@/db/index";
 import { mortgagePayments } from "@/db/schema";
 import { type ActionResult, runAction } from "@/lib/action-utils";
 import { mortgagePaymentMutationCacheTags } from "@/lib/cache-tags";
-import type { NewMortgagePaymentInput } from "@/lib/mortgage-payments";
+import {
+  type MortgagePaymentAllocation,
+  type NewMortgagePaymentInput,
+  validateMortgageAllocation,
+  validateMortgagePaymentInput,
+} from "@/lib/mortgage-payments";
 
 export async function recordMortgagePayment(
   propertyId: string,
@@ -15,18 +20,47 @@ export async function recordMortgagePayment(
   return runAction(
     "Mortgage payment mutation",
     async () => {
-      if (input.lender.trim().length === 0) {
-        return { ok: false, error: "Enter the lender or payee." };
-      }
+      const inputError = validateMortgagePaymentInput(input);
 
-      if (!Number.isFinite(input.totalAmount) || input.totalAmount <= 0) {
-        return {
-          ok: false,
-          error: "Enter a payment amount greater than zero.",
-        };
+      if (inputError !== undefined) {
+        return { ok: false, error: inputError };
       }
 
       await db.insert(mortgagePayments).values({ propertyId, ...input });
+
+      return { ok: true };
+    },
+    { invalidate: mortgagePaymentMutationCacheTags(propertyId) },
+  );
+}
+
+/**
+ * Rewrites only the principal/interest split of an existing payment, leaving
+ * its date, lender, and total untouched.
+ */
+export async function setMortgagePaymentAllocation(
+  propertyId: string,
+  paymentId: string,
+  allocation: MortgagePaymentAllocation,
+): Promise<ActionResult> {
+  return runAction(
+    "Mortgage payment allocation mutation",
+    async () => {
+      const allocationError = validateMortgageAllocation(allocation);
+
+      if (allocationError !== undefined) {
+        return { ok: false, error: allocationError };
+      }
+
+      const updated = await db
+        .update(mortgagePayments)
+        .set(allocation)
+        .where(paymentScope(propertyId, paymentId))
+        .returning({ id: mortgagePayments.id });
+
+      if (updated.length === 0) {
+        return { ok: false, error: "That payment no longer exists." };
+      }
 
       return { ok: true };
     },
@@ -43,14 +77,16 @@ export async function deleteMortgagePayment(
     async () => {
       await db
         .delete(mortgagePayments)
-        .where(
-          and(
-            eq(mortgagePayments.id, paymentId),
-            eq(mortgagePayments.propertyId, propertyId),
-          ),
-        );
+        .where(paymentScope(propertyId, paymentId));
       return { ok: true };
     },
     { invalidate: mortgagePaymentMutationCacheTags(propertyId) },
+  );
+}
+
+function paymentScope(propertyId: string, paymentId: string) {
+  return and(
+    eq(mortgagePayments.id, paymentId),
+    eq(mortgagePayments.propertyId, propertyId),
   );
 }

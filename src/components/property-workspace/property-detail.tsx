@@ -12,11 +12,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MortgagePaymentsPanel } from "@/components/evidence-binder/allocation-controls";
 import {
   DeductionsAndIncomePanel,
   EvidenceBinderPanel,
 } from "@/components/evidence-binder/evidence-workspace";
+import { MortgagePaymentsPanel } from "@/components/evidence-binder/mortgage-payments-panel";
 import { FinishSetupCard } from "@/components/property-setup/finish-setup-card";
 import {
   LeasesPanel,
