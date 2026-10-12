@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, CopyPlus, Plus, Split, Trash2 } from "lucide-react";
+import { Banknote, CopyPlus, Split, Trash2 } from "lucide-react";
 import { useReducer, useState } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -344,7 +344,6 @@ function SplitsEditor({
           className="rounded-md"
           onClick={addDraft}
         >
-          <Plus data-icon="inline-start" />
           Add split
         </Button>
         <Button
@@ -748,7 +747,6 @@ function MortgagePaymentForm({
 
       <div className="flex justify-end border-t pt-3">
         <Button type="submit" className="rounded-md" disabled={!canSubmit}>
-          <Plus data-icon="inline-start" />
           Add payment
         </Button>
       </div>

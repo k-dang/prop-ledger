@@ -4,7 +4,6 @@ import {
   FileText,
   type LucideIcon,
   Paperclip,
-  Plus,
   Receipt,
   Trash2,
 } from "lucide-react";
@@ -544,7 +543,6 @@ function AddManualTransactionSheet({
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <Button type="button" onClick={() => setOpen(true)}>
-        <Plus data-icon="inline-start" />
         Add expense or income
       </Button>
       <SheetContent className="overflow-y-auto sm:max-w-xl">
@@ -726,7 +724,6 @@ function AddManualTransactionSheet({
               aria-describedby="required-fields-message"
               disabled={isSaving || !canSubmit}
             >
-              <Plus data-icon="inline-start" />
               {isSaving
                 ? "Saving..."
                 : receiptFile !== null
@@ -988,7 +985,6 @@ function TransactionEvidenceControl({
               className="w-fit rounded-md"
               disabled={isUploading}
             >
-              <Plus data-icon="inline-start" />
               {isUploading
                 ? "Attaching..."
                 : linkedCount > 0

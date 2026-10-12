@@ -5,7 +5,6 @@ import {
   CircleDot,
   FileText,
   type LucideIcon,
-  Plus,
   Receipt,
   Trash2,
   Users,
@@ -158,7 +157,6 @@ export function LeasesPanel({ ledger }: { ledger: RentLedger }) {
         <CardDescription>{summary}</CardDescription>
         <CardAction>
           <Button type="button" variant="outline" size="sm" onClick={focusForm}>
-            <Plus data-icon="inline-start" aria-hidden="true" />
             Add lease
           </Button>
         </CardAction>
@@ -269,7 +267,6 @@ export function LeasesPanel({ ledger }: { ledger: RentLedger }) {
           </div>
           <div className="flex justify-end">
             <Button type="submit" disabled={!hasUnits}>
-              <Plus data-icon="inline-start" />
               Add lease
             </Button>
           </div>
@@ -410,7 +407,6 @@ function LeaseCard({
                 className="w-full sm:w-auto"
                 disabled={isUploading}
               >
-                <Plus data-icon="inline-start" />
                 {isUploading ? "Adding..." : "Add document"}
               </Button>
             </div>
@@ -635,7 +631,6 @@ export function RentPaymentPanel({
                   className="min-h-11 w-full sm:w-auto"
                   disabled={!canSave || isSaving}
                 >
-                  <Plus data-icon="inline-start" aria-hidden="true" />
                   {isSaving
                     ? "Saving…"
                     : canSave
