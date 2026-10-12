@@ -512,7 +512,7 @@ export function RentPaymentPanel({
               type="button"
               variant="ghost"
               size="sm"
-              className="min-h-11 text-brand hover:text-brand sm:min-h-8"
+              className="min-h-11 sm:min-h-8"
               disabled={!prefill || isSaving}
               title={
                 prefill
