@@ -169,7 +169,6 @@ export function PropertyWorkspaceDetail({
               ledger={rentLedger}
               year={year}
               today={today}
-              className="max-w-xl"
             />
             <RentActivityCard ledger={rentLedger} year={year} />
           </div>

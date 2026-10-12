@@ -426,12 +426,10 @@ export function RentPaymentPanel({
   ledger,
   year,
   today,
-  className,
 }: {
   ledger: RentLedger;
   year: number;
   today: string;
-  className?: string;
 }) {
   const { leases } = ledger;
   const onlyLease = leases.length === 1 ? leases[0] : undefined;
@@ -502,7 +500,7 @@ export function RentPaymentPanel({
     }
   });
   return (
-    <Card className={className}>
+    <Card>
       <CardHeader>
         <CardTitle as="h2">Record rent</CardTitle>
         <CardDescription>
@@ -525,132 +523,148 @@ export function RentPaymentPanel({
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <fieldset disabled={isSaving} className="grid min-w-0 gap-4">
-              {onlyLease ? (
-                <div className="border-b pb-4">
-                  <input type="hidden" name="leaseId" value={selectedLeaseId} />
-                  <p className="font-medium">{onlyLease.tenantName}</p>
-                  <p className="mt-1 text-muted-foreground text-sm">
-                    {unitLabels.get(onlyLease.unitId) ?? "Unknown unit"} ·{" "}
-                    {formatMoney(onlyLease.rentAmount)} ·{" "}
-                    {FREQUENCY_LABELS[onlyLease.rentFrequency]}
-                  </p>
-                </div>
-              ) : (
-                <Field>
-                  <FieldLabel htmlFor="event-lease">Tenant / lease</FieldLabel>
-                  <Select
-                    name="leaseId"
-                    value={selectedLeaseId}
-                    onValueChange={(value) => {
-                      const lease = leases.find((item) => item.id === value);
-                      setSelectedLeaseId(value ?? "");
-                      setAmount(
-                        lease ? formatFormAmount(lease.rentAmount) : "",
-                      );
-                    }}
-                  >
-                    <SelectTrigger id="event-lease" className="min-h-11 w-full">
-                      <span
-                        className={cn(
-                          "min-w-0 flex-1 truncate text-left",
-                          !selectedLease && "text-muted-foreground",
-                        )}
+            <fieldset
+              disabled={isSaving}
+              className="grid min-w-0 gap-4 lg:grid-cols-2"
+            >
+              <div className="grid min-w-0 gap-4">
+                {onlyLease ? (
+                  <div className="border-b pb-4">
+                    <input
+                      type="hidden"
+                      name="leaseId"
+                      value={selectedLeaseId}
+                    />
+                    <p className="font-medium">{onlyLease.tenantName}</p>
+                    <p className="mt-1 text-muted-foreground text-sm">
+                      {unitLabels.get(onlyLease.unitId) ?? "Unknown unit"} ·{" "}
+                      {formatMoney(onlyLease.rentAmount)} ·{" "}
+                      {FREQUENCY_LABELS[onlyLease.rentFrequency]}
+                    </p>
+                  </div>
+                ) : (
+                  <Field>
+                    <FieldLabel htmlFor="event-lease">
+                      Tenant / lease
+                    </FieldLabel>
+                    <Select
+                      name="leaseId"
+                      value={selectedLeaseId}
+                      onValueChange={(value) => {
+                        const lease = leases.find((item) => item.id === value);
+                        setSelectedLeaseId(value ?? "");
+                        setAmount(
+                          lease ? formatFormAmount(lease.rentAmount) : "",
+                        );
+                      }}
+                    >
+                      <SelectTrigger
+                        id="event-lease"
+                        className="min-h-11 w-full"
                       >
-                        {selectedLease
-                          ? `${selectedLease.tenantName} · ${unitLabels.get(selectedLease.unitId) ?? "Unknown unit"}`
-                          : "Select a tenant"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leases.map((lease) => (
-                        <SelectItem key={lease.id} value={lease.id}>
-                          {lease.tenantName} ·{" "}
-                          {unitLabels.get(lease.unitId) ?? "Unknown unit"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              )}
-              <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-                <Field className="min-w-0">
-                  <FieldLabel htmlFor="event-amount">
-                    Amount received
-                  </FieldLabel>
-                  <Input
-                    id="event-amount"
-                    name="amount"
-                    className="h-11 tabular-nums"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    required
-                    value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
-                  />
-                  {selectedLease && (
-                    <FieldDescription>
-                      Lease rent: {formatMoney(selectedLease.rentAmount)}
-                    </FieldDescription>
-                  )}
-                </Field>
-                <Field className="min-w-0">
-                  <FieldLabel htmlFor="event-date">Date received</FieldLabel>
-                  <Input
-                    id="event-date"
-                    name="date"
-                    className="h-11 min-w-0"
-                    type="date"
-                    required
-                    value={paymentDate}
-                    onChange={(event) => setPaymentDate(event.target.value)}
-                  />
-                  {paymentDate === "" && (
-                    <FieldDescription>
-                      Choose the date you received rent in {year}.
-                    </FieldDescription>
-                  )}
-                </Field>
+                        <span
+                          className={cn(
+                            "min-w-0 flex-1 truncate text-left",
+                            !selectedLease && "text-muted-foreground",
+                          )}
+                        >
+                          {selectedLease
+                            ? `${selectedLease.tenantName} · ${unitLabels.get(selectedLease.unitId) ?? "Unknown unit"}`
+                            : "Select a tenant"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {leases.map((lease) => (
+                          <SelectItem key={lease.id} value={lease.id}>
+                            {lease.tenantName} ·{" "}
+                            {unitLabels.get(lease.unitId) ?? "Unknown unit"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+                <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                  <Field className="min-w-0">
+                    <FieldLabel htmlFor="event-amount">
+                      Amount received
+                    </FieldLabel>
+                    <Input
+                      id="event-amount"
+                      name="amount"
+                      className="h-11 tabular-nums"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      value={amount}
+                      onChange={(event) => setAmount(event.target.value)}
+                    />
+                    {selectedLease && (
+                      <FieldDescription>
+                        Lease rent: {formatMoney(selectedLease.rentAmount)}
+                      </FieldDescription>
+                    )}
+                  </Field>
+                  <Field className="min-w-0">
+                    <FieldLabel htmlFor="event-date">Date received</FieldLabel>
+                    <Input
+                      id="event-date"
+                      name="date"
+                      className="h-11 min-w-0"
+                      type="date"
+                      required
+                      value={paymentDate}
+                      onChange={(event) => setPaymentDate(event.target.value)}
+                    />
+                    {paymentDate === "" && (
+                      <FieldDescription>
+                        Choose the date you received rent in {year}.
+                      </FieldDescription>
+                    )}
+                  </Field>
+                </div>
+                {paymentDate !== "" && !paymentDate.startsWith(`${year}-`) && (
+                  <p className="text-sm text-review-text">
+                    This payment will appear in {paymentDate.slice(0, 4)}.
+                    You’re viewing {year}.
+                  </p>
+                )}
               </div>
-              {paymentDate !== "" && !paymentDate.startsWith(`${year}-`) && (
-                <p className="text-sm text-review-text">
-                  This payment will appear in {paymentDate.slice(0, 4)}. You’re
-                  viewing {year}.
+              <div className="grid min-w-0 gap-4">
+                <details>
+                  <summary className="cursor-pointer py-2 text-muted-foreground text-sm">
+                    Add a note (optional)
+                  </summary>
+                  <Field className="mt-2">
+                    <FieldLabel htmlFor="event-memo">Payment note</FieldLabel>
+                    <Input
+                      id="event-memo"
+                      name="memo"
+                      className="h-11"
+                      placeholder="e.g. Partial payment"
+                      value={memo}
+                      onChange={(event) => setMemo(event.target.value)}
+                    />
+                  </Field>
+                </details>
+                <FormErrorAlert message={error} />
+                <Button
+                  type="submit"
+                  className="min-h-11 w-full"
+                  disabled={!canSave || isSaving}
+                >
+                  <Plus data-icon="inline-start" aria-hidden="true" />
+                  {isSaving
+                    ? "Saving…"
+                    : canSave
+                      ? `Record ${formatMoney(Number(amount))}`
+                      : "Record rent"}
+                </Button>
+                <p className="text-muted-foreground text-xs">
+                  Records money already received. No payment is collected.
                 </p>
-              )}
-              <details>
-                <summary className="cursor-pointer py-2 text-muted-foreground text-sm">
-                  Add a note (optional)
-                </summary>
-                <Field className="mt-2">
-                  <FieldLabel htmlFor="event-memo">Payment note</FieldLabel>
-                  <Input
-                    id="event-memo"
-                    name="memo"
-                    className="h-11"
-                    placeholder="e.g. Partial payment"
-                    value={memo}
-                    onChange={(event) => setMemo(event.target.value)}
-                  />
-                </Field>
-              </details>
-              <FormErrorAlert message={error} />
-              <Button
-                type="submit"
-                className="min-h-11 w-full"
-                disabled={!canSave || isSaving}
-              >
-                <Plus data-icon="inline-start" aria-hidden="true" />
-                {isSaving
-                  ? "Saving…"
-                  : canSave
-                    ? `Record ${formatMoney(Number(amount))}`
-                    : "Record rent"}
-              </Button>
-              <p className="text-muted-foreground text-xs">
-                Records money already received. No payment is collected.
-              </p>
+              </div>
             </fieldset>
           </form>
         )}
