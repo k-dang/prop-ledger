@@ -636,9 +636,9 @@ export function RentPaymentPanel({
           {leases.length > 0 && (
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="min-h-11 sm:min-h-8"
+              className="rounded-md"
               disabled={!prefill || isSaving}
               title={
                 prefill
