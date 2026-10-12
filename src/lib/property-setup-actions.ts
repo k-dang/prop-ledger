@@ -1,8 +1,8 @@
 "use server";
 
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
-import { db } from "@/db/index";
+import { db, withTransaction } from "@/db/index";
 import {
   leases,
   owners,
@@ -88,7 +88,7 @@ export async function savePropertySetupDraft(
 
 /**
  * Validates the whole form, then writes the property, owners with shares from
- * the acquisition date, units, and leases in one batch and clears the draft.
+ * the acquisition date, units, and leases in one transaction and clears the draft.
  */
 export async function completePropertySetup(
   propertyId: string | null,
@@ -103,37 +103,35 @@ export async function completePropertySetup(
         return { ok: false, error: "Some setup answers need attention." };
       }
 
-      if (propertyId !== null) {
-        const open = await db.query.properties.findFirst({
-          where: openSetup(propertyId),
-          columns: { id: true },
-        });
-
-        if (open === undefined) {
-          return { ok: false, error: SETUP_CLOSED_MESSAGE };
-        }
-      }
-
       const id = propertyId ?? crypto.randomUUID();
       const property = { ...toPropertyValues(parsed.data), setupDraft: null };
       const rows = toSetupRows(parsed.data, id);
 
-      await db.batch([
-        propertyId === null
-          ? db.insert(properties).values({ id, ...property })
-          : claimOpenSetup(propertyId),
-        ...(propertyId === null
-          ? []
-          : [db.update(properties).set(property).where(eq(properties.id, id))]),
-        db.insert(owners).values(rows.ownerRows),
-        db.insert(ownershipPeriods).values(rows.periodRows),
-        db.insert(units).values(rows.unitRows),
-        ...(rows.leaseRows.length > 0
-          ? [db.insert(leases).values(rows.leaseRows)]
-          : []),
-      ]);
+      return withTransaction<CompletedSetup | ActionFailure>(async (tx) => {
+        if (propertyId === null) {
+          await tx.insert(properties).values({ id, ...property });
+        } else {
+          // Only the first completion can clear an open draft. The update's row
+          // lock is held until all related records commit together.
+          const completed = await tx
+            .update(properties)
+            .set(property)
+            .where(openSetup(propertyId))
+            .returning({ id: properties.id });
+          if (completed.length === 0) {
+            return { ok: false, error: SETUP_CLOSED_MESSAGE };
+          }
+        }
 
-      return { ok: true, propertyId: id, leaseIdByUnit: rows.leaseIdByUnit };
+        await tx.insert(owners).values(rows.ownerRows);
+        await tx.insert(ownershipPeriods).values(rows.periodRows);
+        await tx.insert(units).values(rows.unitRows);
+        if (rows.leaseRows.length > 0) {
+          await tx.insert(leases).values(rows.leaseRows);
+        }
+
+        return { ok: true, propertyId: id, leaseIdByUnit: rows.leaseIdByUnit };
+      });
     },
     { invalidate: setupCacheTags },
   );
@@ -141,21 +139,4 @@ export async function completePropertySetup(
 
 function openSetup(propertyId: string) {
   return and(eq(properties.id, propertyId), isNotNull(properties.setupDraft));
-}
-
-/**
- * Batch guard against finishing the same setup twice (two tabs or devices).
- * Locks the property row while its setup is open, then divides by the match
- * count. If another finish committed first, nothing matches and the division
- * by zero rolls back the whole batch, so records are never written twice.
- */
-function claimOpenSetup(propertyId: string) {
-  const open = db
-    .select({ id: properties.id })
-    .from(properties)
-    .where(openSetup(propertyId))
-    .for("update")
-    .as("open_setup");
-
-  return db.select({ claimed: sql`1 / count(*)` }).from(open);
 }

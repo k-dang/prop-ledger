@@ -1,7 +1,7 @@
 "use client";
 
 import { Banknote, CopyPlus, Split, Trash2 } from "lucide-react";
-import { useReducer, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -506,17 +506,6 @@ type MortgagePaymentDraft = {
   interest: string;
 };
 
-type MortgagePaymentDraftField = keyof MortgagePaymentDraft;
-
-type MortgagePaymentDraftAction =
-  | {
-      type: "field";
-      field: MortgagePaymentDraftField;
-      value: string;
-    }
-  | { type: "prefill"; payment: MortgagePayment }
-  | { type: "reset" };
-
 const emptyMortgagePaymentDraft: MortgagePaymentDraft = {
   date: "",
   lender: "",
@@ -524,20 +513,6 @@ const emptyMortgagePaymentDraft: MortgagePaymentDraft = {
   principal: "",
   interest: "",
 };
-
-function mortgagePaymentDraftReducer(
-  state: MortgagePaymentDraft,
-  action: MortgagePaymentDraftAction,
-): MortgagePaymentDraft {
-  switch (action.type) {
-    case "field":
-      return { ...state, [action.field]: action.value };
-    case "prefill":
-      return mortgagePaymentDraftFromPayment(action.payment);
-    case "reset":
-      return emptyMortgagePaymentDraft;
-  }
-}
 
 function mortgagePaymentDraftFromPayment(
   payment: MortgagePayment,
@@ -560,10 +535,7 @@ function MortgagePaymentForm({
   propertyId: string;
   onErrorChange: (error: string | undefined) => void;
 }) {
-  const [draft, dispatch] = useReducer(
-    mortgagePaymentDraftReducer,
-    emptyMortgagePaymentDraft,
-  );
+  const [draft, setDraft] = useState(emptyMortgagePaymentDraft);
   const { date, lender, totalAmount, principal, interest } = draft;
   const total = Number(totalAmount) || 0;
   const allocated = (Number(principal) || 0) + (Number(interest) || 0);
@@ -589,7 +561,7 @@ function MortgagePaymentForm({
       onErrorChange(result.ok ? undefined : result.error);
 
       if (result.ok) {
-        dispatch({ type: "reset" });
+        setDraft(emptyMortgagePaymentDraft);
       }
 
       return result.ok;
@@ -600,7 +572,7 @@ function MortgagePaymentForm({
       return;
     }
 
-    dispatch({ type: "prefill", payment: latestPayment });
+    setDraft(mortgagePaymentDraftFromPayment(latestPayment));
     onErrorChange(undefined);
   }
 
@@ -642,7 +614,7 @@ function MortgagePaymentForm({
             required
             value={date}
             onChange={(value) => {
-              dispatch({ type: "field", field: "date", value });
+              setDraft((current) => ({ ...current, date: value }));
             }}
           />
         </Field>
@@ -655,11 +627,8 @@ function MortgagePaymentForm({
             required
             value={lender}
             onChange={(event) => {
-              dispatch({
-                type: "field",
-                field: "lender",
-                value: event.target.value,
-              });
+              const lender = event.target.value;
+              setDraft((current) => ({ ...current, lender }));
             }}
           />
         </Field>
@@ -676,11 +645,8 @@ function MortgagePaymentForm({
             required
             value={totalAmount}
             onChange={(event) => {
-              dispatch({
-                type: "field",
-                field: "totalAmount",
-                value: event.target.value,
-              });
+              const totalAmount = event.target.value;
+              setDraft((current) => ({ ...current, totalAmount }));
             }}
           />
         </Field>
@@ -715,11 +681,8 @@ function MortgagePaymentForm({
               placeholder="1500.00"
               value={principal}
               onChange={(event) => {
-                dispatch({
-                  type: "field",
-                  field: "principal",
-                  value: event.target.value,
-                });
+                const principal = event.target.value;
+                setDraft((current) => ({ ...current, principal }));
               }}
             />
           </Field>
@@ -735,11 +698,8 @@ function MortgagePaymentForm({
               placeholder="125.00"
               value={interest}
               onChange={(event) => {
-                dispatch({
-                  type: "field",
-                  field: "interest",
-                  value: event.target.value,
-                });
+                const interest = event.target.value;
+                setDraft((current) => ({ ...current, interest }));
               }}
             />
           </Field>

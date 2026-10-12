@@ -60,7 +60,6 @@ export async function createManualTransaction(
         propertyId,
         ...transactionInput,
         isCapitalAsset: input.type === "expense" && isCapitalAsset === true,
-        isReconciled: true,
       };
 
       const [createdTransaction] = await db
