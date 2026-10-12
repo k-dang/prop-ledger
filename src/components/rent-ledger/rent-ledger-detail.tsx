@@ -3,6 +3,7 @@
 import {
   CheckCircle2,
   CircleDot,
+  Copy,
   FileText,
   type LucideIcon,
   Plus,
@@ -504,7 +505,34 @@ export function RentPaymentPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2">Record rent</CardTitle>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <CardTitle as="h2">Record rent</CardTitle>
+          {leases.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-11 text-brand hover:text-brand sm:min-h-8"
+              disabled={!prefill || isSaving}
+              title={
+                prefill
+                  ? `Use ${formatMoney(prefill.amount)} from ${prefill.sourceMonth} for ${prefill.date}.`
+                  : selectedLease
+                    ? "Record a payment first to prefill the next month."
+                    : "Select a tenant to prefill their latest rent."
+              }
+              onClick={() => {
+                if (!prefill) return;
+                setAmount(formatFormAmount(prefill.amount));
+                setPaymentDate(prefill.date);
+                setError(undefined);
+              }}
+            >
+              <Copy data-icon="inline-start" aria-hidden="true" />
+              Prefill rent
+            </Button>
+          )}
+        </div>
         <CardDescription>
           Confirm the amount and date you received, then save.
         </CardDescription>
@@ -575,29 +603,6 @@ export function RentPaymentPanel({
                   </Select>
                 </Field>
               )}
-              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11 w-full sm:w-auto"
-                  disabled={!prefill || isSaving}
-                  onClick={() => {
-                    if (!prefill) return;
-                    setAmount(formatFormAmount(prefill.amount));
-                    setPaymentDate(prefill.date);
-                    setError(undefined);
-                  }}
-                >
-                  Prefill rent
-                </Button>
-                <p className="text-muted-foreground text-sm">
-                  {prefill
-                    ? `Use ${formatMoney(prefill.amount)} from ${prefill.sourceMonth} and advance the date one month.`
-                    : selectedLease
-                      ? "Record a payment first to prefill the next month."
-                      : "Select a tenant to prefill their latest rent."}
-                </p>
-              </div>
               <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Field className="min-w-0">
                   <FieldLabel htmlFor="event-amount">
@@ -617,6 +622,12 @@ export function RentPaymentPanel({
                   {selectedLease && (
                     <FieldDescription>
                       Lease rent: {formatMoney(selectedLease.rentAmount)}
+                      {prefill && (
+                        <span className="block">
+                          Latest month: {formatMoney(prefill.amount)} ·{" "}
+                          {prefill.sourceMonth}
+                        </span>
+                      )}
                     </FieldDescription>
                   )}
                 </Field>
