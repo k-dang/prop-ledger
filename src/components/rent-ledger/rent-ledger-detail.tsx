@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -298,7 +298,6 @@ function LeaseCard({
   const [isDeleting, startDelete] = useTransition();
   const [isUploading, startUpload] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const uploadInFlight = useRef(false);
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
@@ -308,12 +307,6 @@ function LeaseCard({
   const fileInputId = `lease-document-${lease.id}`;
   const uploadHelpId = `${fileInputId}-help`;
   const uploadFeedbackId = `${fileInputId}-feedback`;
-
-  useEffect(() => {
-    if (!isUploading && uploadedName) {
-      uploadButtonRef.current?.focus({ preventScroll: true });
-    }
-  }, [isUploading, uploadedName]);
 
   function upload(file: File) {
     if (uploadInFlight.current || isDeleting) return;
@@ -440,7 +433,6 @@ function LeaseCard({
             </span>
           </h3>
           <Button
-            ref={uploadButtonRef}
             type="button"
             disabled={isUploading || isDeleting}
             aria-describedby={uploadHelpId}

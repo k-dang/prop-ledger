@@ -146,9 +146,6 @@ describe("lease document controls", () => {
       ).disabled,
     ).toBe(false);
     expect(picker.value).toBe("");
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Upload document" }),
-    );
     expect(screen.getByRole("link", { name: "lease.pdf" })).toBeTruthy();
   });
 

@@ -3,13 +3,7 @@
 import { ArrowRight, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  type FormEvent,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type FormEvent, useLayoutEffect, useRef, useState } from "react";
 
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import { uploadLeaseDocument } from "@/components/rent-ledger/lease-document-upload";
@@ -117,7 +111,6 @@ function SetupRun({
     sectionIndex(setupSteps(initialForm)[index]),
   );
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [errorFocusRequest, setErrorFocusRequest] = useState(0);
   const [leaseFiles, setLeaseFiles] = useState<Record<string, File>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [saveError, setSaveError] = useState<string>();
@@ -126,33 +119,11 @@ function SetupRun({
     failures: UploadFailure[];
   }>();
   const busy = useRef(false);
-  const formRef = useRef<HTMLFormElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const steps = setupSteps(form);
   const step = steps[index];
-  const shownIndex = useRef(index);
   const section = sectionIndex(step);
   const reachedReview = maxSection === REVIEW_SECTION;
-
-  // Move focus to the new question whenever the screen changes.
-  useEffect(() => {
-    if (shownIndex.current === index) return;
-    shownIndex.current = index;
-    headingRef.current?.focus();
-  }, [index]);
-
-  useEffect(() => {
-    if (errorFocusRequest === 0) return;
-    const invalid = formRef.current?.querySelector<HTMLElement>(
-      '[aria-invalid="true"]',
-    );
-    const target =
-      invalid?.getAttribute("role") === "radiogroup"
-        ? invalid.querySelector<HTMLElement>('[role="radio"]')
-        : invalid;
-    target?.focus();
-  }, [errorFocusRequest]);
 
   function update(next: SetupForm, clear: string[] | "all" = []) {
     setForm(next);
@@ -165,11 +136,6 @@ function SetupRun({
         return remaining;
       });
     }
-  }
-
-  function showErrors(next: FieldErrors) {
-    setErrors(next);
-    setErrorFocusRequest((count) => count + 1);
   }
 
   function goTo(nextIndex: number) {
@@ -191,7 +157,7 @@ function SetupRun({
     const stepErrors = validateStep(form, step, today);
 
     if (!isEmpty(stepErrors)) {
-      showErrors(stepErrors);
+      setErrors(stepErrors);
       return;
     }
 
@@ -200,7 +166,7 @@ function SetupRun({
       const incomplete = firstIncompleteStep(form, today);
       if (incomplete !== index) {
         goTo(incomplete);
-        showErrors(validateStep(form, steps[incomplete], today));
+        setErrors(validateStep(form, steps[incomplete], today));
         return;
       }
       void complete();
@@ -242,7 +208,7 @@ function SetupRun({
 
     if (!isEmpty(propertyErrors)) {
       goTo(0);
-      showErrors(propertyErrors);
+      setErrors(propertyErrors);
       return;
     }
 
@@ -377,18 +343,11 @@ function SetupRun({
           </div>
 
           <form
-            ref={formRef}
             noValidate
             onSubmit={handleSubmit}
             className="grid gap-5 rounded-xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6"
           >
-            <StepHeading
-              key={index}
-              ref={headingRef}
-              form={form}
-              step={step}
-              resuming={resuming}
-            />
+            <StepHeading form={form} step={step} resuming={resuming} />
             {step.kind === "property" ? (
               <PropertyStep {...stepProps} />
             ) : step.kind === "ownership" ? (

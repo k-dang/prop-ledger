@@ -1,5 +1,4 @@
 import { Trash2 } from "lucide-react";
-import type { Ref } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,12 +97,10 @@ function listNames(names: string[]) {
 }
 
 export function StepHeading({
-  ref,
   form,
   step,
   resuming,
 }: {
-  ref: Ref<HTMLHeadingElement>;
   form: SetupForm;
   step: SetupStep;
   resuming: boolean;
@@ -117,13 +114,7 @@ export function StepHeading({
           {copy.eyebrow}
         </p>
       ) : null}
-      <h2
-        ref={ref}
-        tabIndex={-1}
-        className="font-semibold text-xl tracking-tight outline-none"
-      >
-        {copy.title}
-      </h2>
+      <h2 className="font-semibold text-xl tracking-tight">{copy.title}</h2>
       <p className="text-muted-foreground text-sm">{copy.lede}</p>
     </div>
   );
