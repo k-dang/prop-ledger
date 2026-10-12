@@ -246,5 +246,8 @@
   }
   html {
     @apply font-sans;
+    /* Reserve the scrollbar track so the layout width never shifts when a
+       page crosses the overflow threshold (e.g. switching tabs). */
+    scrollbar-gutter: stable;
   }
 }
