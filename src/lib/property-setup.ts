@@ -14,7 +14,7 @@ import type { RentalProperty } from "@/lib/property-workspace";
  * The wizard edits one `SetupForm` of raw field values. "Save and finish later"
  * stores the property row plus the rest of the form as `properties.setupDraft`;
  * completing setup validates the whole form and writes owners, ownership
- * periods, units, and leases in one batch. Records are never written
+ * periods, units, and leases in one transaction. Records are never written
  * piecemeal, so resuming a draft never has to reconcile existing rows.
  *
  * Validation lives here so the wizard and the server actions share one set of

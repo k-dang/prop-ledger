@@ -151,7 +151,6 @@ export const ledgerEntries = pgTable("ledger_entries", {
   incomeCategory: text("income_category").$type<RentalIncomeCategory>(),
   prepaidStartDate: date("prepaid_start_date", { mode: "string" }),
   prepaidEndDate: date("prepaid_end_date", { mode: "string" }),
-  isReconciled: boolean("is_reconciled").notNull().default(false),
   isCapitalAsset: boolean("is_capital_asset").notNull().default(false),
   reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at", { withTimezone: true })

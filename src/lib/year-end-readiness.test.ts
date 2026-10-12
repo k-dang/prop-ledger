@@ -24,7 +24,6 @@ function makeEntry(
     incomeCategory: null,
     prepaidStartDate: null,
     prepaidEndDate: null,
-    isReconciled: true,
     isCapitalAsset: false,
     reviewNotes: null,
     createdAt: new Date("2026-02-01T00:00:00.000Z"),

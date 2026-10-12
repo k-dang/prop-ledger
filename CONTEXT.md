@@ -63,8 +63,8 @@ _Avoid_: error, validation failure
 **Setup Draft**:
 The unfinished answers from guided property setup, saved on the property with
 "Save and finish later". Owners, ownership periods, units and leases are written
-together only when setup finishes; until then the property shows a "Finish setting
-up" checklist that reopens the guided flow.
+together in one transaction only when setup finishes; until then the property
+shows a "Finish setting up" checklist that reopens the guided flow.
 _Avoid_: partial setup, incomplete property
 
 ## Relationships

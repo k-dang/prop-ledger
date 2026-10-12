@@ -56,6 +56,10 @@ The Drizzle schema is in `src/db/schema.ts`; migrations are in `drizzle/`.
 `pnpm db:generate` creates migration files locally. `pnpm db:migrate` applies
 them to the configured database, so check the target before running it.
 
+Queries and fixed batches use Neon HTTP. Setup completion uses a request-scoped
+WebSocket connection for an interactive transaction, then closes it. Node.js 24+
+provides the WebSocket implementation; no additional configuration is required.
+
 ## Code layout
 
 - `src/app/`: routes and page composition.

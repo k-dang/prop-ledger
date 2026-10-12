@@ -1,0 +1,1 @@
+ALTER TABLE "rental"."ledger_entries" DROP COLUMN "is_reconciled";

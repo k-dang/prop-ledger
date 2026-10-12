@@ -30,7 +30,6 @@ function makeEntry(
     incomeCategory: null,
     prepaidStartDate: null,
     prepaidEndDate: null,
-    isReconciled: false,
     isCapitalAsset: false,
     reviewNotes: null,
     createdAt: new Date("2026-02-01T00:00:00.000Z"),
@@ -59,7 +58,7 @@ function makeDocument(
 describe("evidence binder exceptions", () => {
   it("counts uncategorized and missing receipt records", () => {
     const entries = [
-      makeEntry({ id: "categorized", isReconciled: true }),
+      makeEntry({ id: "categorized" }),
       makeEntry({ id: "uncategorized-expense", expenseCategory: null }),
       makeEntry({
         id: "uncategorized-income",

@@ -64,42 +64,15 @@ type WizardProps = {
  * and draft is written until "Create property" / "Finish setup".
  *
  * Next keeps visited routes mounted but hidden, so answers survive a quick
- * detour. Once a run ends (saved, finished, or cancelled) the wizard is reset
- * as the route hides, and the next visit starts fresh.
+ * detour. Save, finish, and cancel reset the form before navigating away.
  */
-export function PropertySetupWizard(props: WizardProps) {
-  const [run, setRun] = useState(0);
-  const ended = useRef(false);
-
-  useLayoutEffect(
-    () => () => {
-      if (ended.current) {
-        ended.current = false;
-        setRun((count) => count + 1);
-      }
-    },
-    [],
-  );
-
-  return (
-    <SetupRun
-      key={run}
-      {...props}
-      onEnd={() => {
-        ended.current = true;
-      }}
-    />
-  );
-}
-
-function SetupRun({
+export function PropertySetupWizard({
   propertyId,
   setupFinished = false,
   initialForm,
   cancelHref,
   today,
-  onEnd,
-}: WizardProps & { onEnd: () => void }) {
+}: WizardProps) {
   const router = useRouter();
   const resuming = propertyId !== null;
   const [form, setForm] = useState(initialForm);
@@ -124,6 +97,22 @@ function SetupRun({
   const step = steps[index];
   const section = sectionIndex(step);
   const reachedReview = maxSection === REVIEW_SECTION;
+
+  function resetForm(nextForm = initialForm) {
+    const nextIndex = firstIncompleteStep(nextForm, today);
+    setForm(nextForm);
+    setIndex(nextIndex);
+    setMaxSection(sectionIndex(setupSteps(nextForm)[nextIndex]));
+    setErrors({});
+    setLeaseFiles({});
+    setSaveError(undefined);
+    setUploadFailures(undefined);
+    setStatus("idle");
+    busy.current = false;
+  }
+
+  // Clear stale upload feedback on return, while preserving unfinished answers.
+  useLayoutEffect(() => () => setUploadFailures(undefined), []);
 
   function update(next: SetupForm, clear: string[] | "all" = []) {
     setForm(next);
@@ -217,7 +206,7 @@ function SetupRun({
     );
     if (result === undefined) return;
 
-    onEnd();
+    resetForm(propertyId === null ? initialForm : form);
     router.push(`/properties/${result.propertyId}`);
   }
 
@@ -256,7 +245,7 @@ function SetupRun({
       )
     ).flat();
 
-    onEnd();
+    resetForm();
     if (failures.length > 0) {
       setUploadFailures({ propertyId: result.propertyId, failures });
     } else {
@@ -277,7 +266,7 @@ function SetupRun({
       event.preventDefault();
       return;
     }
-    onEnd();
+    resetForm();
   }
 
   if (uploadFailures) {
@@ -296,7 +285,7 @@ function SetupRun({
       <header>
         <Link
           href={cancelHref}
-          onClick={confirmLeave}
+          onNavigate={confirmLeave}
           aria-disabled={working || undefined}
           className={cn(
             buttonVariants({ variant: "link" }),
