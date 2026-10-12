@@ -50,6 +50,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "@/components/ui/toast";
 import { RENT_FREQUENCIES, type RentFrequency } from "@/db/schema";
 import { useMutation } from "@/hooks/use-mutation";
 import { SAVE_FAILED_MESSAGE } from "@/lib/action-utils";
@@ -588,11 +589,6 @@ export function RentPaymentPanel({
   const [isSaving, setIsSaving] = useState(false);
   const saving = useRef(false);
   const [error, setError] = useState<string>();
-  const [savedPayment, setSavedPayment] = useState<{
-    tenant: string;
-    amount: number;
-    date: string;
-  }>();
   const selectedLease = leases.find((lease) => lease.id === selectedLeaseId);
   const prefill = getRentPaymentPrefill(ledger.rentEvents, selectedLeaseId);
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
@@ -603,17 +599,25 @@ export function RentPaymentPanel({
     saving.current = true;
     setIsSaving(true);
     setError(undefined);
-    setSavedPayment(undefined);
     try {
       const result = await recordRentEvent(ledger.property.id, input);
       if (!result.ok) {
         setError(result.error ?? SAVE_FAILED_MESSAGE);
         return false;
       }
-      setSavedPayment({
-        tenant: selectedLease.tenantName,
-        amount: input.amount,
-        date: input.date,
+      toast.add({
+        id: `rent-payment-${ledger.property.id}`,
+        type: "success",
+        timeout: 0,
+        title: `Recorded ${formatMoney(input.amount)} for ${selectedLease.tenantName} on ${input.date}.`,
+        description: !input.date.startsWith(`${year}-`) ? (
+          <Link
+            className="underline underline-offset-4"
+            href={`/properties/${ledger.property.id}?year=${input.date.slice(0, 4)}`}
+          >
+            View {input.date.slice(0, 4)} payments
+          </Link>
+        ) : undefined,
       });
       // Keep the tenant selected, but require a fresh amount for another payment.
       setAmount("");
@@ -811,23 +815,6 @@ export function RentPaymentPanel({
               </div>
             </fieldset>
           </form>
-        )}
-        {savedPayment && (
-          <p
-            role="status"
-            className="rounded-lg border border-ready-border bg-ready-surface p-3 text-sm text-ready-text"
-          >
-            Recorded {formatMoney(savedPayment.amount)} for{" "}
-            {savedPayment.tenant} on {savedPayment.date}.
-            {!savedPayment.date.startsWith(`${year}-`) && (
-              <Link
-                className="ml-1 underline underline-offset-4"
-                href={`/properties/${ledger.property.id}?year=${savedPayment.date.slice(0, 4)}`}
-              >
-                View {savedPayment.date.slice(0, 4)} payments
-              </Link>
-            )}
-          </p>
         )}
       </CardContent>
     </Card>
