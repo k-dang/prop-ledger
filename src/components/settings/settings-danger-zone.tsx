@@ -37,7 +37,7 @@ export function SettingsDangerZone() {
   }
 
   return (
-    <Card className="max-w-3xl border-destructive/30 bg-background">
+    <Card className="w-full border-destructive/30 bg-background">
       <CardHeader>
         <CardTitle as="h2" className="text-destructive">
           Danger zone
