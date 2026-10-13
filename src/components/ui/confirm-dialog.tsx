@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -14,6 +14,29 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Button } from "@/components/ui/button";
+
+/**
+ * Owns the pending payload for one confirm dialog: `request` a value to open
+ * it, `take` the value to close it and act on it. Pass `open` and
+ * `onOpenChange` straight into {@link ConfirmDialog}.
+ */
+export function usePendingConfirm<T>() {
+  const [target, setTarget] = useState<T | null>(null);
+
+  return {
+    target,
+    open: target !== null,
+    request: (value: T) => setTarget(value),
+    onOpenChange: (open: boolean) => {
+      if (!open) setTarget(null);
+    },
+    take: () => {
+      const value = target;
+      setTarget(null);
+      return value;
+    },
+  };
+}
 
 /**
  * The single confirm pattern for destructive / discarding actions.

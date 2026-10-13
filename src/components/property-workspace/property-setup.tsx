@@ -11,7 +11,10 @@ import {
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ConfirmDialog,
+  usePendingConfirm,
+} from "@/components/ui/confirm-dialog";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -308,9 +311,7 @@ function UnitsTable({
   property: RentalProperty;
   onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
 }) {
-  const [pending, setPending] = useState<{ id: string; label: string } | null>(
-    null,
-  );
+  const confirm = usePendingConfirm<{ id: string; label: string }>();
 
   return (
     <>
@@ -333,7 +334,9 @@ function UnitsTable({
                   variant="outline"
                   size="sm"
                   className="h-7 rounded-md px-2 text-blocked"
-                  onClick={() => setPending({ id: unit.id, label: unit.label })}
+                  onClick={() =>
+                    confirm.request({ id: unit.id, label: unit.label })
+                  }
                 >
                   <Trash2 data-icon="inline-start" />
                   Delete
@@ -344,18 +347,17 @@ function UnitsTable({
         </TableBody>
       </Table>
       <ConfirmDialog
-        open={pending !== null}
-        onOpenChange={(open) => {
-          if (!open) setPending(null);
-        }}
+        open={confirm.open}
+        onOpenChange={confirm.onOpenChange}
         title="Delete unit?"
         description={
-          pending ? `Delete unit "${pending.label}"?` : "Delete this unit?"
+          confirm.target
+            ? `Delete unit "${confirm.target.label}"?`
+            : "Delete this unit?"
         }
         confirmLabel="Delete unit"
         onConfirm={() => {
-          const target = pending;
-          setPending(null);
+          const target = confirm.take();
           if (target) void onDeleteUnit(target.id);
         }}
       />
@@ -370,10 +372,7 @@ function OwnersTable({
   history: ReturnType<typeof getOwnershipDisplayHistory>;
   onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
 }) {
-  const [pending, setPending] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const confirm = usePendingConfirm<{ id: string; name: string }>();
 
   return (
     <>
@@ -399,7 +398,7 @@ function OwnersTable({
                   size="sm"
                   className="h-7 rounded-md px-2 text-blocked"
                   onClick={() =>
-                    setPending({
+                    confirm.request({
                       id: period.ownerId,
                       name: period.ownerName,
                     })
@@ -414,20 +413,17 @@ function OwnersTable({
         </TableBody>
       </Table>
       <ConfirmDialog
-        open={pending !== null}
-        onOpenChange={(open) => {
-          if (!open) setPending(null);
-        }}
+        open={confirm.open}
+        onOpenChange={confirm.onOpenChange}
         title="Delete owner?"
         description={
-          pending
-            ? `Delete owner "${pending.name}" and their ownership periods?`
+          confirm.target
+            ? `Delete owner "${confirm.target.name}" and their ownership periods?`
             : "Delete this owner?"
         }
         confirmLabel="Delete owner"
         onConfirm={() => {
-          const target = pending;
-          setPending(null);
+          const target = confirm.take();
           if (target) void onDeleteOwner(target.id);
         }}
       />

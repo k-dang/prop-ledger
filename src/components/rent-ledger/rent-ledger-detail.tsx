@@ -35,7 +35,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ConfirmDialog,
+  usePendingConfirm,
+} from "@/components/ui/confirm-dialog";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -835,7 +838,7 @@ export function RentActivityCard({
   const onDeleteEvent = async (eventId: string) =>
     (await runMutation(() => deleteRentEvent(ledger.property.id, eventId))).ok;
   const [isDeleting, startDelete] = useTransition();
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const deleteConfirm = usePendingConfirm<string>();
   const [sortKey, setSortKey] = useState<"date" | "amount">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
@@ -877,17 +880,14 @@ export function RentActivityCard({
       <CardContent>
         <FormErrorAlert message={error} />
         <ConfirmDialog
-          open={pendingDeleteId !== null}
-          onOpenChange={(open) => {
-            if (!open) setPendingDeleteId(null);
-          }}
+          open={deleteConfirm.open}
+          onOpenChange={deleteConfirm.onOpenChange}
           title="Delete rent payment?"
           description="Delete this rent payment? This will update rent totals."
           confirmLabel="Delete payment"
           isPending={isDeleting}
           onConfirm={() => {
-            const rentEventId = pendingDeleteId;
-            setPendingDeleteId(null);
+            const rentEventId = deleteConfirm.take();
             if (!rentEventId) return;
             startDelete(async () => {
               await onDeleteEvent(rentEventId);
@@ -987,7 +987,7 @@ export function RentActivityCard({
                       aria-label={`Delete rent payment from ${event.date}`}
                       disabled={isDeleting}
                       onClick={() => {
-                        setPendingDeleteId(event.id);
+                        deleteConfirm.request(event.id);
                       }}
                     >
                       <Trash2 aria-hidden="true" />

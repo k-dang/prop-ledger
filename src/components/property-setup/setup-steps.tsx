@@ -1,9 +1,11 @@
 import { Trash2 } from "lucide-react";
 
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ConfirmDialog,
+  usePendingConfirm,
+} from "@/components/ui/confirm-dialog";
 import { RENT_FREQUENCIES } from "@/db/schema";
 import {
   type FieldErrors,
@@ -230,21 +232,20 @@ export function PropertyStep({ form, errors, onChange }: StepProps) {
 
 export function OwnershipStep({ form, errors, onChange }: StepProps) {
   const mode = form.ownerMode;
-  const [pendingMode, setPendingMode] = useState<OwnerMode | null>(null);
+  const modeConfirm = usePendingConfirm<OwnerMode>();
 
   function setMode(next: OwnerMode) {
     const dropped = ownersDroppedBy(form, next);
     if (dropped.length > 0) {
-      setPendingMode(next);
+      modeConfirm.request(next);
       return;
     }
     onChange(withOwnerMode(form, next), ["ownerMode", "owners"]);
   }
 
   function confirmSetMode() {
-    if (!pendingMode) return;
-    const next = pendingMode;
-    setPendingMode(null);
+    const next = modeConfirm.take();
+    if (!next) return;
     onChange(withOwnerMode(form, next), ["ownerMode", "owners"]);
   }
 
@@ -266,14 +267,12 @@ export function OwnershipStep({ form, errors, onChange }: StepProps) {
         error={errors.ownerMode}
       />
       <ConfirmDialog
-        open={pendingMode !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingMode(null);
-        }}
+        open={modeConfirm.open}
+        onOpenChange={modeConfirm.onOpenChange}
         title="Switch ownership?"
         description={
-          pendingMode
-            ? `Switching removes ${listNames(ownersDroppedBy(form, pendingMode))} from the owners.`
+          modeConfirm.target
+            ? `Switching removes ${listNames(ownersDroppedBy(form, modeConfirm.target))} from the owners.`
             : "Switching removes owners."
         }
         confirmLabel="Switch"
@@ -435,21 +434,20 @@ function ShareTotal({ total }: { total: number }) {
 }
 
 export function UnitsStep({ form, errors, onChange }: StepProps) {
-  const [pendingLayout, setPendingLayout] = useState<LayoutKey | null>(null);
+  const layoutConfirm = usePendingConfirm<LayoutKey>();
 
   function requestLayout(layout: LayoutKey) {
     const dropped = unitsDroppedBy(form, layout);
     if (dropped.length > 0) {
-      setPendingLayout(layout);
+      layoutConfirm.request(layout);
       return;
     }
     onChange(withLayout(form, layout), ["layout", "units"]);
   }
 
   function confirmLayout() {
-    if (!pendingLayout) return;
-    const next = pendingLayout;
-    setPendingLayout(null);
+    const next = layoutConfirm.take();
+    if (!next) return;
     onChange(withLayout(form, next), ["layout", "units"]);
   }
 
@@ -472,16 +470,14 @@ export function UnitsStep({ form, errors, onChange }: StepProps) {
         columns={3}
       />
       <ConfirmDialog
-        open={pendingLayout !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingLayout(null);
-        }}
+        open={layoutConfirm.open}
+        onOpenChange={layoutConfirm.onOpenChange}
         title="Switch layout?"
         description={
-          pendingLayout
+          layoutConfirm.target
             ? (() => {
-                const dropped = unitsDroppedBy(form, pendingLayout);
-                return `Switching to ${LAYOUTS[pendingLayout].label} removes ${listNames(dropped)} and what you entered for ${dropped.length === 1 ? "it" : "them"}.`;
+                const dropped = unitsDroppedBy(form, layoutConfirm.target);
+                return `Switching to ${LAYOUTS[layoutConfirm.target].label} removes ${listNames(dropped)} and what you entered for ${dropped.length === 1 ? "it" : "them"}.`;
               })()
             : "Switching removes units."
         }
