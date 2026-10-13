@@ -32,6 +32,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -793,34 +794,37 @@ function DeleteTransactionButton({
   onDelete: (transactionId: string) => boolean | Promise<boolean>;
 }) {
   const [isDeleting, startDelete] = useTransition();
-
-  function handleDelete() {
-    if (
-      !window.confirm(
-        "Delete this tax record? Linked documents will remain in Documents.",
-      )
-    ) {
-      return;
-    }
-
-    startDelete(async () => {
-      await onDelete(transactionId);
-    });
-  }
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-      aria-label={`Delete tax record from ${vendor}`}
-      title="Delete tax record"
-      disabled={isDeleting}
-      onClick={handleDelete}
-    >
-      <Trash2 aria-hidden="true" />
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        aria-label={`Delete tax record from ${vendor}`}
+        title="Delete tax record"
+        disabled={isDeleting}
+        onClick={() => setConfirmOpen(true)}
+      >
+        <Trash2 aria-hidden="true" />
+      </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete tax record?"
+        description="Delete this tax record? Linked documents will remain in Documents."
+        confirmLabel="Delete record"
+        isPending={isDeleting}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          startDelete(async () => {
+            await onDelete(transactionId);
+          });
+        }}
+      />
+    </>
   );
 }
 

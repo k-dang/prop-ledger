@@ -8,6 +8,7 @@ import { type FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import { uploadLeaseDocument } from "@/components/rent-ledger/lease-document-upload";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { type ActionFailure, SAVE_FAILED_MESSAGE } from "@/lib/action-utils";
 import {
   type FieldErrors,
@@ -87,6 +88,7 @@ export function PropertySetupWizard({
   const [leaseFiles, setLeaseFiles] = useState<Record<string, File>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [saveError, setSaveError] = useState<string>();
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const [uploadFailures, setUploadFailures] = useState<{
     propertyId: string;
     failures: UploadFailure[];
@@ -259,14 +261,18 @@ export function PropertySetupWizard({
       event.preventDefault();
       return;
     }
-    if (
-      form !== initialForm &&
-      !window.confirm("Leave setup? Your answers on this page won’t be saved.")
-    ) {
+    if (form !== initialForm) {
       event.preventDefault();
+      setLeaveOpen(true);
       return;
     }
     resetForm();
+  }
+
+  function confirmLeaveDialog() {
+    setLeaveOpen(false);
+    resetForm();
+    router.push(cancelHref);
   }
 
   if (uploadFailures) {
@@ -282,6 +288,15 @@ export function PropertySetupWizard({
 
   return (
     <div className="grid gap-6">
+      <ConfirmDialog
+        open={leaveOpen}
+        onOpenChange={setLeaveOpen}
+        title="Leave setup?"
+        description="Leave setup? Your answers on this page won’t be saved."
+        confirmLabel={resuming ? "Back to property" : "Leave"}
+        variant="default"
+        onConfirm={confirmLeaveDialog}
+      />
       <header>
         <Link
           href={cancelHref}

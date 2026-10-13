@@ -35,6 +35,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -300,6 +301,7 @@ function LeaseCard({
   const onDeleteLease = async (leaseId: string) =>
     (await runMutation(() => deleteLease(leaseId))).ok;
   const [isDeleting, startDelete] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isUploading, startUpload] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadInFlight = useRef(false);
@@ -373,20 +375,24 @@ function LeaseCard({
             size="icon"
             aria-label={`Delete lease for ${lease.tenantName}`}
             disabled={isDeleting || isUploading}
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Delete the lease for ${lease.tenantName}? Recorded rent payments must be deleted first.`,
-                )
-              ) {
-                startDelete(async () => {
-                  await onDeleteLease(lease.id);
-                });
-              }
-            }}
+            onClick={() => setConfirmOpen(true)}
           >
             <Trash2 aria-hidden="true" />
           </Button>
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title="Delete lease?"
+            description={`Delete the lease for ${lease.tenantName}? Recorded rent payments must be deleted first.`}
+            confirmLabel="Delete lease"
+            isPending={isDeleting}
+            onConfirm={() => {
+              setConfirmOpen(false);
+              startDelete(async () => {
+                await onDeleteLease(lease.id);
+              });
+            }}
+          />
         </div>
       </div>
       <Separator />
@@ -829,6 +835,7 @@ export function RentActivityCard({
   const onDeleteEvent = async (eventId: string) =>
     (await runMutation(() => deleteRentEvent(ledger.property.id, eventId))).ok;
   const [isDeleting, startDelete] = useTransition();
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<"date" | "amount">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
@@ -860,15 +867,6 @@ export function RentActivityCard({
     });
 
   const description = `Saved rent payments for ${year}. Select Date or Amount to change sort order.`;
-  const handleDelete = (rentEventId: string) => {
-    if (
-      window.confirm("Delete this rent payment? This will update rent totals.")
-    ) {
-      startDelete(async () => {
-        await onDeleteEvent(rentEventId);
-      });
-    }
-  };
 
   return (
     <Card className={className}>
@@ -878,6 +876,24 @@ export function RentActivityCard({
       </CardHeader>
       <CardContent>
         <FormErrorAlert message={error} />
+        <ConfirmDialog
+          open={pendingDeleteId !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingDeleteId(null);
+          }}
+          title="Delete rent payment?"
+          description="Delete this rent payment? This will update rent totals."
+          confirmLabel="Delete payment"
+          isPending={isDeleting}
+          onConfirm={() => {
+            const rentEventId = pendingDeleteId;
+            setPendingDeleteId(null);
+            if (!rentEventId) return;
+            startDelete(async () => {
+              await onDeleteEvent(rentEventId);
+            });
+          }}
+        />
         {events.length === 0 ? (
           <EmptyState icon={Receipt}>
             No rent payments recorded for {year}.
@@ -971,7 +987,7 @@ export function RentActivityCard({
                       aria-label={`Delete rent payment from ${event.date}`}
                       disabled={isDeleting}
                       onClick={() => {
-                        handleDelete(event.id);
+                        setPendingDeleteId(event.id);
                       }}
                     >
                       <Trash2 aria-hidden="true" />

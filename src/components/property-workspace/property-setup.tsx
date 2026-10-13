@@ -11,6 +11,7 @@ import {
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -307,44 +308,58 @@ function UnitsTable({
   property: RentalProperty;
   onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
 }) {
-  function handleDelete(unitId: string, label: string) {
-    if (!window.confirm(`Delete unit "${label}"?`)) {
-      return;
-    }
-
-    void onDeleteUnit(unitId);
-  }
+  const [pending, setPending] = useState<{ id: string; label: string } | null>(
+    null,
+  );
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Unit</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead className="text-right">Action</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {property.units.map((unit) => (
-          <TableRow key={unit.id}>
-            <TableCell>{unit.label}</TableCell>
-            <TableCell>{unit.unitType}</TableCell>
-            <TableCell className="text-right">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 rounded-md px-2 text-blocked"
-                onClick={() => handleDelete(unit.id, unit.label)}
-              >
-                <Trash2 data-icon="inline-start" />
-                Delete
-              </Button>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Unit</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {property.units.map((unit) => (
+            <TableRow key={unit.id}>
+              <TableCell>{unit.label}</TableCell>
+              <TableCell>{unit.unitType}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-md px-2 text-blocked"
+                  onClick={() => setPending({ id: unit.id, label: unit.label })}
+                >
+                  <Trash2 data-icon="inline-start" />
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <ConfirmDialog
+        open={pending !== null}
+        onOpenChange={(open) => {
+          if (!open) setPending(null);
+        }}
+        title="Delete unit?"
+        description={
+          pending ? `Delete unit "${pending.label}"?` : "Delete this unit?"
+        }
+        confirmLabel="Delete unit"
+        onConfirm={() => {
+          const target = pending;
+          setPending(null);
+          if (target) void onDeleteUnit(target.id);
+        }}
+      />
+    </>
   );
 }
 
@@ -355,50 +370,68 @@ function OwnersTable({
   history: ReturnType<typeof getOwnershipDisplayHistory>;
   onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
 }) {
-  function handleDelete(ownerId: string, ownerName: string) {
-    if (
-      !window.confirm(
-        `Delete owner "${ownerName}" and their ownership periods?`,
-      )
-    ) {
-      return;
-    }
-
-    void onDeleteOwner(ownerId);
-  }
+  const [pending, setPending] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Owner</TableHead>
-          <TableHead>Share</TableHead>
-          <TableHead>Effective dates</TableHead>
-          <TableHead className="text-right">Action</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {history.map((period) => (
-          <TableRow key={period.id}>
-            <TableCell>{period.ownerName}</TableCell>
-            <TableCell>{period.percentageLabel}</TableCell>
-            <TableCell>{period.dateRange}</TableCell>
-            <TableCell className="text-right">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 rounded-md px-2 text-blocked"
-                onClick={() => handleDelete(period.ownerId, period.ownerName)}
-              >
-                <Trash2 data-icon="inline-start" />
-                Delete
-              </Button>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Owner</TableHead>
+            <TableHead>Share</TableHead>
+            <TableHead>Effective dates</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {history.map((period) => (
+            <TableRow key={period.id}>
+              <TableCell>{period.ownerName}</TableCell>
+              <TableCell>{period.percentageLabel}</TableCell>
+              <TableCell>{period.dateRange}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-md px-2 text-blocked"
+                  onClick={() =>
+                    setPending({
+                      id: period.ownerId,
+                      name: period.ownerName,
+                    })
+                  }
+                >
+                  <Trash2 data-icon="inline-start" />
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <ConfirmDialog
+        open={pending !== null}
+        onOpenChange={(open) => {
+          if (!open) setPending(null);
+        }}
+        title="Delete owner?"
+        description={
+          pending
+            ? `Delete owner "${pending.name}" and their ownership periods?`
+            : "Delete this owner?"
+        }
+        confirmLabel="Delete owner"
+        onConfirm={() => {
+          const target = pending;
+          setPending(null);
+          if (target) void onDeleteOwner(target.id);
+        }}
+      />
+    </>
   );
 }
 
