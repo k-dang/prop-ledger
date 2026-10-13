@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CheckCircle2,
   CircleDot,
   Copy,
@@ -826,6 +829,8 @@ export function RentActivityCard({
   const onDeleteEvent = async (eventId: string) =>
     (await runMutation(() => deleteRentEvent(ledger.property.id, eventId))).ok;
   const [isDeleting, startDelete] = useTransition();
+  const [sortKey, setSortKey] = useState<"date" | "amount">("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const unitLabels = new Map(ledger.units.map((unit) => [unit.id, unit.label]));
   const tenantByLease = new Map(
     ledger.leases.map((lease) => [
@@ -833,13 +838,28 @@ export function RentActivityCard({
       `${lease.tenantName} · ${unitLabels.get(lease.unitId) ?? "Unknown unit"}`,
     ]),
   );
+  const toggleSort = (key: "date" | "amount") => {
+    if (key === sortKey) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
   const events = ledger.rentEvents
     .filter(
       (event) => event.type === "payment" && event.date.startsWith(`${year}-`),
     )
-    .toSorted((a, b) => b.date.localeCompare(a.date));
+    .toSorted((a, b) => {
+      const multiplier = sortDir === "asc" ? 1 : -1;
+      const primary =
+        sortKey === "amount"
+          ? (a.amount - b.amount) * multiplier
+          : a.date.localeCompare(b.date) * multiplier;
+      return primary !== 0 ? primary : a.id.localeCompare(b.id);
+    });
 
-  const description = `Saved rent payments for ${year}, newest first.`;
+  const description = `Saved rent payments for ${year}. Select Date or Amount to change sort order.`;
   const handleDelete = (rentEventId: string) => {
     if (
       window.confirm("Delete this rent payment? This will update rent totals.")
@@ -866,10 +886,63 @@ export function RentActivityCard({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
+                <TableHead
+                  aria-sort={
+                    sortKey === "date"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="-ml-2 h-7 px-2"
+                    aria-label={`Sort by date, currently ${sortKey === "date" ? (sortDir === "asc" ? "oldest first" : "newest first") : "newest first"}`}
+                    onClick={() => toggleSort("date")}
+                  >
+                    Date
+                    {sortKey !== "date" ? (
+                      <ArrowUpDown aria-hidden="true" />
+                    ) : sortDir === "asc" ? (
+                      <ArrowUp aria-hidden="true" />
+                    ) : (
+                      <ArrowDown aria-hidden="true" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead>Tenant / unit</TableHead>
                 <TableHead>Memo</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead
+                  className="text-right"
+                  aria-sort={
+                    sortKey === "amount"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="-mr-2 ml-auto h-7 px-2"
+                    aria-label={`Sort by amount, currently ${sortKey === "amount" ? (sortDir === "asc" ? "lowest first" : "highest first") : "unsorted"}`}
+                    onClick={() => toggleSort("amount")}
+                  >
+                    Amount
+                    {sortKey !== "amount" ? (
+                      <ArrowUpDown aria-hidden="true" />
+                    ) : sortDir === "asc" ? (
+                      <ArrowUp aria-hidden="true" />
+                    ) : (
+                      <ArrowDown aria-hidden="true" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
