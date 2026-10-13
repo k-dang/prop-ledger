@@ -106,7 +106,6 @@ function wizard(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   saveDraft.mockResolvedValue({ ok: true, propertyId: "property" });
   completeSetup.mockResolvedValue({
     ok: true,
@@ -134,7 +133,7 @@ describe("setup wizard lifecycle", () => {
       expect(
         (screen.getByLabelText("Property name") as HTMLInputElement).value,
       ).toBe("Unfinished edit");
-      expect(window.confirm).not.toHaveBeenCalled();
+      expect(screen.queryByRole("alertdialog")).toBeNull();
     },
   );
 
@@ -151,6 +150,8 @@ describe("setup wizard lifecycle", () => {
     ).toBe("Unfinished edit");
 
     fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leave" }));
+    expect(push).toHaveBeenCalledWith("/dashboard");
     rerender(wizard(form, "hidden"));
     rerender(wizard(form));
     expect(
@@ -159,15 +160,21 @@ describe("setup wizard lifecycle", () => {
   });
 
   it("keeps the edited answers when cancel is declined", () => {
-    vi.mocked(window.confirm).mockReturnValue(false);
     render(wizard(completeForm()));
     fireEvent.change(screen.getByLabelText("Property name"), {
       target: { value: "Unfinished edit" },
     });
     fireEvent.click(screen.getByRole("link", { name: "Cancel" }));
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
     expect(
       (screen.getByLabelText("Property name") as HTMLInputElement).value,
     ).toBe("Unfinished edit");
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("resets a new-property form after saving while retaining the submitted answers in the draft", async () => {

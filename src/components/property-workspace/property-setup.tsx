@@ -11,6 +11,10 @@ import {
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Button } from "@/components/ui/button";
+import {
+  ConfirmDialog,
+  usePendingConfirm,
+} from "@/components/ui/confirm-dialog";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -307,44 +311,57 @@ function UnitsTable({
   property: RentalProperty;
   onDeleteUnit: (unitId: string) => boolean | Promise<boolean>;
 }) {
-  function handleDelete(unitId: string, label: string) {
-    if (!window.confirm(`Delete unit "${label}"?`)) {
-      return;
-    }
-
-    void onDeleteUnit(unitId);
-  }
+  const confirm = usePendingConfirm<{ id: string; label: string }>();
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Unit</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead className="text-right">Action</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {property.units.map((unit) => (
-          <TableRow key={unit.id}>
-            <TableCell>{unit.label}</TableCell>
-            <TableCell>{unit.unitType}</TableCell>
-            <TableCell className="text-right">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 rounded-md px-2 text-blocked"
-                onClick={() => handleDelete(unit.id, unit.label)}
-              >
-                <Trash2 data-icon="inline-start" />
-                Delete
-              </Button>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Unit</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {property.units.map((unit) => (
+            <TableRow key={unit.id}>
+              <TableCell>{unit.label}</TableCell>
+              <TableCell>{unit.unitType}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-md px-2 text-blocked"
+                  onClick={() =>
+                    confirm.request({ id: unit.id, label: unit.label })
+                  }
+                >
+                  <Trash2 data-icon="inline-start" />
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <ConfirmDialog
+        open={confirm.open}
+        onOpenChange={confirm.onOpenChange}
+        title="Delete unit?"
+        description={
+          confirm.target
+            ? `Delete unit "${confirm.target.label}"?`
+            : "Delete this unit?"
+        }
+        confirmLabel="Delete unit"
+        onConfirm={() => {
+          const target = confirm.take();
+          if (target) void onDeleteUnit(target.id);
+        }}
+      />
+    </>
   );
 }
 
@@ -355,50 +372,62 @@ function OwnersTable({
   history: ReturnType<typeof getOwnershipDisplayHistory>;
   onDeleteOwner: (ownerId: string) => boolean | Promise<boolean>;
 }) {
-  function handleDelete(ownerId: string, ownerName: string) {
-    if (
-      !window.confirm(
-        `Delete owner "${ownerName}" and their ownership periods?`,
-      )
-    ) {
-      return;
-    }
-
-    void onDeleteOwner(ownerId);
-  }
+  const confirm = usePendingConfirm<{ id: string; name: string }>();
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Owner</TableHead>
-          <TableHead>Share</TableHead>
-          <TableHead>Effective dates</TableHead>
-          <TableHead className="text-right">Action</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {history.map((period) => (
-          <TableRow key={period.id}>
-            <TableCell>{period.ownerName}</TableCell>
-            <TableCell>{period.percentageLabel}</TableCell>
-            <TableCell>{period.dateRange}</TableCell>
-            <TableCell className="text-right">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 rounded-md px-2 text-blocked"
-                onClick={() => handleDelete(period.ownerId, period.ownerName)}
-              >
-                <Trash2 data-icon="inline-start" />
-                Delete
-              </Button>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Owner</TableHead>
+            <TableHead>Share</TableHead>
+            <TableHead>Effective dates</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {history.map((period) => (
+            <TableRow key={period.id}>
+              <TableCell>{period.ownerName}</TableCell>
+              <TableCell>{period.percentageLabel}</TableCell>
+              <TableCell>{period.dateRange}</TableCell>
+              <TableCell className="text-right">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-md px-2 text-blocked"
+                  onClick={() =>
+                    confirm.request({
+                      id: period.ownerId,
+                      name: period.ownerName,
+                    })
+                  }
+                >
+                  <Trash2 data-icon="inline-start" />
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <ConfirmDialog
+        open={confirm.open}
+        onOpenChange={confirm.onOpenChange}
+        title="Delete owner?"
+        description={
+          confirm.target
+            ? `Delete owner "${confirm.target.name}" and their ownership periods?`
+            : "Delete this owner?"
+        }
+        confirmLabel="Delete owner"
+        onConfirm={() => {
+          const target = confirm.take();
+          if (target) void onDeleteOwner(target.id);
+        }}
+      />
+    </>
   );
 }
 

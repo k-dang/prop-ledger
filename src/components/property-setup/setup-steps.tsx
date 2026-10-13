@@ -2,6 +2,10 @@ import { Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  ConfirmDialog,
+  usePendingConfirm,
+} from "@/components/ui/confirm-dialog";
 import { RENT_FREQUENCIES } from "@/db/schema";
 import {
   type FieldErrors,
@@ -228,17 +232,20 @@ export function PropertyStep({ form, errors, onChange }: StepProps) {
 
 export function OwnershipStep({ form, errors, onChange }: StepProps) {
   const mode = form.ownerMode;
+  const modeConfirm = usePendingConfirm<OwnerMode>();
 
   function setMode(next: OwnerMode) {
     const dropped = ownersDroppedBy(form, next);
-    if (
-      dropped.length > 0 &&
-      !window.confirm(
-        `Switching removes ${listNames(dropped)} from the owners.`,
-      )
-    ) {
+    if (dropped.length > 0) {
+      modeConfirm.request(next);
       return;
     }
+    onChange(withOwnerMode(form, next), ["ownerMode", "owners"]);
+  }
+
+  function confirmSetMode() {
+    const next = modeConfirm.take();
+    if (!next) return;
     onChange(withOwnerMode(form, next), ["ownerMode", "owners"]);
   }
 
@@ -258,6 +265,19 @@ export function OwnershipStep({ form, errors, onChange }: StepProps) {
         options={OWNER_OPTIONS}
         onValueChange={setMode}
         error={errors.ownerMode}
+      />
+      <ConfirmDialog
+        open={modeConfirm.open}
+        onOpenChange={modeConfirm.onOpenChange}
+        title="Switch ownership?"
+        description={
+          modeConfirm.target
+            ? `Switching removes ${listNames(ownersDroppedBy(form, modeConfirm.target))} from the owners.`
+            : "Switching removes owners."
+        }
+        confirmLabel="Switch"
+        variant="default"
+        onConfirm={confirmSetMode}
       />
       {mode ? (
         <div className={mode === "partner" ? "grid gap-2" : "grid gap-3"}>
@@ -414,6 +434,23 @@ function ShareTotal({ total }: { total: number }) {
 }
 
 export function UnitsStep({ form, errors, onChange }: StepProps) {
+  const layoutConfirm = usePendingConfirm<LayoutKey>();
+
+  function requestLayout(layout: LayoutKey) {
+    const dropped = unitsDroppedBy(form, layout);
+    if (dropped.length > 0) {
+      layoutConfirm.request(layout);
+      return;
+    }
+    onChange(withLayout(form, layout), ["layout", "units"]);
+  }
+
+  function confirmLayout() {
+    const next = layoutConfirm.take();
+    if (!next) return;
+    onChange(withLayout(form, next), ["layout", "units"]);
+  }
+
   function setUnit(position: number, patch: Partial<SetupUnit>) {
     onChange(withUnit(form, position, patch), [
       ...Object.keys(patch).map((key) => `units.${position}.${key}`),
@@ -428,20 +465,25 @@ export function UnitsStep({ form, errors, onChange }: StepProps) {
         label="How is it rented out?"
         value={form.layout}
         options={LAYOUT_OPTIONS}
-        onValueChange={(layout) => {
-          const dropped = unitsDroppedBy(form, layout);
-          if (
-            dropped.length > 0 &&
-            !window.confirm(
-              `Switching to ${LAYOUTS[layout].label} removes ${listNames(dropped)} and what you entered for ${dropped.length === 1 ? "it" : "them"}.`,
-            )
-          ) {
-            return;
-          }
-          onChange(withLayout(form, layout), ["layout", "units"]);
-        }}
+        onValueChange={requestLayout}
         error={errors.layout}
         columns={3}
+      />
+      <ConfirmDialog
+        open={layoutConfirm.open}
+        onOpenChange={layoutConfirm.onOpenChange}
+        title="Switch layout?"
+        description={
+          layoutConfirm.target
+            ? (() => {
+                const dropped = unitsDroppedBy(form, layoutConfirm.target);
+                return `Switching to ${LAYOUTS[layoutConfirm.target].label} removes ${listNames(dropped)} and what you entered for ${dropped.length === 1 ? "it" : "them"}.`;
+              })()
+            : "Switching removes units."
+        }
+        confirmLabel="Switch"
+        variant="default"
+        onConfirm={confirmLayout}
       />
       {form.layout ? (
         <div className="grid gap-5 sm:gap-3">

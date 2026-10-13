@@ -6,12 +6,13 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Toaster } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/action-utils";
-import { recordRentEvent } from "@/lib/actions";
+import { deleteRentEvent, recordRentEvent } from "@/lib/actions";
 import type { RentLedger } from "@/lib/rent-ledger";
 
 vi.mock("@/lib/actions", () => ({
@@ -23,12 +24,17 @@ vi.mock("@/lib/actions", () => ({
 vi.mock("./lease-document-upload", () => ({ uploadLeaseDocument: vi.fn() }));
 
 import { uploadLeaseDocument } from "./lease-document-upload";
-import { LeasesPanel, RentPaymentPanel } from "./rent-ledger-detail";
+import {
+  LeasesPanel,
+  RentActivityCard,
+  RentPaymentPanel,
+} from "./rent-ledger-detail";
 
 afterEach(() => {
   cleanup();
   vi.mocked(uploadLeaseDocument).mockReset();
   vi.mocked(recordRentEvent).mockReset();
+  vi.mocked(deleteRentEvent).mockReset();
 });
 
 const ledger: RentLedger = {
@@ -276,6 +282,64 @@ describe("rent payment defaults", () => {
     );
     expect(markup).not.toContain('value="2026-10-03"');
     expect(markup).toContain("Choose the date you received rent in 2025.");
+  });
+});
+
+describe("rent payment deletion", () => {
+  const ledgerWithPayment: RentLedger = {
+    ...ledger,
+    rentEvents: [
+      {
+        id: "event-1",
+        propertyId: "property-1",
+        leaseId: "lease-1",
+        type: "payment",
+        date: "2026-09-20",
+        amount: 2400,
+        periodStart: null,
+        periodEnd: null,
+        memo: null,
+      },
+    ],
+  };
+
+  it("holds the delete behind a confirmation instead of deleting at once", async () => {
+    vi.mocked(deleteRentEvent).mockResolvedValue({ ok: true });
+    render(<RentActivityCard ledger={ledgerWithPayment} year={2026} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Delete rent payment from 2026-09-20",
+      }),
+    );
+    expect(vi.mocked(deleteRentEvent)).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "Delete payment" })),
+    );
+    expect(vi.mocked(deleteRentEvent)).toHaveBeenCalledOnce();
+    expect(vi.mocked(deleteRentEvent)).toHaveBeenCalledWith(
+      "property-1",
+      "event-1",
+    );
+  });
+
+  it("deletes nothing when the confirmation is dismissed", () => {
+    vi.mocked(deleteRentEvent).mockResolvedValue({ ok: true });
+    render(<RentActivityCard ledger={ledgerWithPayment} year={2026} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Delete rent payment from 2026-09-20",
+      }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    expect(vi.mocked(deleteRentEvent)).not.toHaveBeenCalled();
   });
 });
 
