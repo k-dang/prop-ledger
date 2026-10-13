@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  CheckCircle2,
-  CircleDot,
-  Home,
-  type LucideIcon,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { Home, type LucideIcon, Trash2, Users } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
@@ -17,15 +10,7 @@ import {
   requiredFormString,
 } from "@/components/property-workspace/form-schemas";
 import { createFormSubmit } from "@/components/property-workspace/form-submit";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -56,7 +41,6 @@ import {
   formatPercent,
   type NewOwnerWithOwnershipInput,
   type NewUnitInput,
-  type PropertyReadiness,
   type RentalProperty,
 } from "@/lib/property-workspace";
 
@@ -88,17 +72,7 @@ const ownerFormSchema = z
     }),
   );
 
-export function PropertySetup({
-  property,
-  readiness,
-  open,
-  onOpenChange,
-}: {
-  property: RentalProperty;
-  readiness: PropertyReadiness;
-  open: string[];
-  onOpenChange: (open: string[]) => void;
-}) {
+export function PropertySetup({ property }: { property: RentalProperty }) {
   const { error: unitError, runMutation: runUnitMutation } = useMutation();
   const { error: ownerError, runMutation: runOwnerMutation } = useMutation();
   const onAddUnit = async (input: NewUnitInput) =>
@@ -113,95 +87,53 @@ export function PropertySetup({
   const hasUnits = property.units.length > 0;
   const ownershipHistory = getOwnershipDisplayHistory(property);
   const hasOwners = ownershipHistory.length > 0;
-  const complete = readiness.setupGapCount === 0;
-  const summary = `${pluralize(property.units.length, "unit")} · ${pluralize(
-    property.owners.length,
-    "owner",
-  )}`;
 
   return (
-    <Card id="property-setup" className="rounded-md py-0">
-      <h2 className="sr-only">Property setup</h2>
-      <Accordion value={open} onValueChange={onOpenChange}>
-        <AccordionItem value="setup" className="border-b-0">
-          <AccordionTrigger className="items-center px-4 py-3 hover:no-underline">
-            <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
-              {complete ? (
-                <CheckCircle2
-                  className="size-4 shrink-0 text-ready"
-                  aria-hidden="true"
-                />
-              ) : (
-                <CircleDot
-                  className="size-4 shrink-0 text-review"
-                  aria-hidden="true"
-                />
-              )}
-              <span className="font-medium text-sm">Property setup</span>
-              <Badge variant="outline" className="rounded-md tabular-nums">
-                {summary}
-              </Badge>
-              {complete ? (
-                <span className="ml-auto hidden text-muted-foreground text-xs sm:inline">
-                  Complete - edit anytime
-                </span>
-              ) : (
-                <span className="ml-auto hidden text-muted-foreground text-xs sm:inline">
-                  Open to resolve setup gaps
-                </span>
-              )}
-            </div>
-          </AccordionTrigger>
-          <AccordionContent id="property-setup-panel" className="px-4">
-            <div className="grid gap-6 border-t pt-4 md:grid-cols-2">
-              <SetupSubsection
-                id="units"
-                title="Units"
-                description="Rental spaces under this property."
-                action={<AddUnitSheet error={unitError} onSubmit={onAddUnit} />}
-                error={unitError}
-                empty={
-                  hasUnits ? null : (
-                    <EmptyState icon={Home}>No units recorded yet.</EmptyState>
-                  )
-                }
-              >
-                {hasUnits ? (
-                  <UnitsTable property={property} onDeleteUnit={onDeleteUnit} />
-                ) : null}
-              </SetupSubsection>
-              <SetupSubsection
-                id="ownership-history"
-                title="Ownership history"
-                description="Effective-dated shares."
-                action={
-                  <AddOwnerSheet
-                    acquisitionDate={property.acquisitionDate}
-                    error={ownerError}
-                    onSubmit={onAddOwner}
-                  />
-                }
-                error={ownerError}
-                empty={
-                  hasOwners ? null : (
-                    <EmptyState icon={Users}>
-                      No ownership periods recorded yet.
-                    </EmptyState>
-                  )
-                }
-              >
-                {hasOwners ? (
-                  <OwnersTable
-                    history={ownershipHistory}
-                    onDeleteOwner={onDeleteOwner}
-                  />
-                ) : null}
-              </SetupSubsection>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </Card>
+    <div id="property-setup" className="grid gap-6 md:grid-cols-2">
+      <SetupSubsection
+        id="units"
+        title="Units"
+        description="Rental spaces under this property."
+        action={<AddUnitSheet error={unitError} onSubmit={onAddUnit} />}
+        error={unitError}
+        empty={
+          hasUnits ? null : (
+            <EmptyState icon={Home}>No units recorded yet.</EmptyState>
+          )
+        }
+      >
+        {hasUnits ? (
+          <UnitsTable property={property} onDeleteUnit={onDeleteUnit} />
+        ) : null}
+      </SetupSubsection>
+      <SetupSubsection
+        id="ownership-history"
+        title="Ownership history"
+        description="Effective-dated shares."
+        action={
+          <AddOwnerSheet
+            acquisitionDate={property.acquisitionDate}
+            error={ownerError}
+            onSubmit={onAddOwner}
+          />
+        }
+        error={ownerError}
+        empty={
+          hasOwners ? null : (
+            <EmptyState icon={Users}>
+              No ownership periods recorded yet.
+            </EmptyState>
+          )
+        }
+      >
+        {hasOwners ? (
+          <OwnersTable
+            history={ownershipHistory}
+            onDeleteOwner={onDeleteOwner}
+          />
+        ) : null}
+      </SetupSubsection>
+    </div>
   );
 }
 
@@ -483,10 +415,6 @@ function EmptyState({
       <span>{children}</span>
     </div>
   );
-}
-
-function pluralize(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function getOwnershipDisplayHistory(property: RentalProperty) {
