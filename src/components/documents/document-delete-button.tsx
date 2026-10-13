@@ -1,20 +1,9 @@
 "use client";
 
-import { CircleAlert, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { deleteEvidenceDocument } from "@/lib/evidence-actions";
 
 export function DocumentDeleteButton({
@@ -44,60 +33,42 @@ export function DocumentDeleteButton({
   }
 
   return (
-    <AlertDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (isDeleting) {
-          return;
-        }
-
-        setIsOpen(open);
-        if (open) {
-          setError(undefined);
-        }
-      }}
-    >
-      <AlertDialogTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            aria-label={`Delete ${fileName}`}
-            title="Delete document"
-          />
-        }
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        aria-label={`Delete ${fileName}`}
+        title="Delete document"
+        onClick={() => setIsOpen(true)}
       >
         <Trash2 aria-hidden="true" />
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete document?</AlertDialogTitle>
-          <AlertDialogDescription>
+      </Button>
+      <ConfirmDialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) {
+            setError(undefined);
+          }
+        }}
+        title="Delete document?"
+        description={
+          <>
             Delete &ldquo;{fileName}&rdquo;? This also removes its attachments
             and stored file. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        {error === undefined ? null : (
-          <Alert variant="destructive">
-            <CircleAlert aria-hidden="true" />
-            <AlertTitle>Document wasn&apos;t deleted</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            type="button"
-            variant="destructive"
-            disabled={isDeleting}
-            onClick={handleDelete}
-          >
-            {isDeleting ? "Deleting…" : "Delete document"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </>
+        }
+        confirmLabel="Delete document"
+        isPending={isDeleting}
+        error={
+          error === undefined
+            ? undefined
+            : { title: "Document wasn't deleted", message: error }
+        }
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }

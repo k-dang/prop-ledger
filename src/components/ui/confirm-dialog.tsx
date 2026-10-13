@@ -1,6 +1,8 @@
 "use client";
 
+import { CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   variant = "destructive",
   isPending = false,
+  error,
   onConfirm,
 }: {
   open: boolean;
@@ -36,6 +39,8 @@ export function ConfirmDialog({
   cancelLabel?: string;
   variant?: React.ComponentProps<typeof Button>["variant"];
   isPending?: boolean;
+  /** Shown between the description and footer; the dialog stays open. */
+  error?: { title: string; message: string };
   onConfirm: () => void;
 }) {
   return (
@@ -51,6 +56,13 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {error === undefined ? null : (
+          <Alert variant="destructive">
+            <CircleAlert aria-hidden="true" />
+            <AlertTitle>{error.title}</AlertTitle>
+            <AlertDescription>{error.message}</AlertDescription>
+          </Alert>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>
             {cancelLabel}
