@@ -51,7 +51,6 @@ type PropertyTab = "leases" | "rent" | "expenses" | "mortgage" | "setup";
 
 type AnchorTarget = {
   tab: PropertyTab;
-  inSetupAccordion?: boolean;
 };
 
 // Anchors used elsewhere in the workspace; the target mounts only after its
@@ -63,8 +62,8 @@ const ANCHOR_TARGETS: Record<string, AnchorTarget> = {
   "#tax-activity": { tab: "expenses" },
   "#mortgage-payments": { tab: "mortgage" },
   "#property-setup": { tab: "setup" },
-  "#units": { tab: "setup", inSetupAccordion: true },
-  "#ownership-history": { tab: "setup", inSetupAccordion: true },
+  "#units": { tab: "setup" },
+  "#ownership-history": { tab: "setup" },
 };
 
 export function PropertyWorkspaceDetail({
@@ -91,11 +90,6 @@ export function PropertyWorkspaceDetail({
     openTaxActivity ? "expenses" : "rent",
   );
 
-  // Seeded from readiness so the panel does not snap shut as gaps are resolved.
-  const [setupOpen, setSetupOpen] = useState<string[]>(() =>
-    readiness.setupGapCount === 0 ? [] : ["setup"],
-  );
-
   useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash;
@@ -103,10 +97,6 @@ export function PropertyWorkspaceDetail({
       // Setup lives on its own page while guided setup is unfinished.
       if (!target || (target.tab === "setup" && property.setupDraft)) {
         return;
-      }
-
-      if (target.inSetupAccordion) {
-        setSetupOpen(["setup"]);
       }
 
       setActiveTab(target.tab);
@@ -190,12 +180,7 @@ export function PropertyWorkspaceDetail({
 
         {property.setupDraft ? null : (
           <TabsContent value="setup" className="mt-4">
-            <PropertySetup
-              property={property}
-              readiness={readiness}
-              open={setupOpen}
-              onOpenChange={setSetupOpen}
-            />
+            <PropertySetup property={property} />
           </TabsContent>
         )}
       </Tabs>
