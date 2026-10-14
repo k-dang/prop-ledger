@@ -61,3 +61,28 @@ export function NavSecondary({ className }: { className?: string }) {
     </SidebarGroup>
   );
 }
+
+export function NavSecondaryFallback({ className }: { className?: string }) {
+  return (
+    <SidebarGroup className={cn("mt-auto", className)}>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {SECONDARY_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  render={<Link href={item.href} />}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{item.title}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}

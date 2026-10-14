@@ -6,7 +6,7 @@ import { type ReactNode, Suspense } from "react";
 
 import { NavMain, NavMainFallback } from "@/components/nav-main";
 import { NavProperties } from "@/components/nav-properties";
-import { NavSecondary } from "@/components/nav-secondary";
+import { NavSecondary, NavSecondaryFallback } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -52,7 +52,9 @@ export function AppSidebar({
           <NavMain />
         </Suspense>
         <NavProperties>{children}</NavProperties>
-        <NavSecondary />
+        <Suspense fallback={<NavSecondaryFallback />}>
+          <NavSecondary />
+        </Suspense>
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
