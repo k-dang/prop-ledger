@@ -2,19 +2,14 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
+import { AppSidebar } from "@/components/app-sidebar";
 import {
-  AppSidebar,
   SidebarPropertyNavigation,
   SidebarPropertyNavigationFallback,
-} from "@/components/app-sidebar";
-import { ModeToggle } from "@/components/mode-toggle";
+} from "@/components/nav-properties";
+import { SiteHeader } from "@/components/site-header";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getPropertyNavigation } from "@/db/queries";
@@ -63,26 +58,21 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <SidebarProvider>
+            <SidebarProvider
+              style={
+                {
+                  "--sidebar-width": "calc(var(--spacing) * 72)",
+                  "--header-height": "calc(var(--spacing) * 12)",
+                } as React.CSSProperties
+              }
+            >
               <AppSidebar>
                 <Suspense fallback={<SidebarPropertyNavigationFallback />}>
                   <PropertyNavigation />
                 </Suspense>
               </AppSidebar>
               <SidebarInset className="min-w-0 bg-background">
-                <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-6">
-                  <SidebarTrigger className="-ml-1" />
-                  <Separator
-                    orientation="vertical"
-                    className="data-vertical:h-4 data-vertical:self-auto"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-sm">
-                      Property accounting workspace
-                    </p>
-                  </div>
-                  <ModeToggle />
-                </header>
+                <SiteHeader />
                 <main className="w-full flex-1 text-foreground">
                   <div className="mx-auto flex w-full max-w-360 flex-col gap-6 p-4 md:p-6 lg:p-8">
                     {children}
