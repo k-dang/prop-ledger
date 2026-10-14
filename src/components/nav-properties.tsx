@@ -3,27 +3,8 @@
 import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
 
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-
-export function NavProperties({ children }: { children: ReactNode }) {
-  return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Properties</SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>{children}</SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-}
+import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 export function SidebarPropertyNavigation({
   properties,

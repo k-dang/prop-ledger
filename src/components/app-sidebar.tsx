@@ -4,9 +4,9 @@ import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 
-import { NavMain, NavMainFallback } from "@/components/nav-main";
-import { NavProperties } from "@/components/nav-properties";
-import { NavSecondary, NavSecondaryFallback } from "@/components/nav-secondary";
+import { NavGroup, NavMenuItems } from "@/components/nav-groups";
+import { NAV_ITEMS, NavMain } from "@/components/nav-main";
+import { NAV_SECONDARY_ITEMS, NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
@@ -18,14 +18,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-export function AppSidebar({
-  children,
-  ...props
-}: {
-  children: ReactNode;
-} & React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ children }: { children: ReactNode }) {
   return (
-    <Sidebar variant="inset" collapsible="offcanvas" {...props}>
+    <Sidebar variant="inset" collapsible="offcanvas">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -48,11 +43,23 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <Suspense fallback={<NavMainFallback />}>
+        <Suspense
+          fallback={
+            <NavGroup label="Workspace">
+              <NavMenuItems items={NAV_ITEMS} />
+            </NavGroup>
+          }
+        >
           <NavMain />
         </Suspense>
-        <NavProperties>{children}</NavProperties>
-        <Suspense fallback={<NavSecondaryFallback />}>
+        <NavGroup label="Properties">{children}</NavGroup>
+        <Suspense
+          fallback={
+            <NavGroup className="mt-auto">
+              <NavMenuItems items={NAV_SECONDARY_ITEMS} />
+            </NavGroup>
+          }
+        >
           <NavSecondary />
         </Suspense>
       </SidebarContent>
