@@ -22,10 +22,6 @@ export type NavItem = {
 };
 
 function isActive(item: NavItem, pathname: string): boolean {
-  if (pathname === "") {
-    return false;
-  }
-
   return item.match === "exact"
     ? pathname === item.href
     : pathname.startsWith(item.href);
