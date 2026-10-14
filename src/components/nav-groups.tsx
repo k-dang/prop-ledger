@@ -16,14 +16,13 @@ import {
 export type NavItem = {
   title: string;
   icon: LucideIcon;
-  /** Null renders a disabled placeholder until a destination exists. */
-  href: string | null;
-  /** Defaults to "prefix". Null-href items are never active. */
+  href: string;
+  /** Defaults to "prefix". */
   match?: "exact" | "prefix";
 };
 
 function isActive(item: NavItem, pathname: string): boolean {
-  if (item.href === null || pathname === "") {
+  if (pathname === "") {
     return false;
   }
 
@@ -62,16 +61,13 @@ export function NavMenuItems({
     <>
       {items.map((item) => {
         const Icon = item.icon;
-        const linkProps = item.href
-          ? { render: <Link href={item.href} /> }
-          : { disabled: true };
 
         return (
           <SidebarMenuItem key={item.title}>
             <SidebarMenuButton
               tooltip={item.title}
               isActive={isActive(item, pathname)}
-              {...linkProps}
+              render={<Link href={item.href} />}
             >
               <Icon aria-hidden="true" />
               <span>{item.title}</span>
