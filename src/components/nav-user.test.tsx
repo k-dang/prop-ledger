@@ -1,24 +1,7 @@
 // @vitest-environment jsdom
-// Guards against the Base UI MenuGroupContext crash when opening this menu.
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-
-vi.mock("next/link", () => ({
-  default: ({
-    href,
-    children,
-    ...props
-  }: {
-    href: string;
-    children: ReactNode;
-  }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}));
+import { render, screen } from "@testing-library/react";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { NavUser } from "@/components/nav-user";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -50,17 +33,12 @@ function renderNavUser() {
   );
 }
 
-describe("NavUser workspace menu", () => {
-  it("opens the menu and shows Settings without throwing", async () => {
+describe("NavUser workspace footer", () => {
+  it("renders as static text with no dropdown or duplicate Settings", () => {
     renderNavUser();
-    const trigger = screen.getByRole("button", {
-      name: /rental workspace/i,
-    });
-    fireEvent.click(trigger);
-    await waitFor(() => {
-      expect(screen.getByText("Settings")).toBeTruthy();
-    });
-    const settingsLink = screen.getByText("Settings").closest("a");
-    expect(settingsLink?.getAttribute("href")).toBe("/settings");
+    expect(screen.getByText("Rental Workspace")).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.queryByText("Settings")).toBeNull();
   });
 });
