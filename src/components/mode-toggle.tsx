@@ -5,10 +5,11 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const THEME_SEQUENCE = ["light", "dark", "system"] as const;
 
-export function ModeToggle() {
+export function ModeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -32,10 +33,11 @@ export function ModeToggle() {
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="ghost"
       size="icon"
       aria-label={`Theme: ${activeTheme}. Change theme`}
       onClick={cycleTheme}
+      className={cn("shrink-0", className)}
     >
       <Icon aria-hidden="true" />
     </Button>

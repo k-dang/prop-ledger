@@ -4,6 +4,7 @@ import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 
+import { ModeToggle } from "@/components/mode-toggle";
 import { NavGroup, NavMenuItems } from "@/components/nav-groups";
 import { NAV_ITEMS, NavMain } from "@/components/nav-main";
 import { NAV_SECONDARY_ITEMS, NavSecondary } from "@/components/nav-secondary";
@@ -64,7 +65,12 @@ export function AppSidebar({ children }: { children: ReactNode }) {
         </Suspense>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <NavUser />
+          </div>
+          <ModeToggle className="shrink-0" />
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
