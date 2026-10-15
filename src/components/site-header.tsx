@@ -1,4 +1,3 @@
-import { ModeToggle } from "@/components/mode-toggle";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -14,9 +13,6 @@ export function SiteHeader() {
         <h1 className="truncate font-medium text-base">
           Property accounting workspace
         </h1>
-        <div className="ml-auto flex items-center gap-2">
-          <ModeToggle />
-        </div>
       </div>
     </header>
   );
