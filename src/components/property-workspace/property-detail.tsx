@@ -5,8 +5,6 @@ import {
   ArrowRight,
   CalendarDays,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   CircleDot,
   MapPin,
 } from "lucide-react";
@@ -38,6 +36,7 @@ import {
   toneIcon,
   toneSurface,
 } from "@/lib/status-styles";
+import { MAX_TAX_YEAR, MIN_TAX_YEAR } from "@/lib/tax-year";
 import { summarizeTaxYearFinancials } from "@/lib/tax-year-financial-summary";
 import { cn } from "@/lib/utils";
 import type { FilingStatus, ReadinessStatus } from "@/lib/year-end-readiness";
@@ -46,6 +45,12 @@ import {
   type YearEndReadinessRow,
 } from "@/lib/year-end-readiness-view-model";
 import { PropertySetup } from "./property-setup";
+import { TaxYearSelect } from "./tax-year-select";
+
+const TAX_YEARS = Array.from(
+  { length: MAX_TAX_YEAR - MIN_TAX_YEAR + 1 },
+  (_, index) => MAX_TAX_YEAR - index,
+);
 
 type PropertyTab = "leases" | "rent" | "expenses" | "mortgage" | "setup";
 
@@ -401,9 +406,21 @@ function PropertyWorkspaceHeader({
   return (
     <header className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <h1 className="font-semibold text-2xl tracking-tight">
-          {property.name}
-        </h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="font-semibold text-2xl tracking-tight">
+            {property.name}
+          </h1>
+          <Badge
+            variant="outline"
+            className={cn("rounded-md", toneSurface[tone])}
+          >
+            {property.setupDraft
+              ? "Setup in progress"
+              : nextSetupGap
+                ? `${readiness.setupGapCount} setup gap${readiness.setupGapCount === 1 ? "" : "s"}`
+                : "Setup complete"}
+          </Badge>
+        </div>
         <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-sm">
           <span className="inline-flex items-center gap-1">
             <MapPin className="size-3.5" aria-hidden="true" />
@@ -416,41 +433,13 @@ function PropertyWorkspaceHeader({
           </span>
         </p>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 rounded-md border bg-background p-1">
-          <span className="sr-only">Tax year</span>
-          <Link
-            href={`/properties/${property.id}?year=${year - 1}`}
-            aria-label={`View ${year - 1}`}
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "icon" }),
-              "min-h-11 min-w-11",
-            )}
-          >
-            <ChevronLeft aria-hidden="true" />
-          </Link>
-          <span className="px-2 font-medium text-sm tabular-nums">{year}</span>
-          <Link
-            href={`/properties/${property.id}?year=${year + 1}`}
-            aria-label={`View ${year + 1}`}
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "icon" }),
-              "min-h-11 min-w-11",
-            )}
-          >
-            <ChevronRight aria-hidden="true" />
-          </Link>
-        </div>
-        <Badge
-          variant="outline"
-          className={cn("rounded-md", toneSurface[tone])}
-        >
-          {property.setupDraft
-            ? "Setup in progress"
-            : nextSetupGap
-              ? `${readiness.setupGapCount} setup gap${readiness.setupGapCount === 1 ? "" : "s"}`
-              : "Setup complete"}
-        </Badge>
+      <div className="flex shrink-0 items-center gap-2 sm:min-h-9">
+        <span className="text-muted-foreground text-xs">Tax year</span>
+        <TaxYearSelect
+          taxYear={year}
+          years={TAX_YEARS}
+          className="min-h-11 w-20 font-medium tabular-nums data-[size=default]:h-9 sm:min-h-0"
+        />
       </div>
     </header>
   );
