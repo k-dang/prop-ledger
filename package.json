@@ -2,6 +2,7 @@
   "name": "rental-property-management-app",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.10.0",
   "scripts": {
     "dev": "next dev",
     "dev:all": "concurrently -n next,worker -c blue,yellow \"pnpm dev\" \"pnpm worker:dev\"",
