@@ -71,12 +71,7 @@ function PropertySkeleton() {
       </div>
       <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
         <Skeleton className="h-20 rounded-none" />
-        <div className="grid grid-cols-2 gap-px border-t sm:grid-cols-4">
-          <Skeleton className="h-24 rounded-none" />
-          <Skeleton className="h-24 rounded-none" />
-          <Skeleton className="h-24 rounded-none" />
-          <Skeleton className="h-24 rounded-none" />
-        </div>
+        <Skeleton className="h-24 rounded-none border-t" />
       </div>
       <div className="grid gap-3">
         <Skeleton className="h-16 rounded-xl" />
