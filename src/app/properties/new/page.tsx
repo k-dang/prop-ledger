@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { PropertySetupWizard } from "@/components/property-setup/property-setup-wizard";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SetupWizardSkeleton } from "@/components/property-setup/setup-wizard-skeleton";
 import { emptySetupForm } from "@/lib/property-setup";
 import { todayIso } from "@/lib/property-workspace";
 
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function NewPropertyPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 max-w-3xl rounded-xl" />}>
+    <Suspense fallback={<SetupWizardSkeleton />}>
       <NewPropertyContent />
     </Suspense>
   );

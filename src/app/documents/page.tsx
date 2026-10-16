@@ -42,9 +42,35 @@ export const metadata = {
 
 export default function DocumentsPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-120 border" />}>
+    <Suspense fallback={<DocumentsSkeleton />}>
       <DocumentsContent />
     </Suspense>
+  );
+}
+
+function DocumentsSkeleton() {
+  return (
+    <section
+      className="grid gap-4"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading documents"
+    >
+      <div className="grid gap-4 rounded-md border p-6">
+        <div className="grid gap-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="grid gap-3">
+          <Skeleton className="h-10" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+        </div>
+      </div>
+      <span className="sr-only">Loading documents…</span>
+    </section>
   );
 }
 

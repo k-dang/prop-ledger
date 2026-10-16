@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function SidebarPropertyNavigation({
   properties,
@@ -45,11 +46,19 @@ export function SidebarPropertyNavigation({
 
 export function SidebarPropertyNavigationFallback() {
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton disabled tooltip="Loading properties">
-        <Building2 aria-hidden="true" />
-        <span>Loading properties</span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+    <>
+      {[0, 1, 2].map((index) => (
+        <SidebarMenuItem key={index}>
+          <div
+            className="flex items-center gap-2 px-2 py-1.5"
+            aria-hidden="true"
+          >
+            <Skeleton className="size-4 shrink-0 rounded" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        </SidebarMenuItem>
+      ))}
+      <span className="sr-only">Loading properties…</span>
+    </>
   );
 }

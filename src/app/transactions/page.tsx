@@ -15,9 +15,41 @@ export const metadata = {
 
 export default function TransactionsPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-120 border" />}>
+    <Suspense fallback={<TransactionsSkeleton />}>
       <TransactionsContent />
     </Suspense>
+  );
+}
+
+function TransactionsSkeleton() {
+  return (
+    <section
+      className="grid gap-4"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading review records"
+    >
+      <div className="grid gap-4 rounded-md border p-6">
+        <div className="grid gap-2">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-9" />
+          <Skeleton className="h-9" />
+          <Skeleton className="h-9" />
+          <Skeleton className="h-9" />
+        </div>
+        <div className="grid gap-3">
+          <Skeleton className="h-10" />
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+          <Skeleton className="h-12" />
+        </div>
+      </div>
+      <span className="sr-only">Loading review records…</span>
+    </section>
   );
 }
 
