@@ -8,14 +8,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 /** Tax year picker that navigates to `?year=` as soon as a year is chosen. */
 export function TaxYearSelect({
   taxYear,
   years,
+  className,
 }: {
   taxYear: number;
   years: number[];
+  className?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -28,7 +31,10 @@ export function TaxYearSelect({
         if (year !== null) router.push(`${pathname}?year=${year}`);
       }}
     >
-      <SelectTrigger aria-label="Tax year" className="w-24 bg-background">
+      <SelectTrigger
+        aria-label="Tax year"
+        className={cn("w-24 bg-background", className)}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="end">
