@@ -4,8 +4,11 @@ import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+} from "@/components/ui/sidebar";
 
 export function SidebarPropertyNavigation({
   properties,
@@ -46,19 +49,17 @@ export function SidebarPropertyNavigation({
 
 export function SidebarPropertyNavigationFallback() {
   return (
-    <>
-      {[0, 1, 2].map((index) => (
-        <SidebarMenuItem key={index}>
-          <div
-            className="flex items-center gap-2 px-2 py-1.5"
-            aria-hidden="true"
-          >
-            <Skeleton className="size-4 shrink-0 rounded" />
-            <Skeleton className="h-4 flex-1" />
-          </div>
-        </SidebarMenuItem>
-      ))}
+    <SidebarMenuItem
+      role="status"
+      aria-busy="true"
+      aria-label="Loading properties"
+    >
+      <div className="grid gap-1" aria-hidden="true">
+        <SidebarMenuSkeleton showIcon />
+        <SidebarMenuSkeleton showIcon />
+        <SidebarMenuSkeleton showIcon />
+      </div>
       <span className="sr-only">Loading properties…</span>
-    </>
+    </SidebarMenuItem>
   );
 }
