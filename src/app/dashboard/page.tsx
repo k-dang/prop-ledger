@@ -39,7 +39,12 @@ async function DashboardContent({
 
 function DashboardSkeleton() {
   return (
-    <section className="grid gap-6">
+    <section
+      className="grid gap-6"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading portfolio dashboard"
+    >
       <div className="flex items-center justify-between gap-4">
         <div className="grid gap-2">
           <Skeleton className="h-7 w-36" />
@@ -50,6 +55,7 @@ function DashboardSkeleton() {
       <Skeleton className="h-56 rounded-xl" />
       <Skeleton className="h-64 rounded-xl" />
       <Skeleton className="h-13 rounded-xl" />
+      <span className="sr-only">Loading portfolio dashboard…</span>
     </section>
   );
 }

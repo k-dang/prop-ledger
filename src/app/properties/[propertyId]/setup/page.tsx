@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PropertySetupWizard } from "@/components/property-setup/property-setup-wizard";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SetupWizardSkeleton } from "@/components/property-setup/setup-wizard-skeleton";
 import { getProperty } from "@/db/queries";
 import { setupFormFromProperty } from "@/lib/property-setup";
 import { todayIso } from "@/lib/property-workspace";
@@ -18,7 +18,7 @@ export default function PropertySetupPage({
   params: Promise<{ propertyId: string }>;
 }) {
   return (
-    <Suspense fallback={<Skeleton className="h-96 max-w-3xl rounded-xl" />}>
+    <Suspense fallback={<SetupWizardSkeleton />}>
       <PropertySetupContent params={params} />
     </Suspense>
   );

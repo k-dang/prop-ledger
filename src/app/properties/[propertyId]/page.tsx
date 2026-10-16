@@ -53,12 +53,37 @@ async function PropertyContent({
 
 function PropertySkeleton() {
   return (
-    <section className="flex min-w-0 flex-col gap-4">
-      <Skeleton className="h-32 border" />
+    <section
+      className="flex min-w-0 flex-col gap-4"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading property workspace"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="grid min-w-0 gap-2">
+          <Skeleton className="h-8 w-56 max-w-full" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-11 w-36" />
+          <Skeleton className="h-6 w-24" />
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
+        <Skeleton className="h-20 rounded-none" />
+        <Skeleton className="h-24 rounded-none border-t" />
+      </div>
+      <div className="grid gap-3">
+        <Skeleton className="h-16 rounded-xl" />
+        <Skeleton className="h-16 rounded-xl" />
+        <Skeleton className="h-16 rounded-xl" />
+      </div>
+      <Skeleton className="h-10 w-full" />
       <div className="grid gap-4 xl:grid-cols-2">
         <Skeleton className="h-64 border" />
         <Skeleton className="h-64 border" />
       </div>
+      <span className="sr-only">Loading property workspace…</span>
     </section>
   );
 }

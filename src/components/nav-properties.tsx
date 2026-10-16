@@ -4,7 +4,11 @@ import { Building2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import {
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+} from "@/components/ui/sidebar";
 
 export function SidebarPropertyNavigation({
   properties,
@@ -45,11 +49,17 @@ export function SidebarPropertyNavigation({
 
 export function SidebarPropertyNavigationFallback() {
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton disabled tooltip="Loading properties">
-        <Building2 aria-hidden="true" />
-        <span>Loading properties</span>
-      </SidebarMenuButton>
+    <SidebarMenuItem
+      role="status"
+      aria-busy="true"
+      aria-label="Loading properties"
+    >
+      <div className="grid gap-1" aria-hidden="true">
+        <SidebarMenuSkeleton showIcon />
+        <SidebarMenuSkeleton showIcon />
+        <SidebarMenuSkeleton showIcon />
+      </div>
+      <span className="sr-only">Loading properties…</span>
     </SidebarMenuItem>
   );
 }
