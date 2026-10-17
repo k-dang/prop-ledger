@@ -1,18 +1,17 @@
 import { roundMoney } from "@/lib/money";
-import type { RentEvent, T776Category } from "../db/schema";
+import type { T776Category } from "../db/schema";
 import { T776_CATEGORIES } from "../db/schema";
-import { entryYear, formatExpenseCategory } from "./evidence-binder";
-import type { RentalProperty } from "./property-workspace";
-import { isValidTaxYear } from "./tax-year";
+import {
+  type DashboardPropertySource,
+  getAvailableTaxYears,
+} from "./available-tax-years";
+import { formatExpenseCategory } from "./evidence-binder";
 import { summarizeTaxYearFinancials } from "./tax-year-financial-summary";
 import type { FilingStatus } from "./year-end-readiness";
 import { getFilingReadiness } from "./year-end-readiness-view-model";
 
+export type { DashboardPropertySource } from "./available-tax-years";
 export { isValidTaxYear } from "./tax-year";
-
-export type DashboardPropertySource = RentalProperty & {
-  rentEvents: RentEvent[];
-};
 
 export type PropertyDashboardStatus = FilingStatus | "not_active";
 
@@ -220,34 +219,6 @@ function buildExpenseCategorySummaries(
           },
         ];
   }).toSorted((a, b) => b.amount - a.amount);
-}
-
-function getAvailableTaxYears(
-  properties: DashboardPropertySource[],
-  selectedYear: number,
-  currentYear: number,
-) {
-  const years = new Set<number>([selectedYear, currentYear]);
-
-  for (const property of properties) {
-    years.add(Number(property.acquisitionDate.slice(0, 4)));
-
-    for (const event of property.rentEvents.filter(
-      (candidate) => candidate.type === "payment",
-    )) {
-      years.add(Number(event.date.slice(0, 4)));
-    }
-
-    for (const entry of property.ledgerEntries) {
-      years.add(entryYear(entry));
-    }
-
-    for (const payment of property.mortgagePayments) {
-      years.add(Number(payment.date.slice(0, 4)));
-    }
-  }
-
-  return [...years].filter(isValidTaxYear).toSorted((a, b) => b - a);
 }
 
 function inactivePropertySummary(
