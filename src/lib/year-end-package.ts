@@ -1,5 +1,5 @@
 import { roundMoney } from "@/lib/money";
-import type { AccountantNote, RentEvent, T776Category } from "../db/schema";
+import type { RentEvent, T776Category } from "../db/schema";
 import { T776_CATEGORIES } from "../db/schema";
 import type { YearEndPackageSnapshot } from "../domain/year-end-package";
 import {
@@ -27,7 +27,6 @@ export type PackageScope =
 
 export type YearEndPackageSource = RentalProperty & {
   rentEvents: RentEvent[];
-  accountantNotes: AccountantNote[];
 };
 
 export type { YearEndPackageSnapshot } from "../domain/year-end-package";
@@ -75,7 +74,7 @@ export function buildYearEndPackageSnapshot({
   const { taxableManualIncome } = summarizeManualIncomeForTax(allocatedEntries);
 
   return {
-    version: 2,
+    version: 3,
     generatedAt,
     taxYear,
     scope: allocation.snapshotScope,
@@ -101,9 +100,6 @@ export function buildYearEndPackageSnapshot({
       allocation.factorFor,
     ),
     sourceDocuments: buildPackageDocumentIndex(source, entries),
-    accountantNotes: source.accountantNotes
-      .filter((note) => note.taxYear === taxYear)
-      .map((note) => note.note),
     unresolvedExceptions: getYearEndReadiness(source, taxYear).items.flatMap(
       (item) =>
         item.status === "clear"

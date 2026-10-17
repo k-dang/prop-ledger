@@ -4,7 +4,6 @@ export const appDataCacheTags = {
   properties: "properties",
   propertyNavigation: "property-navigation",
   rentLedgers: "rent-ledgers",
-  yearEnd: "year-end",
 } as const;
 
 export const allAppDataCacheTags = Object.values(appDataCacheTags);
@@ -15,10 +14,6 @@ export function propertyCacheTag(propertyId: string) {
 
 export function rentLedgerCacheTag(propertyId: string) {
   return `rent-ledger:${propertyId}`;
-}
-
-export function yearEndCacheTag(propertyId: string, taxYear: number) {
-  return `year-end:${propertyId}:${taxYear}`;
 }
 
 export function propertySetupMutationCacheTags(propertyId: string) {
@@ -46,8 +41,4 @@ export function transactionMutationCacheTags(propertyId: string) {
 
 export function mortgagePaymentMutationCacheTags(propertyId: string) {
   return propertySetupMutationCacheTags(propertyId);
-}
-
-export function yearEndMutationCacheTags(propertyId: string, taxYear: number) {
-  return [yearEndCacheTag(propertyId, taxYear)];
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { YearEndWorkspace } from "@/components/year-end/year-end-workspace";
-import { getAccountantNotes, getPortfolio } from "@/db/queries";
+import { getPortfolio } from "@/db/queries";
 import { parseTaxYearSearchParam } from "@/lib/tax-year";
 
 export const metadata: Metadata = {
@@ -93,7 +93,6 @@ async function YearEndContent({
   }
 
   const parsedYear = parseTaxYearSearchParam(year);
-  const notes = await getAccountantNotes(property.id, parsedYear);
 
   return (
     <YearEndWorkspace
@@ -103,7 +102,6 @@ async function YearEndContent({
       }))}
       property={property}
       year={parsedYear}
-      notes={notes}
     />
   );
 }

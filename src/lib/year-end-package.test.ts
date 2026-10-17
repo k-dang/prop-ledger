@@ -129,15 +129,6 @@ const property: YearEndPackageSource = {
       memo: null,
     },
   ],
-  accountantNotes: [
-    {
-      id: "note-1",
-      propertyId: "property-1",
-      taxYear: 2026,
-      note: "Confirm capital treatment",
-      createdAt: new Date("2027-01-15T00:00:00Z"),
-    },
-  ],
 };
 
 function golden(snapshot: ReturnType<typeof buildYearEndPackageSnapshot>) {

@@ -1,12 +1,11 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import {
   appDataCacheTags,
   propertyCacheTag,
   rentLedgerCacheTag,
-  yearEndCacheTag,
 } from "@/lib/cache-tags";
 import type { DashboardPropertySource } from "@/lib/portfolio-dashboard";
 import type {
@@ -16,7 +15,7 @@ import type {
 } from "@/lib/property-workspace";
 
 import { db } from "./index";
-import { accountantNotes, properties } from "./schema";
+import { properties } from "./schema";
 
 // The relations to hydrate so a property row comes back as a `RentalProperty`
 // aggregate. Each relation reads back as its inferred row type, so no mapping
@@ -139,20 +138,6 @@ export async function getPropertyWorkspace(
   };
 }
 
-export async function getAccountantNotes(propertyId: string, taxYear: number) {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(yearEndCacheTag(propertyId, taxYear), appDataCacheTags.yearEnd);
-
-  return db.query.accountantNotes.findMany({
-    where: and(
-      eq(accountantNotes.propertyId, propertyId),
-      eq(accountantNotes.taxYear, taxYear),
-    ),
-    orderBy: (note, { asc }) => [asc(note.createdAt)],
-  });
-}
-
 export async function getYearEndPackageSource(propertyId: string) {
   return db.query.properties.findFirst({
     where: eq(properties.id, propertyId),
@@ -164,7 +149,6 @@ export async function getYearEndPackageSource(propertyId: string) {
       mortgagePayments: true,
       documents: { with: { links: true } },
       rentEvents: true,
-      accountantNotes: true,
     },
   });
 }
