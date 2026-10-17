@@ -332,11 +332,11 @@ function FinancialsSection({
           {incomplete === 1 ? "is" : "are"} categorized.
         </p>
       ) : null}
-      <div className="overflow-x-auto px-2 pb-1">
+      <div>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Property</TableHead>
+              <TableHead className="pl-4">Property</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden text-right sm:table-cell">
                 Income
@@ -344,7 +344,7 @@ function FinancialsSection({
               <TableHead className="hidden text-right sm:table-cell">
                 Expenses
               </TableHead>
-              <TableHead className="text-right">Net</TableHead>
+              <TableHead className="pr-4 text-right">Net</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -356,7 +356,7 @@ function FinancialsSection({
                   className="relative transition-colors hover:bg-muted/40"
                   key={property.propertyId}
                 >
-                  <TableCell className="font-medium">
+                  <TableCell className="pl-4 font-medium">
                     <Link
                       href={`/properties/${property.propertyId}`}
                       className="after:absolute after:inset-0 hover:underline"
@@ -388,6 +388,7 @@ function FinancialsSection({
                   <MoneyCell
                     value={property.netRecordedRentalIncome}
                     inactive={inactive}
+                    className="pr-4"
                   />
                 </TableRow>
               );
