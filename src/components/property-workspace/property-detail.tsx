@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getAvailableTaxYears } from "@/lib/available-tax-years";
 import {
   formatDateWithYear,
   type PropertyReadiness,
@@ -36,7 +37,6 @@ import {
   toneIcon,
   toneSurface,
 } from "@/lib/status-styles";
-import { MAX_TAX_YEAR, MIN_TAX_YEAR } from "@/lib/tax-year";
 import { summarizeTaxYearFinancials } from "@/lib/tax-year-financial-summary";
 import { cn } from "@/lib/utils";
 import type { FilingStatus, ReadinessStatus } from "@/lib/year-end-readiness";
@@ -46,11 +46,6 @@ import {
 } from "@/lib/year-end-readiness-view-model";
 import { PropertySetup } from "./property-setup";
 import { TaxYearSelect } from "./tax-year-select";
-
-const TAX_YEARS = Array.from(
-  { length: MAX_TAX_YEAR - MIN_TAX_YEAR + 1 },
-  (_, index) => MAX_TAX_YEAR - index,
-);
 
 type PropertyTab = "leases" | "rent" | "expenses" | "mortgage" | "setup";
 
@@ -89,6 +84,10 @@ export function PropertyWorkspaceDetail({
     !deferActivity &&
     (yearEndReadiness.uncategorizedTransactions > 0 ||
       yearEndReadiness.missingReceipts > 0);
+  const availableTaxYears = getAvailableTaxYears(
+    [{ ...property, rentEvents: rentLedger.rentEvents }],
+    year,
+  );
 
   // Open on whatever needs attention first, else rent (the primary action).
   const [activeTab, setActiveTab] = useState<PropertyTab>(() =>
@@ -127,6 +126,7 @@ export function PropertyWorkspaceDetail({
           property={property}
           readiness={readiness}
           year={year}
+          years={availableTaxYears}
         />
         {property.setupDraft ? (
           <FinishSetupCard property={property} today={today} />
@@ -394,10 +394,12 @@ function PropertyWorkspaceHeader({
   property,
   readiness,
   year,
+  years,
 }: {
   property: RentalProperty;
   readiness: PropertyReadiness;
   year: number;
+  years: number[];
 }) {
   const nextSetupGap = readiness.tasks.find(
     (task) => task.status !== "complete",
@@ -437,7 +439,7 @@ function PropertyWorkspaceHeader({
         <span className="text-muted-foreground text-xs">Tax year</span>
         <TaxYearSelect
           taxYear={year}
-          years={TAX_YEARS}
+          years={years}
           className="min-h-11 w-20 font-medium tabular-nums data-[size=default]:h-9 sm:min-h-0"
         />
       </div>
