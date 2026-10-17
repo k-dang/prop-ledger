@@ -245,7 +245,7 @@ describe("lease document controls", () => {
     const markup = renderToStaticMarkup(<LeasesPanel ledger={ledger} />);
 
     expect(markup).toContain("1 lease · 1 open-ended · 1 document");
-    expect(markup).toContain("Add lease");
+    expect(markup).toContain("Save lease");
   });
 });
 
