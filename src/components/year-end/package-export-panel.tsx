@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,21 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import type { AccountantNote } from "@/db/schema";
 import type { RentalProperty } from "@/lib/property-workspace";
 import { cn } from "@/lib/utils";
-import { addAccountantNote } from "@/lib/year-end-actions";
 
 export function PackageExportPanel({
   property,
   year,
-  notes,
 }: {
   property: RentalProperty;
   year: number;
-  notes: AccountantNote[];
 }) {
   return (
     <Card className="rounded-md">
@@ -35,61 +29,9 @@ export function PackageExportPanel({
         </div>
       </CardHeader>
       <CardContent className="grid gap-6">
-        <div className="grid gap-3 lg:grid-cols-2">
-          <AccountantNotesForm
-            propertyId={property.id}
-            year={year}
-            notes={notes}
-          />
-          <PackageGenerationForms property={property} year={year} />
-        </div>
+        <PackageGenerationForms property={property} year={year} />
       </CardContent>
     </Card>
-  );
-}
-
-function AccountantNotesForm({
-  propertyId,
-  year,
-  notes,
-}: {
-  propertyId: string;
-  year: number;
-  notes: AccountantNote[];
-}) {
-  return (
-    <form
-      action={addAccountantNote.bind(null, propertyId, year)}
-      className="grid gap-2 rounded-md border p-4"
-    >
-      <Field>
-        <FieldLabel htmlFor="accountant-note">Accountant note</FieldLabel>
-        <Input
-          id="accountant-note"
-          name="note"
-          placeholder="Open question or treatment context"
-          required
-        />
-      </Field>
-      <Button
-        type="submit"
-        variant="outline"
-        className="justify-self-start rounded-md"
-      >
-        Add note
-      </Button>
-      {notes.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No accountant notes for {year}.
-        </p>
-      ) : (
-        <ul className="grid gap-1 text-muted-foreground text-sm">
-          {notes.map((note) => (
-            <li key={note.id}>• {note.note}</li>
-          ))}
-        </ul>
-      )}
-    </form>
   );
 }
 

@@ -34,7 +34,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PackageExportPanel } from "@/components/year-end/package-export-panel";
-import type { AccountantNote } from "@/db/schema";
 import type { RentalProperty } from "@/lib/property-workspace";
 import { toneSurface } from "@/lib/status-styles";
 import { cn } from "@/lib/utils";
@@ -45,12 +44,10 @@ export function YearEndWorkspace({
   properties,
   property,
   year,
-  notes,
 }: {
   properties: { id: string; name: string }[];
   property: RentalProperty;
   year: number;
-  notes: AccountantNote[];
 }) {
   const readiness = getFilingReadiness(property, year, "year-end");
   return (
@@ -61,7 +58,7 @@ export function YearEndWorkspace({
         selectedYear={year}
       />
       <ReadinessPanel readiness={readiness} />
-      <PackageExportPanel property={property} year={year} notes={notes} />
+      <PackageExportPanel property={property} year={year} />
       <CapitalRegister property={property} year={year} />
     </section>
   );

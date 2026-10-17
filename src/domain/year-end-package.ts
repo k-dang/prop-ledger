@@ -1,7 +1,7 @@
 import type { T776Category } from "./ledger-categories";
 
 export type YearEndPackageSnapshot = {
-  version: 2;
+  version: 3;
   generatedAt: string;
   taxYear: number;
   scope:
@@ -54,7 +54,6 @@ export type YearEndPackageSnapshot = {
     linkedTargets: string[];
     readableUrl: string | null;
   }[];
-  accountantNotes: string[];
   unresolvedExceptions: {
     id: string;
     status: "blocking" | "warning";

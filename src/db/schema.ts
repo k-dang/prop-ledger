@@ -3,7 +3,6 @@ import {
   boolean,
   date,
   doublePrecision,
-  integer,
   jsonb,
   pgSchema,
   text,
@@ -169,18 +168,6 @@ export const transactionSplits = pgTable("transaction_splits", {
   memo: text("memo"),
 });
 
-export const accountantNotes = pgTable("accountant_notes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  propertyId: uuid("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  taxYear: integer("tax_year").notNull(),
-  note: text("note").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
 /**
  * Reusable evidence records. A document is uploaded once and linked to the
  * records it supports through `documentLinks`, so the same lease agreement or
@@ -233,7 +220,6 @@ export const propertiesRelations = relations(properties, ({ many }) => ({
   ledgerEntries: many(ledgerEntries),
   mortgagePayments: many(mortgagePayments),
   documents: many(documents),
-  accountantNotes: many(accountantNotes),
 }));
 
 export const unitsRelations = relations(units, ({ one, many }) => ({
@@ -330,16 +316,6 @@ export const ownershipPeriodsRelations = relations(
   }),
 );
 
-export const accountantNotesRelations = relations(
-  accountantNotes,
-  ({ one }) => ({
-    property: one(properties, {
-      fields: [accountantNotes.propertyId],
-      references: [properties.id],
-    }),
-  }),
-);
-
 /**
  * Inferred row and insert types — the single source of truth for the domain
  * shapes. `src/lib/property-workspace.ts` re-exports these under domain-facing
@@ -357,7 +333,6 @@ export type MortgagePayment = typeof mortgagePayments.$inferSelect;
 export type TransactionSplit = typeof transactionSplits.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type DocumentLink = typeof documentLinks.$inferSelect;
-export type AccountantNote = typeof accountantNotes.$inferSelect;
 
 export type NewUnit = typeof units.$inferInsert;
 export type NewOwner = typeof owners.$inferInsert;

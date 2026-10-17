@@ -1,0 +1,1 @@
+DROP TABLE "rental"."accountant_notes" CASCADE;
