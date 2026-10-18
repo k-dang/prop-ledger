@@ -10,7 +10,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { z } from "zod";
 import { FormErrorAlert } from "@/components/property-workspace/form-error-alert";
 import {
@@ -28,6 +28,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -282,18 +283,10 @@ export function MortgagePaymentsPanel({
                           propertyId={propertyId}
                           payment={payment}
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 rounded-md px-2 text-blocked"
-                          onClick={() => {
-                            void deleteMortgagePayment(propertyId, payment.id);
-                          }}
-                        >
-                          <Trash2 data-icon="inline-start" />
-                          Delete
-                        </Button>
+                        <MortgagePaymentDeleteButton
+                          propertyId={propertyId}
+                          payment={payment}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -552,6 +545,76 @@ function splitDraftFromPayment(
 }
 
 /**
+ * A per-row icon-only delete for one mortgage payment. Confirmation is
+ * required because the action is irreversible and the button itself carries no
+ * visible label, and a failed delete keeps the dialog open with the error.
+ */
+function MortgagePaymentDeleteButton({
+  propertyId,
+  payment,
+}: {
+  propertyId: string;
+  payment: MortgagePayment;
+}) {
+  const [error, setError] = useState<string>();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, startDelete] = useTransition();
+
+  function handleDelete() {
+    startDelete(async () => {
+      const result = await deleteMortgagePayment(propertyId, payment.id);
+
+      if (result.ok) {
+        setIsOpen(false);
+        return;
+      }
+
+      setError(result.error);
+    });
+  }
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        className="text-blocked"
+        aria-label={`Delete the ${payment.date} payment`}
+        title="Delete payment"
+        onClick={() => setIsOpen(true)}
+      >
+        <Trash2 aria-hidden="true" />
+      </Button>
+      <ConfirmDialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) {
+            setError(undefined);
+          }
+        }}
+        title="Delete mortgage payment?"
+        description={
+          <>
+            Delete the {formatMoney(payment.totalAmount)} payment from{" "}
+            {payment.date}? This action cannot be undone.
+          </>
+        }
+        confirmLabel="Delete payment"
+        isPending={isDeleting}
+        error={
+          error === undefined
+            ? undefined
+            : { title: "Payment wasn't deleted", message: error }
+        }
+        onConfirm={handleDelete}
+      />
+    </>
+  );
+}
+
+/**
  * A per-row popover that edits only the principal/interest split of an
  * existing payment, leaving its date, lender, and total untouched. The draft
  * re-syncs from the stored payment on every open, so closing without saving
@@ -629,14 +692,11 @@ function MortgageAllocationPopover({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         type="button"
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "h-7 rounded-md px-2",
-        )}
+        className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }))}
         aria-label={`Allocate the ${payment.date} payment`}
+        title="Allocate payment"
       >
-        <Split data-icon="inline-start" />
-        Allocate
+        <Split aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent className="grid w-80 gap-3" align="end">
         <div className="grid gap-1">
