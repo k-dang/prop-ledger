@@ -543,11 +543,6 @@ function splitDraftFromPayment(
   };
 }
 
-/**
- * A per-row icon-only delete for one mortgage payment. Confirmation is
- * required because the action is irreversible and the button itself carries no
- * visible label, and a failed delete keeps the dialog open with the error.
- */
 function MortgagePaymentDeleteButton({
   propertyId,
   payment,
