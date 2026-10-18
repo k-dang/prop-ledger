@@ -60,3 +60,10 @@ opensrc/
 
 # review workflow artifacts
 /.review/
+
+# design prototypes
+/prototypes/
+
+# PR capture scratch (media is attached to the PR, not committed)
+/captures/
+/.capture-gen/
