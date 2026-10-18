@@ -435,6 +435,7 @@ function ExpensesSection({ summary }: { summary: PortfolioDashboardSummary }) {
   return (
     <CollapsibleSection
       title="Expenses by T776 category"
+      defaultOpen
       aside={
         largest ? (
           <>
