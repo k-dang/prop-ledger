@@ -6,7 +6,6 @@ import {
   ArrowUpDown,
   Banknote,
   CopyPlus,
-  Split,
   Trash2,
   X,
 } from "lucide-react";
@@ -692,11 +691,13 @@ function MortgageAllocationPopover({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         type="button"
-        className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }))}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "h-7 rounded-md px-2",
+        )}
         aria-label={`Allocate the ${payment.date} payment`}
-        title="Allocate payment"
       >
-        <Split aria-hidden="true" />
+        Allocate
       </PopoverTrigger>
       <PopoverContent className="grid w-80 gap-3" align="end">
         <div className="grid gap-1">
