@@ -791,11 +791,7 @@ export function RentPaymentPanel({
                   className="min-h-11 w-full sm:w-auto"
                   disabled={!canSave || isSaving}
                 >
-                  {isSaving
-                    ? "Saving…"
-                    : canSave
-                      ? `Record ${formatMoney(Number(amount))}`
-                      : "Record rent"}
+                  Record rent
                 </Button>
                 <p className="text-muted-foreground text-xs">
                   Records money already received. No payment is collected.
