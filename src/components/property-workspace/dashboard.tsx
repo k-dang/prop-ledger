@@ -453,11 +453,11 @@ function ExpensesSection({ summary }: { summary: PortfolioDashboardSummary }) {
           No categorized expenses recorded for {summary.taxYear}.
         </p>
       ) : (
-        <div className="grid gap-1 py-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 py-2 sm:grid-cols-[14rem_minmax(0,1fr)_auto]">
           {summary.expenseCategories.map((category) => (
             <Link
               href={`/transactions?year=${summary.taxYear}&category=${category.category}`}
-              className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-4 py-2 text-sm hover:bg-muted/40 sm:grid-cols-[14rem_minmax(0,1fr)_auto]"
+              className="group col-span-full grid grid-cols-subgrid items-center px-4 py-2 text-sm hover:bg-muted/40"
               key={category.category}
             >
               <span className="truncate group-hover:underline">
