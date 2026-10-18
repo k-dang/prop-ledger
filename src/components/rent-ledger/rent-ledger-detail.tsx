@@ -29,7 +29,6 @@ import { createFormSubmit } from "@/components/property-workspace/form-submit";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -134,21 +133,11 @@ export function LeasesPanel({ ledger }: { ledger: RentLedger }) {
   ).length;
   const summary = `${pluralize(ledger.leases.length, "lease")} · ${openEndedLeaseCount} open-ended · ${pluralize(linkedDocumentCount, "document")}`;
   const [selectedUnitId, setSelectedUnitId] = useState("");
-  const [rentFrequency, setRentFrequency] = useState<RentFrequency>("monthly");
   const selectedUnitLabel =
     ledger.units.find((unit) => unit.id === selectedUnitId)?.label ??
     "Select unit";
+  const [rentFrequency, setRentFrequency] = useState<RentFrequency>("monthly");
   const handleSubmit = createFormSubmit(leaseFormSchema, onCreateLease);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  // The lease list sits above the form, so the header action jumps to it.
-  function focusForm() {
-    const firstField = formRef.current?.querySelector<HTMLElement>(
-      "button:not([disabled]), input:not([disabled])",
-    );
-    firstField?.focus();
-    firstField?.scrollIntoView({ block: "center" });
-  }
 
   return (
     <Card>
@@ -168,11 +157,6 @@ export function LeasesPanel({ ledger }: { ledger: RentLedger }) {
           <CardTitle as="h2">Leases</CardTitle>
         </div>
         <CardDescription>{summary}</CardDescription>
-        <CardAction>
-          <Button type="button" variant="outline" size="sm" onClick={focusForm}>
-            Add lease
-          </Button>
-        </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4">
         <FormErrorAlert message={leaseError} />
@@ -198,7 +182,7 @@ export function LeasesPanel({ ledger }: { ledger: RentLedger }) {
           </div>
         )}
         <Separator />
-        <form ref={formRef} className="grid gap-3" onSubmit={handleSubmit}>
+        <form className="grid gap-3" onSubmit={handleSubmit}>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="lease-unit">Unit</FieldLabel>
@@ -280,7 +264,7 @@ export function LeasesPanel({ ledger }: { ledger: RentLedger }) {
           </div>
           <div className="flex justify-end">
             <Button type="submit" disabled={!hasUnits}>
-              Add lease
+              Save lease
             </Button>
           </div>
         </form>
