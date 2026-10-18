@@ -257,7 +257,7 @@ describe("rent payment defaults", () => {
     expect(markup).toContain('name="leaseId" value="lease-1"');
     expect(markup).toContain('value="2000.00"');
     expect(markup).toContain('value="2026-10-03"');
-    expect(markup).toContain("Record $2,000.00");
+    expect(markup).toContain("Record rent");
   });
 
   it("requires a tenant choice when more than one lease is recorded", () => {
@@ -361,7 +361,7 @@ describe("rent payment feedback", () => {
       </>,
     );
     const form = screen
-      .getByRole("button", { name: "Record $2,000.00" })
+      .getByRole("button", { name: "Record rent" })
       .closest("form");
     if (!form) throw new Error("Rent form was not rendered");
 
@@ -417,7 +417,7 @@ describe("rent payment feedback", () => {
       </>,
     );
     const form = screen
-      .getByRole("button", { name: "Record $2,000.00" })
+      .getByRole("button", { name: "Record rent" })
       .closest("form");
     if (!form) throw new Error("Rent form was not rendered");
     await act(async () => fireEvent.submit(form));
