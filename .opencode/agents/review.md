@@ -1,7 +1,6 @@
 ---
 description: Review one pull request without mutating the repository or GitHub
 mode: primary
-model: "vercel/openai/gpt-5.6-luna"
 permission:
   "*": deny
   read: allow
